@@ -28,17 +28,21 @@ yoktur.** Build adımı, paket yöneticisi ve framework de yoktur.
 - A0/A1 gibi eski etiketler yerine GPIO numarası tercih edilir; `config.h` içindeki
   "eski (riskli) eşleşme" bloğu referans olarak duruyor.
 
-## Sürüm numarası — üç yerden birlikte
+## Sürüm numarası — dört yerden birlikte
 
 Bunlar birbirine bağlı, tek başına değiştirilmez:
 
-1. `pwa/js/config.js` → `App.VERSION`
-2. `firmware/config.h` → `FW_VERSION`
+1. `package.json` → `version`
+2. `pwa/js/config.js` → `App.VERSION`
 3. `pwa/sw.js` → `VERSION` (cache adı `deneyap-pwa-v<VERSION>` buradan geliyor)
+4. `firmware/config.h` → `FW_VERSION`
 
-Sürüm artırdığında **üçünü de** güncelle. Biri unutulursa PWA eski sürümü
+Sürüm artırdığında **dördünü de** güncelle. Biri unutulursa PWA eski sürümü
 göstermeye devam eder ("eski site açılıyor" hatasının klasik sebebi).
 Panelde kullanıcıya gösterilen sürüm bu değerlerden gelir.
+
+`npm run check` bu dördünün aynı olduğunu doğrular — commit öncesi çalıştır,
+elle kontrol etmeye gerek kalmasın.
 
 ## Gizli bilgiler
 
@@ -52,17 +56,35 @@ Panelde kullanıcıya gösterilen sürüm bu değerlerden gelir.
 ## PWA kuralları
 
 - **`file://` ile açılmaz.** Service Worker ve `fetch` güvenlik bağlamı ister.
-  Test için: `npx serve pwa` → `http://localhost:3000`
-- Yerelde cihaz API'si yoktur (`/api/status` çalışmaz), panel "erişilemiyor"
-  der. Bu normal. Gerçek test için `pwa/` klasörünü olduğu gibi cihaza yükle.
+  Yerel geliştirme için `npm run dev` kullan — sahte cihaz da sunar.
 - **`pwa/` içine yeni bir dosya eklediysen `pwa/sw.js` içindeki `PRECACHE`
-  listesine de ekle.** Eklenmezse dosya çevrimdışıyken veya ilk yüklemede bulunamaz.
+  listesine de ekle.** Eklenmezse dosya çevrimdışıyken veya ilk yüklemede
+  bulunamaz. `npm run check` bunu unutursan hata olarak bildirir.
 - Dosya düzenleme sırası: `sw.js` (`PRECACHE`) → `config.js` (`VERSION`) →
-  `api.js` → `app.js` → `settings.js`. Modüller sırayla yüklenir.
+  `api.js` → `history.js` → `notify.js` → `app.js` → `settings.js`.
+  Modüller sırayla yüklenir.
 - Ağ trafiğinin tamamı `pwa/js/api.js` üzerinden geçer. Yeni bir uç nokta
   eklersen buraya ekle, `app.js` içinden doğrudan `fetch` atma.
+- **SVG elementlerine `textContent` atama.** `<path>` için `setAttribute('d', …)`,
+  `<g>` içine markup eklemek için `innerHTML` gerekir. `textContent` SVG'de
+  markup üretmez, sessizce hiçbir şey çizmez. (Bu hataya düşüldü.)
 - PWA dosyalarını cihaza yükledikten sonra tarayıcıda service worker'ı
   "Yenile" bildirimi üzerinden etkinleştir; eski cache'i unutma.
+
+## Modüller
+
+| Dosya | Sorumluluk |
+|---|---|
+| `pwa/js/config.js` | sürüm, varsayılanlar, ayar deposu, tema, toast, SW kaydı |
+| `pwa/js/api.js` | tüm ağ trafiği: zaman aşımı, iptal, token, JSON hataları |
+| `pwa/js/history.js` | sensör geçmişi (localStorage) + sparkline çizimi |
+| `pwa/js/notify.js` | tehlike bildirimleri, izin yönetimi, 90 sn bekleme |
+| `pwa/js/app.js` | ana panel denetleyicisi |
+| `pwa/js/settings.js` | ayarlar sayfası denetleyicisi |
+
+Geçmiş yalnızca tarayıcıda tutulur ve **son 30 dakika** ile sınırlıdır
+(cihazda RAM yok). Bildirimler yalnızca panel açıkken çalışır; arka plan
+izlemi yok.
 
 ## API sözleşmesi
 
@@ -84,10 +106,29 @@ anda `api.js` ve `app.js` tarafını da güncelle.
 - Mevcut yapıyı koru: IIFE içinde `window.App` namespace'i, `App.xxx` fonksiyonları.
   Framework, bundler veya `import` ekleme — cihazda build yok, dosyalar olduğu
   gibi servis edilir.
-- Tasarım değişikliği yapacaksan önce `DESIGN.md`'yi oku; renk ve tipografi
-  token'ları orada tanımlı. Serbest değerler uydurma.
+- **Renk ve ölçü için `DESIGN.md`'yi değil, `pwa/css/style.css` başındaki
+  değişkenleri kullan.** `DESIGN.md` "Dala" adlı ayrı bir markanın stil
+  referansı; bu projenin gerçek token'ları orada değil:
+  `--bg --surface --surface-2 --text --text-dim --primary --accent --warn
+  --danger --border --radius --radius-sm`. Serbest renk/tanım uydurma.
+  (DESIGN.md'nin saf siyah yüzey, çerçevesiz kart kuralı bu panelde
+  uygulanmıyor; panelin açık/koyu teması ve kart çerçeveleri mevcut.)
 - Küçük ve bağımsız değişiklikleri tek commit'te topla, commit'i ne yaptığını
   anlatacak şekilde yaz.
+- Commit öncesi `npm run check` çalıştır.
+
+## Araçlar (tools/)
+
+| Dosya | Ne yapar |
+|---|---|
+| `tools/dev-server.js` | Sahte cihaz: `pwa/`'yı sunar, `/api/*` uçlarını simüle eder. `npm run dev` |
+| `tools/check-js.js` | Commit öncesi denetim: sözdizimi, sürüm tutarlılığı, PRECACHE, HTML referansları. `npm run check` |
+| `tools/make-icons.ps1` | PWA ikonlarını yeniden üretir. `npm run icons` |
+
+Sahte cihaz gaz seviyesini 90 saniyelik bir döngüyle yükseltip eşikleri
+geçer; böylece uyarı/tehlike banner'ı, rozetler, grafik ve otomatik müdahale
+cihaz olmadan denenebilir. Eşikleri `firmware/config.h`'den okur, port doluysa
+`--port` ile değiştirilir.
 
 ## Git akışı
 
@@ -101,7 +142,8 @@ anda `api.js` ve `app.js` tarafını da güncelle.
 
 ## OpenCode için ek notlar
 
-- `opencode.jsonc` proje ayarlarını ve `/surum` gibi kısayolları içerir.
+- `opencode.jsonc` proje ayarlarını ve `/surum`, `/cihaz`, `/pwa`, `/PR`
+  kısayollarını içerir.
 - Oturumlar (session) paylaşılamaz. Birbirine bağlam aktarmak için **dosya yaz
   ve commit'le** — `AGENTS.md`, `DESIGN.md`, `CHANGELOG.md`.
 - Paralel iş için git worktree kullan: her dal ayrı klasör, aynı depodan.

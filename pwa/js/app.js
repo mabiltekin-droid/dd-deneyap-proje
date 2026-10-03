@@ -24,6 +24,7 @@
   let online = false;
   let pumpArmed = false;
   let pumpArmTimer = null;
+  let prevGasState = 'unknown';   // bildirim sadece durum değişiminde gitsin
 
   /* ------------------------------------------------------------ yardımcılar */
 
@@ -149,6 +150,27 @@
     renderOutlets(data);
     renderBanner(state);
     setControlsEnabled(true);
+    checkAlert(state, data.gasPpm);
+    if (App.history) App.history.update(data);
+  }
+
+  /* Seviye değiştiğinde tek seferlik bildirim gönder.
+     Aynı seviyede kalınca (ölçüm 2 sn'de bir geliyor) tekrar gönderilmez;
+     bunun için App.notify kendi bekleme süresini tutar. */
+  function checkAlert(state, ppm) {
+    if (!App.notify) return;
+    if (state === 'normal') {
+      App.notify.reset();
+      prevGasState = state;
+      return;
+    }
+    if (state === prevGasState) return;
+    /* sadece yükseliş yönünde bildir: tehlike -> uyarı geri dönüşünde
+       ikinci bir bildirim spam olur */
+    const yukseliyor = prevGasState === 'normal' ||
+                       (prevGasState === 'warning' && state === 'danger');
+    if (yukseliyor) App.notify.alert(state, ppm);
+    prevGasState = state;
   }
 
   function setControlsEnabled(enabled) {
@@ -337,6 +359,7 @@
     document.addEventListener('visibilitychange', function () {
       if (document.hidden) {
         clearTimeout(pollTimer);
+        if (App.history) App.history.flush();
       } else {
         clearTimeout(pollTimer);
         poll();
@@ -346,7 +369,18 @@
     /* Panelden ayrılırken su motoru kazara çalışmasın diye uyar */
     window.addEventListener('pagehide', function () {
       if (lastData && lastData.pump) disarmPump();
+      if (App.history) App.history.flush();
     });
+
+    /* Geçmiş grafiğini elle temizleme */
+    const clearBtn = $('historyClearBtn');
+    if (clearBtn) {
+      clearBtn.addEventListener('click', function () {
+        if (!App.history) return;
+        App.history.clear();
+        App.toast('Geçmiş temizlendi');
+      });
+    }
 
     console.info('%c[Deneyap Ev Koruma] pano v' + App.VERSION,
       'color:#2f6feb;font-weight:bold');
@@ -395,6 +429,17 @@
       console.groupEnd();
     },
     refresh: function () { poll(); },
-    send: function (device, action) { return send(device, action); }
+    send: function (device, action) { return send(device, action); },
+    history: function () { return App.history ? App.history.stats() : null; },
+    clearHistory: function () { if (App.history) App.history.clear(); },
+    notify: function () {
+      return {
+        destekli: App.notify ? App.notify.supported() : false,
+        izin: App.notify ? App.notify.permission() : 'yok',
+        acik: App.notify ? App.notify.isOn() : false,
+        iOS: App.notify ? App.notify.isIOS : false,
+        anaEkran: App.notify ? App.notify.isStandalone : false
+      };
+    }
   };
 })();

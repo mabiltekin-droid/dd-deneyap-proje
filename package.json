@@ -1,0 +1,15 @@
+{
+  "name": "nambir",
+  "version": "2.3.0",
+  "private": true,
+  "description": "Deneyap Ev Koruma — ESP32 firmware + PWA kontrol paneli",
+  "license": "UNLICENSED",
+  "scripts": {
+    "dev": "node tools/dev-server.js",
+    "check": "node tools/check-js.js",
+    "icons": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/make-icons.ps1"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

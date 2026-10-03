@@ -18,6 +18,9 @@ build/
 .opencode/session/
 *.log
 
+# Paket yöneticisi (bağımlılık yok ama yine de)
+node_modules/
+
 # ---------------------------------------------------------------- işletim sistemi
 .DS_Store
 Thumbs.db

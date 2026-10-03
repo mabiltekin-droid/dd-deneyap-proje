@@ -7,10 +7,40 @@ tarayıcıyla `http://192.168.4.1` adresinden panele ulaşılır.
 ```
 firmware/   Arduino kodu — cihazda çalışır (main.ino + config.h)
 pwa/        Panel — saf HTML/CSS/JS, build adımı yok, cihazın LittleFS'ine yüklenir
-tools/      make-icons.ps1 — PWA ikonlarını üretir
+tools/      dev-server.js (sahte cihaz), check-js.js (denetleyici), make-icons.ps1
 DESIGN.md   Tasarım sistemi referansı (renk, tipografi, spacing token'ları)
 AGENTS.md   Çalışma kuralları — değişiklik yapmadan önce oku
 ```
+
+## Geliştirme
+
+Bağımlılık yok, `npm install` gerekmez. Node 18+ yeterli.
+
+```bash
+npm run dev      # sahte cihaz + panel  →  http://localhost:3000
+npm run check    # commit öncesi denetim (sözdizimi, sürüm, PRECACHE)
+npm run icons    # PWA ikonlarını yeniden üret
+```
+
+**`npm run dev`** cihaz olmadan panel geliştirmeyi sağlar: `pwa/` klasörünü
+sunar ve `/api/status` ile `/api/control` uçlarını simüle eder. Gaz seviyesi
+yavaşça yükselip eşikleri geçer, bu sayede uyarı/tehlike banner'ı, rozetler,
+grafik ve otomatik müdahale gerçekten test edilir.
+
+```bash
+node tools/dev-server.js --port 5173   # port doluysa
+```
+
+**`npm run check`** şunları doğrular:
+
+| Kontrol | Neden |
+|---|---|
+| Her `.js` dosyasının sözdizimi | Cihaza yüklenmeden önce hata yakalar |
+| Sürümün dört yerde aynı olduğu | `package.json` = `config.js` = `sw.js` = `config.h` |
+| `sw.js` PRECACHE listesi `pwa/` ile uyumlu | Yeni dosya eklemeyi unutmayı yakalar |
+| HTML dosya referansları | Kırık yol kalmaz |
+
+Port 3000 başka bir uygulamada doluysa `--port` ile başka port ver.
 
 ## Kurulum
 
@@ -58,30 +88,42 @@ Arduino IDE'de:
 `pwa/` klasörünün tamamı LittleFS'e yüklenmeli: `index.html`, `settings.html`,
 `css/`, `js/`, `manifest.json`, `icons/`.
 
+> Yeni bir dosya eklediysen `pwa/sw.js` içindeki `PRECACHE` listesine de ekle.
+> `npm run check` bunu unutursan hata olarak bildirir.
+
 Yükleme yapılmazsa cihaz API-only modda çalışır ve tarayıcıda bilgilendirme
 sayfası gösterir.
 
-PWA'yı yerelde geliştirmek için:
-
-```bash
-npx serve pwa      # http://localhost:3000
-```
+PWA'yı yerelde geliştirmek için `npm run dev` (yukarıya bak) — ya da cihaz
+olmadan sadece statik dosyaları görmek istersen `npx serve pwa`.
 
 > PWA `file://` ile açılmaz (service worker gerekir). Yerelde `/api/status`
-> çalışmaz, panel "Cihaza ulaşılamıyor" der — bu normal, gerçek test için
-> dosyaları cihaza yükle.
+> çalışmaz; `npm run dev` onu da simüle eder.
 
 ## Sürüm numarası
 
-Sürüm **üç dosyada birden** tutulur:
+Sürüm **dört dosyada birden** tutulur:
 
 | Dosya | Değer |
 |---|---|
+| `package.json` | `version` |
 | `pwa/js/config.js` | `App.VERSION` |
-| `firmware/config.h` | `FW_VERSION` |
 | `pwa/sw.js` | `VERSION` (cache adı bundan gelir) |
+| `firmware/config.h` | `FW_VERSION` |
 
-Biri unutulursa PWA eski sürümü gösterir. Üçünü de birlikte güncelle.
+`npm run check` bu dördünün aynı olduğunu doğrular. Biri unutulursa PWA eski
+sürümü gösterir.
+
+## Panelde neler var
+
+| Özellik | Nerede |
+|---|---|
+| Gaz / yağmur ölçümleri, sistem durumu | Sensörler kartları |
+| **Son 30 dakika gaz grafiği** + istatistik | Geçmiş kartı (yalnızca bu tarayıcıda saklanır) |
+| Fan, su motoru, buzzer, otomatik müdahale | Kontrol kartı |
+| Pencere / panjur servoları | Kontrol kartı |
+| **Gaz tehlikesi bildirimi** | Ayarlar → Bildirimler |
+| Eşikler, bağlantı ayarları, önbellek bakımı | Ayarlar |
 
 ## Çalışma akışı
 

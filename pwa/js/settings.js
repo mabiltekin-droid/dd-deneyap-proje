@@ -27,6 +27,9 @@
     const themeRadio = document.querySelector('input[name="theme"][value="' + s.theme + '"]');
     if (themeRadio) themeRadio.checked = true;
 
+    /* Bildirim anahtarı izin durumuna göre senkronlanır, kayıttan okunmaz */
+    syncNotifyUI();
+
     $('appVersion').textContent = 'v' + App.VERSION;
   }
 
@@ -47,6 +50,76 @@
   function setResult(el, text, kind) {
     el.textContent = text;
     el.className = 'result' + (kind ? ' ' + kind : '');
+  }
+
+  /* ------------------------------------------------------- bildirimler */
+
+  /* Anahtar durumunu ve açıklama metnini izin durumuna göre göster.
+     Tarayıcı izni geri alınmışsa anahtarı kapalı görünür. */
+  function syncNotifyUI() {
+    const el = $('notifyDanger');
+    if (!el) return;
+    const out = $('notifyState');
+    const help = $('notifyHelp');
+    const N = window.App.notify;
+
+    if (!N || !N.supported()) {
+      el.checked = false;
+      el.disabled = true;
+      setResult(out, 'Bu tarayıcı bildirimleri desteklemiyor.', 'fail');
+      return;
+    }
+
+    el.disabled = false;
+    const p = N.permission();
+    el.checked = (p === 'granted') && !!App.settings().notifyDanger;
+
+    if (p === 'denied') {
+      setResult(out, 'İzin reddedilmiş. Tarayıcı ayarlarından geri açmalısın.', 'fail');
+    } else if (p === 'default') {
+      setResult(out, 'Henüz izin verilmedi — anahtarı açınca sorulacak.', '');
+    } else if (el.checked) {
+      setResult(out, 'Bildirimler açık.', 'ok');
+    } else {
+      setResult(out, 'İzin verildi ama kapalı.', '');
+    }
+
+    /* iOS'ta ana ekrana eklenmeden bildirim gelmez; sessizce çalışmayan
+       bir özellik bırakmayalım, açıkça söyleyelim. */
+    if (help) {
+      help.textContent = N.needsInstall
+        ? 'Bu cihaz iOS: bildirimler yalnızca paneli Safari\'den ' +
+          '"Paylaş → Ana Ekrana Ekle" yaptıktan sonra çalışır.'
+        : 'Bildirim yalnızca panel açıkken çalışır ve aynı seviye için en ' +
+          'fazla 90 saniyede bir tekrar gönderir. İzni tarayıcı verir; ' +
+          'panel kendi kendine izin alamaz.';
+    }
+  }
+
+  async function onNotifyToggle(e) {
+    const el = e.target;
+    const N = window.App.notify;
+    const durum = $('notifyState');
+
+    if (!el.checked) {
+      N.disable();
+      syncNotifyUI();
+      App.toast('Bildirimler kapatıldı');
+      return;
+    }
+
+    /* İzin istemi bir kullanıcı dokunuşundan sonra çağrılmalı */
+    const sonuc = await N.enable();
+    syncNotifyUI();
+
+    if (sonuc.ok) {
+      App.toast('Gaz tehlikesi bildirimleri açıldı', { kind: 'ok' });
+    } else if (sonuc.permission === 'denied') {
+      setResult(durum, 'İzin verilmedi. Tarayıcı ayarlarından açmalısın.', 'fail');
+      App.toast('Bildirim izni verilmedi', { kind: 'danger' });
+    } else {
+      setResult(durum, 'İzin alınamadı.', 'fail');
+    }
   }
 
   /* -------------------------------------------------------------- kayıt */
@@ -190,6 +263,10 @@
     $('updateBtn').addEventListener('click', checkUpdate);
     $('clearCacheBtn').addEventListener('click', clearCache);
     $('resetBtn').addEventListener('click', resetSettings);
+
+    /* Bildirim anahtarı kaydetmeye gerek yok, anında etkinleşir */
+    const notifyEl = $('notifyDanger');
+    if (notifyEl) notifyEl.addEventListener('change', onNotifyToggle);
 
     /* Tema seçimi anında uygulansın (kaydetmeye gerek kalmadan) */
     document.querySelectorAll('input[name="theme"]').forEach(function (r) {

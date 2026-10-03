@@ -17,11 +17,13 @@
      • Yeni sürüm sayfayı zorla değiştirmez; panel "Yenile" bildirimi gösterir.
    ========================================================================== */
 
-const VERSION = '2.2.0';
+const VERSION = '2.3.0';
 const CACHE = 'deneyap-pwa-v' + VERSION;
 const SHELL = './index.html';
 const NETWORK_TIMEOUT = 4000;   // cihaz yanıt vermezse cache'e düş (ms)
 
+/* pwa/ altına yeni dosya eklerken BURAYA DA ekle. `npm run check`
+   listenin pwa/ ile tam uyumlu olduğunu doğrular. */
 const PRECACHE = [
   './',
   SHELL,
@@ -29,6 +31,8 @@ const PRECACHE = [
   './css/style.css',
   './js/config.js',
   './js/api.js',
+  './js/history.js',
+  './js/notify.js',
   './js/app.js',
   './js/settings.js',
   './manifest.json',

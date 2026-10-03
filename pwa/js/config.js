@@ -9,7 +9,7 @@
 
   const App = (window.App = window.App || {});
 
-  App.VERSION = '2.2.0';
+  App.VERSION = '2.3.0';
   App.STORAGE_KEY = 'deneyap.settings.v2';
 
   App.DEFAULTS = {
@@ -20,6 +20,7 @@
     gasDanger: 400,
     rainInvert: false, // true = yüksek analog değer "kuru" demek
     autoControl: true,
+    notifyDanger: true, // gaz eşiği aşılınca tarayıcı bildirimi
     theme: 'system'    // light | dark | system
   };
 

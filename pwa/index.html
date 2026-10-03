@@ -92,6 +92,39 @@
       </article>
     </section>
 
+    <section class="card" aria-label="Sensör geçmişi">
+      <div class="card-head">
+        <h2>Geçmiş · son 30 dakika</h2>
+        <div class="head-tools">
+          <span class="hint" id="sparkScale">—</span>
+          <button class="btn xs ghost" type="button" id="historyClearBtn">Temizle</button>
+        </div>
+      </div>
+
+      <div class="spark-wrap">
+        <svg id="sparkGas" class="spark" viewBox="0 0 320 64" preserveAspectRatio="none"
+             data-state="unknown" role="img" aria-label="Henüz geçmiş veri yok">
+          <g id="sparkGrid" class="spark-grid"></g>
+          <polygon id="sparkArea" class="spark-area" points=""></polygon>
+          <polyline id="sparkLine" class="spark-line" points=""></polyline>
+          <path id="sparkMarks" class="spark-rain" d=""></path>
+        </svg>
+        <p class="spark-empty" id="sparkEmpty">Ölçüm bekleniyor…</p>
+      </div>
+
+      <div class="stat-row">
+        <div class="stat"><span class="stat-label">En düşük</span><span class="stat-value" id="histMin">—</span></div>
+        <div class="stat"><span class="stat-label">Ortalama</span><span class="stat-value" id="histAvg">—</span></div>
+        <div class="stat"><span class="stat-label">En yüksek</span><span class="stat-value" id="histMax">—</span></div>
+        <div class="stat"><span class="stat-label">Yağmur</span><span class="stat-value" id="histRain">—</span></div>
+      </div>
+
+      <p class="card-foot">
+        <span>Yeşil çizgi: uyarı eşiği · kırmızı: tehlike eşiği</span>
+        <span>Alt kenar çubukları: yağmur</span>
+      </p>
+    </section>
+
     <section class="card" aria-label="Cihaz kontrolü">
       <div class="card-head">
         <h2>Kontrol</h2>
@@ -169,6 +202,8 @@
 
   <script src="./js/config.js"></script>
   <script src="./js/api.js"></script>
+  <script src="./js/history.js"></script>
+  <script src="./js/notify.js"></script>
   <script src="./js/app.js"></script>
 </body>
 </html>

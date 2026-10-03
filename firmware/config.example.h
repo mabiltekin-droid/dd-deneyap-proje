@@ -29,7 +29,7 @@
    Örnek: "gizli-anahtar" -> PWA'da Ayarlar > Cihaz Token alanına aynısını yaz. */
 #define API_TOKEN          ""
 
-#define FW_VERSION         "2.2.0"
+#define FW_VERSION         "2.3.0"
 
 /* ============================ PIN HARİTASI ============================= */
 /* Analog girişler ADC1 kanalında olmalı (Wi-Fi açıkken ADC2 kullanılamaz). */

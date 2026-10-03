@@ -121,6 +121,25 @@
         </label>
       </section>
 
+      <section class="card" aria-labelledby="h-notify">
+        <div class="card-head"><h2 id="h-notify">Bildirimler</h2></div>
+
+        <label class="switch">
+          <input type="checkbox" id="notifyDanger" name="notifyDanger">
+          <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+          <span class="switch-body">
+            <strong>Gaz tehlikesi bildirimi</strong>
+            <small>Ölçüm uyarı veya tehlike eşiğini geçtiğinde telefonunuza bildirim gider.</small>
+          </span>
+        </label>
+        <p class="result" id="notifyState" role="status" aria-live="polite"></p>
+        <p class="help" id="notifyHelp">
+          Bildirim yalnızca panel açıkken çalışır ve aynı seviye için en fazla
+          90 saniyede bir tekrar gönderir. İzni tarayıcı verir; panel kendi
+          kendine izin alamaz.
+        </p>
+      </section>
+
       <section class="card" aria-labelledby="h-theme">
         <div class="card-head"><h2 id="h-theme">Görünüm</h2></div>
         <div class="segmented" role="radiogroup" aria-label="Tema seçimi">
@@ -180,6 +199,7 @@
 
   <script src="./js/config.js"></script>
   <script src="./js/api.js"></script>
+  <script src="./js/notify.js"></script>
   <script src="./js/settings.js"></script>
 </body>
 </html>
