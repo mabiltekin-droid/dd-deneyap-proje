@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Deneyap Ev Koruma</title>
+  <meta name="description" content="ESP32 tabanlı akıllı ev güvenlik ve koruma kontrol paneli">
+  <meta name="theme-color" content="#f4f6f9" id="metaThemeColor">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Ev Koruma">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" href="./icons/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <link rel="stylesheet" href="./css/style.css">
+  <script>
+    /* Tema erken uygulanır: aksi halde koyu temada beyaz ekran titremesi (FOUC) olur. */
+    (function () {
+      try {
+        var s = JSON.parse(localStorage.getItem('deneyap.settings.v2') || '{}');
+        var t = s.theme || 'system';
+        var dark = t === 'dark' ||
+                   (t === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+      } catch (e) {
+        document.documentElement.setAttribute('data-theme', 'light');
+      }
+    })();
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#main">İçeriğe geç</a>
+
+  <header>
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 21 19H3Z"/></svg>
+      <div>
+        <h1>Ev Koruma</h1>
+        <p class="conn" id="conn" data-state="connecting">
+          <span class="dot" aria-hidden="true"></span><span id="connText">Bağlanıyor…</span>
+        </p>
+      </div>
+    </div>
+    <button id="themeToggleBtn" class="icon-btn" type="button" aria-label="Temayı değiştir">
+      <span id="themeIcon" aria-hidden="true">☀️</span>
+    </button>
+  </header>
+
+  <main id="main">
+    <div id="banner" class="banner" role="status" hidden></div>
+
+    <section class="grid" aria-label="Sensörler">
+      <article class="card gauge-card" id="gasCard" data-state="unknown">
+        <div class="card-head">
+          <h2>Gaz / Duman</h2>
+          <span class="chip" id="gasChip" data-state="unknown">—</span>
+        </div>
+        <p class="value"><span id="gasPpm">—</span><small>PPM</small></p>
+        <div class="gauge" role="img" aria-label="Gaz seviyesi göstergesi">
+          <div class="gauge-fill" id="gasFill" style="width:0%"></div>
+          <div class="gauge-mark" id="markWarn"></div>
+          <div class="gauge-mark danger" id="markDanger"></div>
+        </div>
+        <div class="card-foot">
+          <span id="gasRaw">ham: —</span>
+          <span id="gasBase">taban: —</span>
+        </div>
+      </article>
+
+      <article class="card" id="rainCard">
+        <div class="card-head">
+          <h2>Yağmur</h2>
+          <span class="chip" id="rainChip" data-state="unknown">—</span>
+        </div>
+        <p class="value"><span id="rainValue">—</span></p>
+        <div class="card-foot"><span id="rainRaw">ham: —</span></div>
+      </article>
+
+      <article class="card span-2">
+        <div class="card-head">
+          <h2>Sistem Durumu</h2>
+          <span class="chip" id="sysChip" data-state="unknown">—</span>
+        </div>
+        <dl class="kv">
+          <div><dt>Çalışma süresi</dt><dd id="uptime">—</dd></div>
+          <div><dt>Sinyal (RSSI)</dt><dd id="rssi">—</dd></div>
+          <div><dt>IP adresi</dt><dd id="ip">—</dd></div>
+          <div><dt>Boş bellek</dt><dd id="heap">—</dd></div>
+          <div><dt>Firmware</dt><dd id="fw">—</dd></div>
+          <div><dt>Arayüz dosyaları</dt><dd id="fsState">—</dd></div>
+        </dl>
+        <p class="card-foot"><span id="lastUpdate">son güncelleme: —</span></p>
+      </article>
+    </section>
+
+    <section class="card" aria-label="Cihaz kontrolü">
+      <div class="card-head">
+        <h2>Kontrol</h2>
+        <span class="hint" id="controlHint"></span>
+      </div>
+
+      <div class="controls">
+        <div class="ctrl-group">
+          <span class="ctrl-label">Fan</span>
+          <button class="btn" type="button" data-device="fan" data-action="toggle">
+            <span id="fanState">KAPALI</span>
+          </button>
+        </div>
+
+        <div class="ctrl-group">
+          <span class="ctrl-label">Su motoru</span>
+          <button class="btn danger" type="button" data-device="pump" data-action="toggle">
+            <span id="pumpState">KAPALI</span>
+          </button>
+        </div>
+
+        <div class="ctrl-group">
+          <span class="ctrl-label">Buzzer</span>
+          <button class="btn" type="button" data-device="buzzer" data-action="toggle">
+            <span id="buzzerState">KAPALI</span>
+          </button>
+        </div>
+
+        <div class="ctrl-group">
+          <span class="ctrl-label">Otomatik müdahale</span>
+          <button class="btn" type="button" data-device="auto" data-action="toggle">
+            <span id="autoState">AÇIK</span>
+          </button>
+        </div>
+
+        <div class="ctrl-group span-2">
+          <span class="ctrl-label">Pencere</span>
+          <div class="btn-row">
+            <button class="btn sm" type="button" data-device="window" data-action="open">Aç</button>
+            <button class="btn sm" type="button" data-device="window" data-action="ajar">Ajar</button>
+            <button class="btn sm" type="button" data-device="window" data-action="shut">Kapat</button>
+            <button class="btn sm ghost" type="button" data-device="window" data-action="stop">Dur</button>
+          </div>
+        </div>
+
+        <div class="ctrl-group span-2">
+          <span class="ctrl-label">Panjur</span>
+          <div class="btn-row">
+            <button class="btn sm" type="button" data-device="blind" data-action="open">Aç</button>
+            <button class="btn sm" type="button" data-device="blind" data-action="shut">Kapat</button>
+            <button class="btn sm ghost" type="button" data-device="blind" data-action="stop">Dur</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <noscript>
+      <p class="banner warn">
+        Bu panel cihazla iletişim kurmak için JavaScript kullanır.
+        Lütfen JavaScript'i etkinleştirin.
+      </p>
+    </noscript>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+  <nav class="bottom-nav" aria-label="Ana gezinme">
+    <a href="./index.html" class="active" aria-current="page">
+      <span aria-hidden="true">📊</span> Sensörler
+    </a>
+    <a href="./settings.html">
+      <span aria-hidden="true">⚙️</span> Ayarlar
+    </a>
+  </nav>
+
+  <script src="./js/config.js"></script>
+  <script src="./js/api.js"></script>
+  <script src="./js/app.js"></script>
+</body>
+</html>

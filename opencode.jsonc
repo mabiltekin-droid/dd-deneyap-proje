@@ -1,0 +1,33 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "permissions": [
+    {
+      "action": "shell",
+      "resource": "git push *",
+      "effect": "ask"
+    },
+    {
+      "action": "shell",
+      "resource": "git reset --hard*",
+      "effect": "ask"
+    }
+  ],
+  "commands": {
+    "surum": {
+      "description": "Sürümü config.js, config.h ve sw.js'te birlikte güncelle",
+      "template": "Sürüm numarasını şu üç dosyada birlikte güncelle: pwa/js/config.js (App.VERSION), firmware/config.h (FW_VERSION), pwa/sw.js (VERSION). Mevcut sürüm: 2.2.0. Yeni sürümü sor, sonra üçünü de değiştir ve sonucu `git diff` ile göster."
+    },
+    "cihaz": {
+      "description": "Firmware'i Arduino IDE yerine hızlıca derle (varsa)",
+      "template": "firmware/ klasöründeki Arduino kodunu derle. config.h yoksa config.example.h'den kopyalayıp uyar. Derleme hatasını tam olarak raporla."
+    },
+    "pwa": {
+      "description": "PWA'yı yerel sunucuda aç ve kontrol et",
+      "template": "`npx serve pwa` ile PWA'yı yerel sunucuda aç, sonra konsol hatalarını ve ağ isteklerini kontrol et. Cihaz API'si (/api/status) yerelde çalışmayacak, bunu hata sayma."
+    },
+    "PR": {
+      "description": "Değişiklikleri gözden geçir ve PR özeti hazırla",
+      "template": "Mevcut değişiklikleri `git diff main...HEAD` üzerinden incele. AGENTS.md kurallarına aykırı nokta var mı kontrol et (sürüm tutarlılığı, gizli bilgi, sw.js PRECACHE listesi). Bulguları madde madde özetle ve PR başlığı + açıklaması öner."
+    }
+  }
+}

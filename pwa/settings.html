@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Ayarlar · Deneyap Ev Koruma</title>
+  <meta name="theme-color" content="#f4f6f9" id="metaThemeColor">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Ev Koruma">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" href="./icons/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <link rel="stylesheet" href="./css/style.css">
+  <script>
+    (function () {
+      try {
+        var s = JSON.parse(localStorage.getItem('deneyap.settings.v2') || '{}');
+        var t = s.theme || 'system';
+        var dark = t === 'dark' ||
+                   (t === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+      } catch (e) {
+        document.documentElement.setAttribute('data-theme', 'light');
+      }
+    })();
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#main">İçeriğe geç</a>
+
+  <header>
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 21 19H3Z"/></svg>
+      <div>
+        <h1>Ayarlar</h1>
+        <p class="conn" id="conn" data-state="connecting">
+          <span class="dot" aria-hidden="true"></span><span id="connText">Bağlanıyor…</span>
+        </p>
+      </div>
+    </div>
+    <button id="themeToggleBtn" class="icon-btn" type="button" aria-label="Temayı değiştir">
+      <span id="themeIcon" aria-hidden="true">☀️</span>
+    </button>
+  </header>
+
+  <main id="main">
+    <form id="settingsForm" novalidate>
+
+      <section class="card" aria-labelledby="h-conn">
+        <div class="card-head"><h2 id="h-conn">Cihaz bağlantısı</h2></div>
+
+        <div class="field">
+          <label for="host">Cihaz adresi</label>
+          <input type="url" id="host" name="host" inputmode="url" autocomplete="url"
+                 placeholder="http://192.168.4.1" spellcheck="false">
+          <p class="help">
+            Boş bırakırsan panelin açıldığı adres kullanılır (cihaz kendi sunucusundan
+            açıldığında doğru olan budur). Geliştirme bilgisayarından test ediyorsan
+            cihazın IP'sini yaz.
+          </p>
+        </div>
+
+        <div class="field">
+          <label for="token">Cihaz token'ı <span class="opt">opsiyonel</span></label>
+          <input type="password" id="token" name="token" autocomplete="off"
+                 placeholder="firmware'de API_TOKEN boşsa boş bırak">
+          <p class="help">config.h içinde <code>API_TOKEN</code> tanımlıysa zorunludur.</p>
+        </div>
+
+        <div class="field">
+          <label for="pollMs">Yenileme aralığı</label>
+          <select id="pollMs" name="pollMs">
+            <option value="1000">1 saniye</option>
+            <option value="2000">2 saniye</option>
+            <option value="5000">5 saniye</option>
+            <option value="10000">10 saniye</option>
+          </select>
+          <p class="help">Cihaz kapalıysa aralık otomatik olarak kademeli olarak uzar.</p>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn" type="button" id="testBtn">Bağlantıyı Test Et</button>
+        </div>
+        <p class="result" id="testResult" role="status" aria-live="polite"></p>
+      </section>
+
+      <section class="card" aria-labelledby="h-th">
+        <div class="card-head"><h2 id="h-th">Eşikler ve davranış</h2></div>
+
+        <div class="field-row">
+          <div class="field">
+            <label for="gasWarn">Gaz uyarı eşiği (PPM)</label>
+            <input type="number" id="gasWarn" name="gasWarn" min="100" max="400" step="10" inputmode="numeric">
+          </div>
+          <div class="field">
+            <label for="gasDanger">Gaz tehlike eşiği (PPM)</label>
+            <input type="number" id="gasDanger" name="gasDanger" min="200" max="900" step="10" inputmode="numeric">
+          </div>
+        </div>
+        <p class="help">
+          Bu eşikler paneldeki göstergeyi renklendirir. Cihaz kendi eşiklerini
+          <code>firmware/config.h</code> içinden kullanır; iki yeri eşitle.
+        </p>
+
+        <label class="switch">
+          <input type="checkbox" id="rainInvert" name="rainInvert">
+          <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+          <span class="switch-body">
+            <strong>Yağmur sensörü ters bağlı</strong>
+            <small>Ölçüm yükseldikçe "kuru" kabul edilsin. Modülünüz ıslakken düşük değer veriyorsa işaretleyin.</small>
+          </span>
+        </label>
+
+        <label class="switch">
+          <input type="checkbox" id="autoControl" name="autoControl">
+          <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+          <span class="switch-body">
+            <strong>Otomatik müdahale</strong>
+            <small>Cihaz gaz algıladığında fanı açsın, pencereyi kapatsın ve su motorunu kilitlesin.</small>
+          </span>
+        </label>
+      </section>
+
+      <section class="card" aria-labelledby="h-theme">
+        <div class="card-head"><h2 id="h-theme">Görünüm</h2></div>
+        <div class="segmented" role="radiogroup" aria-label="Tema seçimi">
+          <label><input type="radio" name="theme" value="light"><span>Aydınlık</span></label>
+          <label><input type="radio" name="theme" value="dark"><span>Koyu</span></label>
+          <label><input type="radio" name="theme" value="system"><span>Sistem</span></label>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="h-dev">
+        <div class="card-head"><h2 id="h-dev">Cihaz bilgileri</h2></div>
+        <dl class="kv">
+          <div><dt>Firmware</dt><dd id="fw">—</dd></div>
+          <div><dt>IP adresi</dt><dd id="ip">—</dd></div>
+          <div><dt>Sinyal (RSSI)</dt><dd id="rssi">—</dd></div>
+          <div><dt>Boş bellek</dt><dd id="heap">—</dd></div>
+          <div><dt>Çalışma süresi</dt><dd id="uptime">—</dd></div>
+          <div><dt>Arayüz dosyaları</dt><dd id="fsState">—</dd></div>
+        </dl>
+      </section>
+
+      <section class="card danger-zone" aria-labelledby="h-maint">
+        <div class="card-head"><h2 id="h-maint">Bakım</h2></div>
+        <p class="help">
+          Panel güncellemelerini Service Worker yönetir. Yeni sürümü hemen almak için
+          önbelleği temizleyip uygulamayı yeniden yükleyin.
+        </p>
+        <div class="btn-row">
+          <button class="btn sm" type="button" id="updateBtn">Yeni Sürümü Kontrol Et</button>
+          <button class="btn sm warn" type="button" id="clearCacheBtn">Önbelleği Temizle</button>
+          <button class="btn sm ghost" type="button" id="resetBtn">Ayarları Sıfırla</button>
+        </div>
+        <p class="result" id="maintResult" role="status" aria-live="polite"></p>
+      </section>
+
+      <div class="form-actions">
+        <button class="btn primary" type="submit">Kaydet</button>
+        <a class="btn ghost" href="./index.html">Vazgeç</a>
+      </div>
+    </form>
+
+    <p class="card-foot center">
+      Paneller sürümü <span id="appVersion">—</span>
+    </p>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+  <nav class="bottom-nav" aria-label="Ana gezinme">
+    <a href="./index.html">
+      <span aria-hidden="true">📊</span> Sensörler
+    </a>
+    <a href="./settings.html" class="active" aria-current="page">
+      <span aria-hidden="true">⚙️</span> Ayarlar
+    </a>
+  </nav>
+
+  <script src="./js/config.js"></script>
+  <script src="./js/api.js"></script>
+  <script src="./js/settings.js"></script>
+</body>
+</html>
