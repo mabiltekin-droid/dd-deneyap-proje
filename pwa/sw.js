@@ -22,7 +22,7 @@ const CACHE = 'deneyap-pwa-v' + VERSION;
 const SHELL = './index.html';
 const NETWORK_TIMEOUT = 4000;   // cihaz yanıt vermezse cache'e düş (ms)
 
-const PRECACHE_ASSETS = [
+const PRECACHE = [
   './',
   SHELL,
   './settings.html',
@@ -35,7 +35,8 @@ const PRECACHE_ASSETS = [
   './icons/favicon.svg',
   './icons/icon-192.png',
   './icons/icon-512.png',
-  './icons/maskable-512.png'
+  './icons/maskable-512.png',
+  './sw.js'
 ];
 
 /* ------------------------------------------------------------------ install */

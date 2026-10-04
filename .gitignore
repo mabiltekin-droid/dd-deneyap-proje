@@ -1,0 +1,29 @@
+# ---------------------------------------------------------------- gizli ayar
+# Kişisel donanım/ağ ayarları. Şifreler burada olduğu için takip edilmez.
+firmware/config.h
+firmware/secrets.h
+
+# ---------------------------------------------------------------- derleme
+# Arduino IDE 2 / PlatformIO / eski IDE çıktıları
+build/
+public/
+.pio/
+.vscode/
+*.elf
+*.bin
+*.map
+
+# ---------------------------------------------------------------- araçlar
+# Başka araçların oturum verileri (proje kaynağı değil)
+.oxt/
+.opencode/session/
+*.log
+
+# Paket yöneticisi (bağımlılık yok ama yine de)
+node_modules/
+
+# ---------------------------------------------------------------- işletim sistemi
+.DS_Store
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
