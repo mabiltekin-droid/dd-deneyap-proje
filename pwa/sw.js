@@ -22,7 +22,7 @@ const CACHE = 'deneyap-pwa-v' + VERSION;
 const SHELL = './index.html';
 const NETWORK_TIMEOUT = 4000;   // cihaz yanıt vermezse cache'e düş (ms)
 
-const PRECACHE = [
+const PRECACHE_ASSETS = [
   './',
   SHELL,
   './settings.html',
