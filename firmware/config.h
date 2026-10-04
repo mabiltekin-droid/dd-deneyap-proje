@@ -1,15 +1,14 @@
 /*
- * config.example.h — config.h'in ŞABLONUDUR, DOĞRUDAN DERLENMEZ.
+ * config.h — Tüm donanım ve eşik ayarları tek dosyada.
  *
- * İlk kurulum (veya yeni bir bilgisayara geçerken):
+ * Buradaki pin numaraları ESP32-WROOM-32 (Deneyap Kart v2) içindir.
+ * Kablodan değiştirmek istersen SADECE burayı düzenle, main.ino'ya dokunma.
  *
- *     copy firmware\config.example.h firmware\config.h
- *
- * Sonra config.h içindeki AP_PASSWORD / API_TOKEN değerlerini kendi
- * cihazına göre düzenle. config.h .gitignore'dadır, yani şifren
- * asla depoya girmez.
- *
- * Donanım ve eşik ayarlarının tamamı bu dosyada; main.ino'ya dokunma.
+ * !! BOOTSTRAP UYARISI !!
+ * ESP32'de GPIO0, GPIO2 ve GPIO12 "strapping" pinleridir ve açılış anında
+ * LOW olmak ZORUNDADIR. Röle/fan gibi bir çıkışı bu pinlere bağlarsan
+ * cihaz açılışta "boot loop"a düşer (kart hiç başlamaz).
+ * Eski kodda D0/D1/D2 kullanılmıştı -> bunlar GPIO0/2 idi. Güvenli pinlere taşındı.
  */
 #ifndef CONFIG_H
 #define CONFIG_H
@@ -20,7 +19,7 @@
 /* Cihaz kendi erişim noktasını (hotspot) açar, telefon ona bağlanır.
    Cihazın adresi varsayılan olarak http://192.168.4.1 olur. */
 #define AP_SSID            "DeneyapEvGuvenlik"
-#define AP_PASSWORD        "BURAYA-KENDI-SIFRENI-YAZ"  // WPA2 >= 8 karakter
+#define AP_PASSWORD        "12345678password"   // WPA2 >= 8 karakter
 #define AP_CHANNEL         1
 #define AP_MAX_CLIENTS     4
 #define AP_HIDDEN          false
@@ -29,7 +28,7 @@
    Örnek: "gizli-anahtar" -> PWA'da Ayarlar > Cihaz Token alanına aynısını yaz. */
 #define API_TOKEN          ""
 
-#define FW_VERSION         "2.2.0"
+#define FW_VERSION         "2.3.0"
 
 /* ============================ PIN HARİTASI ============================= */
 /* Analog girişler ADC1 kanalında olmalı (Wi-Fi açıkken ADC2 kullanılamaz). */
@@ -61,16 +60,18 @@
 /* MQ2 ham ADC değerini PPM'e çevirmek için doğrusal model:
      ppm = (raw - temiz) * (PPM_FS / (ADC_FS - temiz))
    `temiz` değeri açılışta temiz havadan örneklenir (MQ2_BASE_SAMPLES adet).
-   Gerçek ölçüm hassasiyeti için eğri kalibrasyonu gerekir; bu makul bir
-   başlangıç noktasıdır. */
+   ESP32 analog çözünürlüğü 10-bit'e (0-1023) sabitlenmiştir. */
 #define ADC_FULL_SCALE     1023.0
 #define GAS_CLEAN_SAMPLES  20          // açılışta alınacak örnek sayısı
 #define GAS_BASE_MIN       60          // bu değerin altındaki "temiz" ölçümü şüpheli
 #define GAS_PPM_FULL_SCALE 10000.0     // ADC doymasında kaç ppm varsayılsın
 
-/* Yağmur sensörü: analog modülün çoğu kuru=LOW, ıslak=HIGH verir.
-   Farklı modüllerde tersi olabilir -> PWA ayarlarından da çevrilebilir. */
-#define RAIN_WET_ABOVE_RAW 2000        // bu eşiği aşıyorsa "ıslak" (varsayılan mantık)
+/* Sensör gürültü filtreleme (Üstel Hareketli Ortalama - EMA) */
+#define SENSOR_EMA_ALPHA   0.2f        // yeni ölçüm ağırlığı
+
+/* Yağmur sensörü: 10-bit (0-1023) skala için orta eşik 500.
+   rainInvert = false iken bu eşiği aşıyorsa "ıslak" sayılır. */
+#define RAIN_WET_ABOVE_RAW 500         // 10-bit ADC eşiği (0..1023)
 
 /* ============================ GÜVENLİK EŞİKLERİ ======================= */
 /* Histerezis: eşik aşılınca uyarıya girer, eşik-histerezis'in altına inince çıkar.
@@ -89,7 +90,7 @@
 #define SERIAL_REPORT_MS     2000      // seri monitör raporu
 #define HTTP_TIMEOUT_MS      6000      // WebServer istek zaman aşımı
 #define SERVO_MOVE_MS        800       // "hareket ediyor" göstergesi için
-#define STATUS_JSON_MAX      640       // JSON yanıt tamponu
+#define STATUS_JSON_MAX      1024      // JSON yanıt tamponu
 
 /* ======================= DOSYA SİSTEMİ (LittleFS) ===================== */
 /* PWA dosyaları cihaza yüklenmeli: index.html, settings.html, css/, js/,

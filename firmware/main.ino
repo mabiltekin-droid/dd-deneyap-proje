@@ -1,6 +1,6 @@
 /*
  * ============================================================================
- *  Deneyap Ev Koruma Sistemi — firmware  v2.2.0
+ *  Deneyap Ev Koruma Sistemi — firmware  v2.3.0
  * ----------------------------------------------------------------------------
  *  • Access Point modunda çalışır (AP_SSID) -> cihazın adresi 192.168.4.1
  *  • LittleFS'ten PWA'yı kendisi sunar  (/, /settings.html, /css, /js, ...)
@@ -18,6 +18,7 @@
 #include <WebServer.h>
 #include <Servo.h>
 #include <LittleFS.h>
+#include <Preferences.h>
 
 #include "config.h"
 
@@ -25,26 +26,40 @@
 
 enum GasState : uint8_t { GAS_NORMAL = 0, GAS_WARN = 1, GAS_DANGER = 2 };
 
-WebServer  server(80);
-Servo      servoWindow;
-Servo      servoBlind;
+WebServer    server(80);
+Servo        servoWindow;
+Servo        servoBlind;
+Preferences  preferences;
 
 bool         fsReady        = false;
 size_t       fsTotal        = 0;
 size_t       fsUsed         = 0;
 
-int          gasRaw         = 0;      // 0..1023
+/* NVS üzerinden yüklenen / saklanan dinamik ayarlar */
+int          gasWarnPpm     = GAS_WARN_PPM;
+int          gasDangerPpm   = GAS_DANGER_PPM;
+bool         rainInvert     = false;
+bool         autoControl    = true;
+
+/* Sensör okumaları ve EMA filtresi */
+int          gasRaw         = 0;      // 0..1023 anlık ham okuma
+float        gasEma         = 0.0f;   // EMA filtrelenmiş değer
+int          gasFiltered    = 0;      // filtrelenmiş tam sayı
 int          gasPpm         = 0;
-int          gasBaseRaw     = 0;      // açılışta ölçülen temiz hava değeri
-int          rainRaw        = 0;
+int          gasBaseRaw     = 0;      // açılışta ölçülen temiz hava taban değeri
+int          rainRaw        = 0;      // 0..1023 anlık ham okuma
+float        rainEma        = 0.0f;   // EMA filtrelenmiş değer
+int          rainFiltered   = 0;      // filtrelenmiş tam sayı
+bool         firstSensorRead= true;
 GasState     gasState       = GAS_NORMAL;
 
 bool         fanOn          = false;
 bool         pumpOn         = false;
 bool         buzzerOn       = false;
-bool         autoControl    = true;
 bool         fanByAutomation= false;
 bool         wasDanger      = false;
+bool         wasRainShut    = false;   // Yağmur nedeniyle otomatik kapatıldı mı
+uint32_t     alarmSimUntilMs= 0;       // Test simülasyonu bitiş zamanı (ms)
 int          windowPos      = SERVO_WINDOW_OPEN;   // 0=kapalı 180=açık
 int          blindPos       = SERVO_BLIND_SHUT;    // 0=kapalı 180=açık
 
@@ -57,6 +72,44 @@ uint32_t     servoMovingMs  = 0;
 
 bool         rainWet        = false;
 uint8_t      lastClients    = 0xFF;
+
+/* ----------------------------------------------------------- NVS ayarları */
+
+static void loadSettings() {
+  preferences.begin("deneyap", true); // salt okunur mod
+  gasWarnPpm   = preferences.getInt("gasWarn", GAS_WARN_PPM);
+  gasDangerPpm = preferences.getInt("gasDanger", GAS_DANGER_PPM);
+  rainInvert   = preferences.getBool("rainInvert", false);
+  autoControl  = preferences.getBool("autoControl", true);
+  preferences.end();
+
+  if (gasWarnPpm <= 0) gasWarnPpm = GAS_WARN_PPM;
+  if (gasDangerPpm <= gasWarnPpm) gasDangerPpm = GAS_DANGER_PPM;
+
+  Serial.print(F("[nvs] ayarlar yuklendi -> warn: "));
+  Serial.print(gasWarnPpm);
+  Serial.print(F(" danger: "));
+  Serial.print(gasDangerPpm);
+  Serial.print(F(" rainInvert: "));
+  Serial.print(rainInvert ? "true" : "false");
+  Serial.print(F(" auto: "));
+  Serial.println(autoControl ? "true" : "false");
+}
+
+static void saveSettings(int warn, int danger, bool invert, bool autoCtrl) {
+  gasWarnPpm   = warn;
+  gasDangerPpm = danger;
+  rainInvert   = invert;
+  autoControl  = autoCtrl;
+
+  preferences.begin("deneyap", false); // yazılabilir mod
+  preferences.putInt("gasWarn", gasWarnPpm);
+  preferences.putInt("gasDanger", gasDangerPpm);
+  preferences.putBool("rainInvert", rainInvert);
+  preferences.putBool("autoControl", autoControl);
+  preferences.end();
+  Serial.println(F("[nvs] ayarlar kalici olarak kaydedildi"));
+}
 
 /* -------------------------------------------------------------- yardımcı */
 
@@ -116,6 +169,23 @@ static bool jsonGetNum(const String &body, const char *key, long &out) {
   while (p < (int)body.length() && (body[p] == ' ' || body[p] == ':')) p++;
   out = strtol(body.c_str() + p, nullptr, 10);
   return true;
+}
+
+static bool jsonGetBool(const String &body, const char *key, bool &out) {
+  int p = jsonKeyPos(body, key);
+  if (p < 0) return false;
+  p = body.indexOf(':', p);
+  if (p < 0) return false;
+  while (p < (int)body.length() && (body[p] == ' ' || body[p] == ':')) p++;
+  if (body.startsWith("true", p) || body.startsWith("1", p) || body.startsWith("\"true\"", p)) {
+    out = true;
+    return true;
+  }
+  if (body.startsWith("false", p) || body.startsWith("0", p) || body.startsWith("\"false\"", p)) {
+    out = false;
+    return true;
+  }
+  return false;
 }
 
 /* --------------------------------------------------------------- çıkışlar */
@@ -188,6 +258,8 @@ static void calibrateGasBaseline() {
     delay(100);
   }
   gasBaseRaw = (n > 0) ? (int)(sum / n) : 200;
+  gasEma = (float)gasBaseRaw;
+  gasFiltered = gasBaseRaw;
   Serial.print(F("[mq2] taban="));
   Serial.print(gasBaseRaw);
   Serial.print(F(" (geçerli ölçüm "));
@@ -199,28 +271,48 @@ static void readSensors() {
   gasRaw  = analogRead(PIN_MQ2);
   rainRaw = analogRead(PIN_RAIN);
 
+  /* Sensör gürültü filtreleme: Üstel Hareketli Ortalama (EMA, alpha = 0.2) */
+  if (firstSensorRead) {
+    gasEma = (float)gasRaw;
+    rainEma = (float)rainRaw;
+    firstSensorRead = false;
+  } else {
+    gasEma = (SENSOR_EMA_ALPHA * (float)gasRaw) + ((1.0f - SENSOR_EMA_ALPHA) * gasEma);
+    rainEma = (SENSOR_EMA_ALPHA * (float)rainRaw) + ((1.0f - SENSOR_EMA_ALPHA) * rainEma);
+  }
+  gasFiltered = (int)(gasEma + 0.5f);
+  rainFiltered = (int)(rainEma + 0.5f);
+
   /* Ham ADC -> PPM (doğrusal model, config.h'de belgeli) */
   if (gasBaseRaw < GAS_BASE_MIN) gasBaseRaw = 200;
   float span = ADC_FULL_SCALE - (float)gasBaseRaw;
-  float ppm  = ((float)gasRaw - (float)gasBaseRaw) * (GAS_PPM_FULL_SCALE / span);
+  if (span <= 0) span = 1.0f;
+  float ppm  = ((float)gasFiltered - (float)gasBaseRaw) * (GAS_PPM_FULL_SCALE / span);
   gasPpm = (ppm < 0) ? 0 : (int)(ppm + 0.5f);
   if (gasPpm > (int)GAS_PPM_FULL_SCALE) gasPpm = (int)GAS_PPM_FULL_SCALE;
 
-  rainWet = (rainRaw >= RAIN_WET_ABOVE_RAW);
+  /* Yağmur durumu: rainInvert ayarına göre değerlendirilir */
+  rainWet = rainInvert ? (rainFiltered < RAIN_WET_ABOVE_RAW) : (rainFiltered >= RAIN_WET_ABOVE_RAW);
 
-  /* Histerezisli durum makinesi — eşikte salınmayı önler */
+  /* Test / alarm simülasyonu aktif ise doğrudan tehlike moduna al */
+  if ((int32_t)(alarmSimUntilMs - millis()) > 0) {
+    gasState = GAS_DANGER;
+    return;
+  }
+
+  /* Histerezisli durum makinesi — dinamik NVS eşikleri (gasWarnPpm / gasDangerPpm) */
   GasState prev = gasState;
   switch (gasState) {
     case GAS_NORMAL:
-      if (gasPpm >= GAS_DANGER_PPM)     gasState = GAS_DANGER;
-      else if (gasPpm >= GAS_WARN_PPM)   gasState = GAS_WARN;
+      if (gasPpm >= gasDangerPpm)       gasState = GAS_DANGER;
+      else if (gasPpm >= gasWarnPpm)   gasState = GAS_WARN;
       break;
     case GAS_WARN:
-      if (gasPpm >= GAS_DANGER_PPM)                    gasState = GAS_DANGER;
-      else if (gasPpm < (GAS_WARN_PPM - GAS_HYSTERESIS)) gasState = GAS_NORMAL;
+      if (gasPpm >= gasDangerPpm)                      gasState = GAS_DANGER;
+      else if (gasPpm < (gasWarnPpm - GAS_HYSTERESIS)) gasState = GAS_NORMAL;
       break;
     case GAS_DANGER:
-      if (gasPpm < (GAS_DANGER_PPM - GAS_HYSTERESIS)) gasState = GAS_WARN;
+      if (gasPpm < (gasDangerPpm - GAS_HYSTERESIS)) gasState = GAS_WARN;
       break;
   }
   if (gasState != prev) {
@@ -234,11 +326,14 @@ static void readSensors() {
 static void runAutomation() {
   uint32_t now = millis();
 
+  /* 1. ÖNCELİK: Gaz Tehlikesi — en yüksek öncelik, yağmur durumunu ezer */
   if (gasState == GAS_DANGER) {
     setBuzzer(true);
-    setFan(true, true);          // gaz çekilmesi için fan
-    setPump(false);              // gaz varken su pompası kesinlikle kapalı
-    if (autoControl && !wasDanger) setWindow(SERVO_WINDOW_SHUT);
+    setFan(true, true);          // gaz tahliyesi için fan açılır
+    setPump(false);              // gaz varken su pompası kesinlikle kilitlenir
+    if (autoControl && !wasDanger) {
+      setWindow(SERVO_WINDOW_SHUT);
+    }
     wasDanger = true;
     return;
   }
@@ -251,10 +346,36 @@ static void runAutomation() {
     setFan(false, false);
   }
 
-  /* Tehlike bittiğinde pencere geri açılır */
-  if (wasDanger && gasState == GAS_WARN) {
+  /* Tehlike durumu sona erdiğinde pencerenin durumunu geri yükle */
+  if (wasDanger && gasState != GAS_DANGER) {
     wasDanger = false;
-    if (autoControl) setWindow(SERVO_WINDOW_OPEN);
+    if (autoControl) {
+      if (rainWet) {
+        // Yağmur devam ediyorsa kapalı kalmalı ve yağmur durumu işaretlenmeli
+        setWindow(SERVO_WINDOW_SHUT);
+        wasRainShut = true;
+      } else {
+        setWindow(SERVO_WINDOW_OPEN);
+        wasRainShut = false;
+      }
+    }
+  }
+
+  /* 2. ÖNCELİK: Yağmur Otomasyonu (Gaz tehlikesi yokken) */
+  if (autoControl) {
+    if (rainWet) {
+      if (!wasRainShut && windowPos != SERVO_WINDOW_SHUT) {
+        setWindow(SERVO_WINDOW_SHUT);
+        wasRainShut = true;
+        Serial.println(F("[otomasyon] Yagmur basladi -> pencere kapatildi"));
+      }
+    } else {
+      if (wasRainShut) {
+        wasRainShut = false;
+        setWindow(SERVO_WINDOW_OPEN);
+        Serial.println(F("[otomasyon] Yagmur dindi -> pencere tekrar acildi"));
+      }
+    }
   }
 }
 
@@ -283,7 +404,9 @@ static void handleStatus() {
   snprintf(buf, sizeof(buf),
     "{\"ok\":true,\"fw\":\"%s\",\"t\":%lu,\"rssi\":%d,\"ip\":\"%s\",\"clients\":%d,"
     "\"heap\":%lu,\"uptime\":%lu,"
-    "\"gasRaw\":%d,\"gasPpm\":%d,\"gasBase\":%d,\"rainRaw\":%d,\"rain\":%s,\"state\":\"%s\","
+    "\"gasRaw\":%d,\"gasFiltered\":%d,\"gasPpm\":%d,\"gasBase\":%d,"
+    "\"rainRaw\":%d,\"rainFiltered\":%d,\"rain\":%s,\"state\":\"%s\","
+    "\"gasWarn\":%d,\"gasDanger\":%d,\"rainInvert\":%s,"
     "\"fan\":%s,\"pump\":%s,\"buzzer\":%s,\"auto\":%s,\"window\":%d,\"blind\":%d,\"moving\":%s,"
     "\"fs\":%s,\"fsUsed\":%lu,\"fsTotal\":%lu}",
     FW_VERSION,
@@ -293,10 +416,12 @@ static void handleStatus() {
     WiFi.softAPClientCount(),
     (unsigned long)ESP.getFreeHeap(),
     (unsigned long)(now - bootMs),
-    gasRaw, gasPpm, gasBaseRaw,
-    rainRaw,
+    gasRaw, gasFiltered, gasPpm, gasBaseRaw,
+    rainRaw, rainFiltered,
     rainWet ? "true" : "false",
     gasStateName(gasState),
+    gasWarnPpm, gasDangerPpm,
+    rainInvert ? "true" : "false",
     fanOn ? "true" : "false",
     pumpOn ? "true" : "false",
     buzzerOn ? "true" : "false",
@@ -341,21 +466,42 @@ static void applyCommand(const String &device, const String &action, long value)
     else if (action == "toggle") setBuzzer(!buzzerOn);
 
   } else if (device == "window") {
-    if (action == "open")  setWindow(SERVO_WINDOW_OPEN);
-    else if (action == "shut") setWindow(SERVO_WINDOW_SHUT);
-    else if (action == "ajar") setWindow(SERVO_WINDOW_AJAR);
-    else if (action == "stop") servoRelease(servoWindow, PIN_SERVO_WINDOW);
+    if (action == "open")       setWindow(SERVO_WINDOW_OPEN);
+    else if (action == "shut")  setWindow(SERVO_WINDOW_SHUT);
+    else if (action == "ajar")  setWindow(SERVO_WINDOW_AJAR);
+    else if (action == "set" || action == "angle") setWindow((int)value);
+    else if (action == "stop")  servoRelease(servoWindow, PIN_SERVO_WINDOW);
+    else if (value >= 0 && value <= 180) setWindow((int)value);
+    else { sendError(400, "gecersiz pencere komutu"); return; }
 
   } else if (device == "blind") {
-    if (action == "open")  setBlind(SERVO_BLIND_OPEN);
-    else if (action == "shut") setBlind(SERVO_BLIND_SHUT);
-    else if (action == "stop") servoRelease(servoBlind, PIN_SERVO_BLIND);
+    if (action == "open")       setBlind(SERVO_BLIND_OPEN);
+    else if (action == "shut")  setBlind(SERVO_BLIND_SHUT);
+    else if (action == "set" || action == "angle") setBlind((int)value);
+    else if (action == "stop")  servoRelease(servoBlind, PIN_SERVO_BLIND);
+    else if (value >= 0 && value <= 180) setBlind((int)value);
+    else { sendError(400, "gecersiz panjur komutu"); return; }
 
   } else if (device == "auto") {
     if (action == "on")        autoControl = true;
-    else if (action == "off") autoControl = false;
+    else if (action == "off")  autoControl = false;
     else if (action == "toggle") autoControl = !autoControl;
-    if (!autoControl && gasState != GAS_DANGER) setWindow(SERVO_WINDOW_OPEN);
+    saveSettings(gasWarnPpm, gasDangerPpm, rainInvert, autoControl);
+    if (!autoControl && gasState != GAS_DANGER) {
+      wasRainShut = false;
+      setWindow(SERVO_WINDOW_OPEN);
+    }
+
+  } else if (device == "test") {
+    if (action == "simulate_alarm") {
+      alarmSimUntilMs = millis() + 5000;
+      gasState = GAS_DANGER;
+      runAutomation();
+      Serial.println(F("[test] 5 saniyelik alarm simulasyonu baslatildi"));
+    } else {
+      sendError(400, "bilinmeyen test aksiyonu");
+      return;
+    }
 
   } else if (device == "reboot") {
     sendJson("{\"ok\":true,\"msg\":\"yeniden baslatiliyor\"}");
@@ -368,12 +514,53 @@ static void applyCommand(const String &device, const String &action, long value)
     return;
   }
 
-  (void)value;
   Serial.print(F("[komut] "));
   Serial.print(device);
   Serial.print(F(" -> "));
-  Serial.println(action);
+  Serial.print(action);
+  if (value > 0) {
+    Serial.print(F(" ("));
+    Serial.print(value);
+    Serial.print(F(")"));
+  }
+  Serial.println();
   handleStatus();               // işlem sonrası anlık durum dön
+}
+
+static void handleSettingsPost() {
+  if (!authorize()) return;
+  String body = server.arg("plain");
+  long warn = gasWarnPpm;
+  long danger = gasDangerPpm;
+  bool invert = rainInvert;
+  bool autoCtrl = autoControl;
+
+  jsonGetNum(body, "gasWarn", warn);
+  jsonGetNum(body, "gasDanger", danger);
+  jsonGetBool(body, "rainInvert", invert);
+  jsonGetBool(body, "autoControl", autoCtrl);
+
+  if (warn <= 0 || danger <= 0 || warn >= danger) {
+    sendError(400, "gecersiz esik degerleri (gasWarn < gasDanger olmali)");
+    return;
+  }
+
+  saveSettings((int)warn, (int)danger, invert, autoCtrl);
+
+  char buf[256];
+  snprintf(buf, sizeof(buf),
+    "{\"ok\":true,\"gasWarn\":%d,\"gasDanger\":%d,\"rainInvert\":%s,\"autoControl\":%s}",
+    gasWarnPpm, gasDangerPpm, rainInvert ? "true" : "false", autoControl ? "true" : "false");
+  sendJson(buf);
+}
+
+static void handleSettingsGet() {
+  if (!authorize()) return;
+  char buf[256];
+  snprintf(buf, sizeof(buf),
+    "{\"ok\":true,\"gasWarn\":%d,\"gasDanger\":%d,\"rainInvert\":%s,\"autoControl\":%s}",
+    gasWarnPpm, gasDangerPpm, rainInvert ? "true" : "false", autoControl ? "true" : "false");
+  sendJson(buf);
 }
 
 static void handleControlPost() {
@@ -546,9 +733,15 @@ void setup() {
   delay(200);
   bootMs = millis();
   Serial.println();
-  Serial.println(F("=== Deneyap Ev Koruma v2.2.0 ==="));
+  Serial.println(F("=== Deneyap Ev Koruma v2.3.0 ==="));
 
-  /* 1) Çıkışları güvenli duruma al — pinMode(OUTPUT) LOW verir ama açıkça yaz */
+  /* 0) ESP32 analog okuma çözünürlüğünü 10-bit (0-1023) olarak sabitle */
+  analogReadResolution(10);
+
+  /* 1) NVS (Flash) üzerinden kalıcı ayarları yükle */
+  loadSettings();
+
+  /* 2) Çıkışları güvenli duruma al — pinMode(OUTPUT) LOW verir ama açıkça yaz */
   pinMode(PIN_RELAY_FAN, OUTPUT);  digitalWrite(PIN_RELAY_FAN, LOW);
   pinMode(PIN_RELAY_PUMP, OUTPUT); digitalWrite(PIN_RELAY_PUMP, LOW);
   pinMode(PIN_BUZZER, OUTPUT);     digitalWrite(PIN_BUZZER, LOW);
@@ -556,7 +749,7 @@ void setup() {
   pinMode(PIN_RAIN, INPUT);
   allOutputsSafe("acilis");
 
-  /* 2) Web arayüzünü depodan yükle (yoksa API-only modu) */
+  /* 3) Web arayüzünü depodan yükle (yoksa API-only modu) */
   if (LittleFS.begin(true)) {
     fsReady = true;
     fsTotal = LittleFS.totalBytes();
@@ -572,10 +765,10 @@ void setup() {
     Serial.println(F("[fs] LittleFS acilamadi - API-only modu"));
   }
 
-  /* 3) Gaz sensörü temiz hava tabanı */
+  /* 4) Gaz sensörü temiz hava tabanı */
   calibrateGasBaseline();
 
-  /* 4) Servoları başlangıç konumuna getir */
+  /* 5) Servoları başlangıç konumuna getir */
   setWindow(SERVO_WINDOW_OPEN);
   setBlind(SERVO_BLIND_SHUT);
   servoWindow.detach();
@@ -584,7 +777,7 @@ void setup() {
   pinMode(PIN_SERVO_BLIND, INPUT);
   Serial.println(F("[servo] baslangic konumlari ayarlandi, motorlar serbest"));
 
-  /* 5) Access Point (kullanıcı kararı: sadece AP modu) */
+  /* 6) Access Point (kullanıcı kararı: sadece AP modu) */
   WiFi.mode(WIFI_AP);
   WiFi.softAPConfig(IPAddress(192, 168, 4, 1), IPAddress(192, 168, 4, 1),
                     IPAddress(192, 168, 4, 1));
@@ -602,10 +795,13 @@ void setup() {
   Serial.print(F("[http] kontrol koruma: "));
   Serial.println(strlen(API_TOKEN) ? "acik (token zorunlu)" : "kapali (API_TOKEN bos)");
 
-  /* 6) Rotalar */
+  /* 7) Rotalar */
   server.on("/api/status",   HTTP_GET,  handleStatus);
   server.on("/api/control",  HTTP_POST, handleControlPost);
   server.on("/api/control",  HTTP_GET,  handleControlGet);
+  server.on("/api/settings", HTTP_POST, handleSettingsPost);
+  server.on("/api/settings", HTTP_GET,  handleSettingsGet);
+  server.on("/api/settings", HTTP_OPTIONS, handleOptions);
   server.on("/api/control",  HTTP_OPTIONS, handleOptions);
   server.on("/api/status",   HTTP_OPTIONS, handleOptions);
   server.onNotFound(serveStatic);          // /, /css/*, /js/*, /sw.js, /icons/*
@@ -646,9 +842,11 @@ void loop() {
   if (timeReached(now, lastReportMs, SERIAL_REPORT_MS)) {
     lastReportMs = now;
     Serial.print(F("gaz: "));   Serial.print(gasPpm);
-    Serial.print(F(" ppm (ham ")); Serial.print(gasRaw);
+    Serial.print(F(" ppm (flt ")); Serial.print(gasFiltered);
+    Serial.print(F(" ham ")); Serial.print(gasRaw);
     Serial.print(F(")  yağmur: ")); Serial.print(rainWet ? "ISLAK" : "KURU");
-    Serial.print(F(" (ham ")); Serial.print(rainRaw);
+    Serial.print(F(" (flt ")); Serial.print(rainFiltered);
+    Serial.print(F(" ham ")); Serial.print(rainRaw);
     Serial.print(F(")  durum: ")); Serial.print(gasStateName(gasState));
     Serial.print(F("  fan: ")); Serial.print(fanOn ? "ACIK" : "KAPALI");
     Serial.print(F("  pompa: ")); Serial.print(pumpOn ? "ACIK" : "KAPALI");

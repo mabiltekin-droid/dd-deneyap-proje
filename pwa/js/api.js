@@ -83,8 +83,19 @@
     control: function (device, action, value) {
       return request('/api/control', {
         method: 'POST',
-        json: { device: device, action: action, value: value || 0 }
+        json: { device: device, action: action, value: value !== undefined ? Number(value) : 0 }
       });
+    },
+
+    saveSettings: function (payload) {
+      return request('/api/settings', {
+        method: 'POST',
+        json: payload
+      });
+    },
+
+    getSettings: function () {
+      return request('/api/settings');
     },
 
     /* Gecikme ölçümü — ayarlar sayfasındaki "Bağlantıyı Test Et" düğmesi */
