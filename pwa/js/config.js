@@ -470,4 +470,56 @@
     put('uptime', App.fmtDuration(s.uptime));
     put('fsState', s.fs ? 'LittleFS Aktif' : 'API-Only');
   };
+
+  /* -------------------------------------------------- PWA İndirme / Yükleme */
+  App.setupPwaInstall = function (btnId) {
+    const btn = document.getElementById(btnId || 'pwaInstallBtn');
+    if (!btn) return;
+
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();
+      window.__pwaDeferredPrompt = e;
+      btn.classList.add('has-prompt');
+    });
+
+    window.addEventListener('appinstalled', function () {
+      window.__pwaDeferredPrompt = null;
+      btn.classList.remove('has-prompt');
+      App.toast('Ev Koruma başarıyla yüklendi! 🎉', { kind: 'ok' });
+    });
+
+    btn.addEventListener('click', async function () {
+      if (typeof App.haptic === 'function') App.haptic(25);
+      if (typeof App.sound === 'function') App.sound('toggle');
+
+      const promptEvent = window.__pwaDeferredPrompt;
+      if (promptEvent) {
+        promptEvent.prompt();
+        try {
+          const choice = await promptEvent.userChoice;
+          if (choice && choice.outcome === 'accepted') {
+            App.toast('Uygulama yükleniyor...', { kind: 'ok' });
+          }
+        } catch (err) {
+          console.warn('[pwa] seçim hatası:', err);
+        }
+        window.__pwaDeferredPrompt = null;
+        btn.classList.remove('has-prompt');
+        return;
+      }
+
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+      if (isStandalone) {
+        App.toast('Uygulama zaten cihazınızda kurulu ve bağımsız çalışıyor.', { kind: 'ok' });
+        return;
+      }
+
+      const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+      if (isIos) {
+        App.toast('iOS Safari: "Paylaş" ➔ "Ana Ekrana Ekle" butonuna dokunun.', { kind: 'warn', duration: 6000 });
+      } else {
+        App.toast('Tarayıcı menüsünden (⋮) "Uygulamayı Yükle" veya "Ana ekrana ekle"yi seçebilirsiniz.', { kind: 'ok', duration: 5000 });
+      }
+    });
+  };
 })();

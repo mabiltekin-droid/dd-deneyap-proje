@@ -229,6 +229,92 @@ header {
   box-shadow: var(--shadow);
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.pwa-install-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  padding: 0.45rem 0.85rem;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--primary);
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.12), rgba(99, 102, 241, 0.16));
+  border: 1px solid var(--border-bright);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  box-shadow: 0 0 12px var(--primary-glow);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  user-select: none;
+}
+
+.pwa-install-btn::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%; width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.6s ease;
+}
+
+.pwa-install-btn:hover {
+  transform: translateY(-1px);
+  border-color: var(--primary);
+  box-shadow: 0 0 20px var(--primary-glow), 0 4px 12px rgba(0, 0, 0, 0.25);
+  color: #fff;
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.25), rgba(99, 102, 241, 0.35));
+}
+
+.pwa-install-btn:hover::before {
+  left: 100%;
+}
+
+.pwa-install-btn:active {
+  transform: scale(0.96);
+}
+
+.pwa-install-btn .install-icon {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  flex: none;
+  transition: transform 0.25s ease;
+}
+
+.pwa-install-btn:hover .install-icon {
+  transform: translateY(1.5px);
+}
+
+.pwa-install-btn.has-prompt {
+  animation: pwaPulse 2.5s infinite ease-in-out;
+}
+
+@keyframes pwaPulse {
+  0%, 100% {
+    box-shadow: 0 0 12px var(--primary-glow);
+  }
+  50% {
+    box-shadow: 0 0 22px var(--primary-glow), 0 0 6px var(--primary);
+  }
+}
+
+@media (max-width: 480px) {
+  .pwa-install-btn {
+    padding: 0.42rem 0.6rem;
+  }
+  .pwa-install-btn .install-text {
+    font-size: 0.76rem;
+  }
+}
+
 .brand {
   display: flex;
   align-items: center;

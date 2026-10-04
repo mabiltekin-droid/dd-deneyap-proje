@@ -489,6 +489,7 @@
   function init() {
     setupTheme();
     setupServiceWorker();
+    App.setupPwaInstall();
     setupServoSliders();
     startTicker();
 

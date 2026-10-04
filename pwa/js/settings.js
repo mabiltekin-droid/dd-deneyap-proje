@@ -352,7 +352,7 @@
       $('updateBtn').textContent = 'Yeni Sürümü Etkinleştir';
     };
     App.registerServiceWorker().then(function (r) { reg = r; });
-
+    App.setupPwaInstall();
     refreshDeviceInfo().catch(function () {});
   }
 
