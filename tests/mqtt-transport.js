@@ -83,16 +83,26 @@ function makeEnv(brokerOpts) {
     },
     location: { origin: 'https://ddproje.vercel.app' },
     fetch: () => Promise.reject(new Error('MQTT modunda fetch kullanilmamali')),
-    /* mqtt.js CDN'den gelir; sahte yayinciyi temsil eder */
+    /* mqtt.js CDN'den gelir; sahte yayinciyi temsil eder.
+       YALNIZCA connect() fabrikasi sunulur — gercek kutuphanenin dis
+       yuzeyi bu kadardir. MqttClient gibi ic siniflar bilerek
+       sunulmaz: panel onlari kullanmaya calisirsa test hemen kacar,
+       yoksa tarayicida "this.streamBuilder is not a function"
+       gibi bir hata ancak kullaniciya dogruken ortaya cikar. */
     mqtt: {
-      MqttClient: function (url, opts) {
-        this.opts = opts; this.url = url;
-        /* Gercek mqtt.js gibi: connect() cagrilinca 'connect' olayini yayar */
-        this.connect = () => broker.fire('connect');
-        this.subscribe = (t) => broker.subscribe(t);
-        this.publish = (t, p) => broker.publish(t, p);
-        this.end = () => broker.fire('close');
-        this.on = (evt, fn) => broker.on(evt, fn);
+      connect: function (url, opts) {
+        /* Istemci ayri bir nesne; broker nesnesinin kendisi degil.
+           (c = broker yapmak, c.x = broker.x atamalarinda sonsuz
+            dongu kuruyordu.) */
+        const c = {};
+        c.opts = opts; c.url = url;
+        c.subscribe = function (t) { broker.subs[t] = true; };
+        c.publish = function (t, p) { broker.publish(t, p); };
+        c.end = function () { broker.fire('close'); };
+        /* Olaylar broker uzerinde tutulur; birden fazla istemci olabilir */
+        c.on = function (evt, fn) { broker.on(evt, fn); };
+        setTimeout(() => broker.fire('connect'), 0);
+        return c;
       }
     },
     __broker: broker

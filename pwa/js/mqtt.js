@@ -108,7 +108,7 @@
     connected = false;
     const opts = {
       clientId: 'pwa-' + Math.random().toString(16).slice(2, 10),
-      cleanSession: true,
+      clean: true,
       reconnectPeriod: 0,          /* yeniden bağlanmayı KENDİMİZ yönetiyoruz */
       connectTimeout: 8000
     };
@@ -117,7 +117,10 @@
       opts.password = s.mqttPass || '';
     }
 
-    try { client = new M.MqttClient(url, opts); }
+    /* mqtt.connect() fabrika fonksiyonudur: adresi okur, ws/wss taşımasını
+       seçer ve istemciyi doğru kurar. MqttClient iç sınıftır; doğrudan
+       çağırmak "this.streamBuilder is not a function" hatası verir. */
+    try { client = M.connect(url, opts); }
     catch (e) {
       console.warn('[mqtt] istemci oluşturulamadı', e);
       App.api._setRelayOnline(false, 'yayıncı adresi geçersiz');
@@ -147,7 +150,8 @@
     });
 
     client.on('offline', function () { connected = false; });
-    try { client.connect(); } catch (e) { console.warn('[mqtt] connect hatası', e); }
+    /* connect() zaten bağlantıyı kurar; ayrıca connect() çağırma.
+       Gerçek mqtt.js'te ikinci çağrı "already connected" hatası verir. */
   }
 
   function scheduleReconnect() {
