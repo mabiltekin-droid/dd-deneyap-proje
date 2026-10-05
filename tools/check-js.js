@@ -9,7 +9,9 @@
      3. sw.js PRECACHE listesi — pwa/ içindeki her yerel dosya listede mi,
         listedeki her dosya gerçekten var mı
      4. HTML referansları — index.html/settings.html'in gösterdiği yerel dosyalar var mı
-     5. firmware/config.h — yoksa hatırlatma
+     5. A tutarlılığı — settings.js'in okuduğu her alan settings.html'de var mı;
+        MQTT anahtarları config.js / settings.js / settings.html üçünde de tanımlı mı
+     6. firmware/config.h — yoksa hatırlatma
 
    Kullanım: npm run check
    ========================================================================== */
@@ -158,7 +160,7 @@ if (swJs) {
 
 /* ------------------------------------------------- 4. HTML yerel referansları */
 
-console.log('\n[4/5] HTML dosya referansları');
+console.log('\n[4/6] HTML dosya referansları');
 ['pwa/index.html', 'pwa/settings.html'].forEach(function (rel) {
   const src = oku(rel);
   if (!src) { basarisiz(rel + ' yok'); return; }
@@ -175,9 +177,50 @@ console.log('\n[4/5] HTML dosya referansları');
   else basarili(rel + ' — ' + refs.length + ' referans geçerli');
 });
 
-/* ------------------------------------------------------ 5. firmware config.h */
+/* --------------------------------------------- 5. form alanlarının tutarlılığı */
 
-console.log('\n[5/5] firmware ayarları');
+console.log('\n[5/6] A alanları ile HTML uyumu');
+const sjs = oku('pwa/js/settings.js');
+const sh = oku('pwa/settings.html');
+
+if (!sjs || !sh) {
+  basarisiz('settings.js veya settings.html okunamadı');
+} else {
+  const idVar = function (id) {
+    return sh.indexOf('id="' + id + '"') !== -1 || sh.indexOf("id='" + id + "'") !== -1;
+  };
+
+  /* settings.js'in okuduğu her $('id') settings.html'de bir id olarak durmalı.
+     Eksikse o alan sessizce undefined kalır ve ayar kaydedilmez. */
+  const okunan = [];
+  sjs.replace(/\$\('([A-Za-z0-9_]+)'\)/g, function (_, id) { okunan.push(id); return _; });
+  const benzersiz = okunan.filter(function (v, i) { return okunan.indexOf(v) === i; });
+  const eksikAlan = benzersiz.filter(function (id) { return !idVar(id); });
+
+  if (eksikAlan.length) {
+    basarisiz('settings.js okuyor ama settings.html içinde yok:\n      ' + eksikAlan.join('\n      '));
+  } else {
+    basarili(benzersiz.length + ' alan referansı geçerli');
+  }
+
+  /* MQTT anahtarları üç dosyada da bulunmalı; biri eksikse ayar panelden kaydedilmez */
+  const anahtarlar = ['transport', 'mqttUrl', 'mqttTopic', 'mqttUser', 'mqttPass'];
+  const noCfg = anahtarlar.filter(function (k) { return !configJs || configJs.indexOf(k + ':') === -1; });
+  const noJs = anahtarlar.filter(function (k) { return sjs.indexOf(k + ':') === -1; });
+  const noHtml = anahtarlar.filter(function (k) { return !idVar(k); });
+
+  if (noCfg.length || noJs.length || noHtml.length) {
+    basarisiz('MQTT alanı eksik — config.js: [' + (noCfg.join(', ') || 'ok') +
+      '] settings.js: [' + (noJs.join(', ') || 'ok') +
+      '] settings.html: [' + (noHtml.join(', ') || 'ok') + ']');
+  } else {
+    basarili(anahtarlar.length + ' MQTT alanı üç dosyada da tanımlı');
+  }
+}
+
+/* ------------------------------------------------------ 6. firmware config.h */
+
+console.log('\n[6/6] firmware ayarları');
 if (configH) {
   basarili('firmware/config.h mevcut (sürüm: v' + (surumler.firmware || '?') + ')');
 } else {
