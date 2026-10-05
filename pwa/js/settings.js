@@ -19,9 +19,15 @@
 
   function fillForm() {
     const s = App.settings();
+    $('transport').value = App.settings().transport || 'mqtt';
+    $('mqttUrl').value = s.mqttUrl || '';
+    $('mqttTopic').value = s.mqttTopic || '';
+    $('mqttUser').value = s.mqttUser || '';
+    $('mqttPass').value = s.mqttPass || '';
     $('host').value = s.host || '';
     $('token').value = s.token || '';
     $('pollMs').value = String(s.pollMs || 2000);
+    applyTransportVisibility();
     $('gasWarn').value = s.gasWarn;
     $('gasDanger').value = s.gasDanger;
     $('rainInvert').checked = !!s.rainInvert;
@@ -46,6 +52,11 @@
     const vibEl = $('vibrateEnabled');
 
     return {
+      transport: $('transport').value,
+      mqttUrl: $('mqttUrl').value.trim(),
+      mqttTopic: $('mqttTopic').value.trim(),
+      mqttUser: $('mqttUser').value.trim(),
+      mqttPass: $('mqttPass').value,
       host: $('host').value.trim(),
       token: $('token').value.trim(),
       pollMs: Number($('pollMs').value),
@@ -57,6 +68,24 @@
       vibrateEnabled: vibEl ? vibEl.checked : true,
       theme: themeEl ? themeEl.value : 'dark'
     };
+  }
+
+  /* Yalnızca seçili yöntemin alanlarını göster: MQTT alanları ya da IP alanı.
+   Karışık görünüm, hangi ayarın geçerli olduğunu bulmayı zorlaştırıyor. */
+  function applyTransportVisibility() {
+    const mqtt = $('transport').value === 'mqtt';
+    ['mqttUrl', 'mqttTopic', 'mqttUser', 'mqttPass'].forEach(function (id) {
+      const el = $(id);
+      if (!el) return;
+      const field = el.closest('.field');
+      if (field) field.hidden = !mqtt;
+    });
+    ['host', 'token', 'pollMs'].forEach(function (id) {
+      const el = $(id);
+      if (!el) return;
+      const field = el.closest('.field');
+      if (field) field.hidden = mqtt;
+    });
   }
 
   function setResult(el, text, kind) {
@@ -71,11 +100,28 @@
     if (e) e.preventDefault();
     const v = readForm();
 
-    if (v.host && !/^https?:\/\/.+/i.test(v.host)) {
+    /* Doğrulama yalnızca seçili yönteme göre yapılır. */
+    if (v.transport === 'http' && v.host && !/^https?:\/\/.+/i.test(v.host)) {
       setResult($('testResult'), 'Cihaz adresi http:// ile başlamalıdır.', 'fail');
       $('host').focus();
       App.sound.alarm();
       return;
+    }
+    if (v.transport === 'mqtt') {
+      if (!/^wss?:\/\/.+/i.test(v.mqttUrl)) {
+        setResult($('testResult'),
+          'Yayıncı adresi wss:// ile başlamalıdır (örn. wss://broker.emqx.io:8084/mqtt).', 'fail');
+        $('mqttUrl').focus();
+        App.sound.alarm();
+        return;
+      }
+      if (!v.mqttTopic || /^\s*$|\s/.test(v.mqttTopic)) {
+        setResult($('testResult'),
+          'Cihaz konu adı boş bırakılamaz ve boşluk içeremez (örn. deneyap/kart1).', 'fail');
+        $('mqttTopic').focus();
+        App.sound.alarm();
+        return;
+      }
     }
     if (!(v.gasWarn > 0) || !(v.gasDanger > 0)) {
       setResult($('testResult'), 'Gaz eşikleri pozitif bir değer olmalıdır.', 'fail');
@@ -124,6 +170,10 @@
 
   async function refreshDeviceInfo() {
     try {
+      /* MQTT modunda panel bu sayfada açık değilse hiçbir abone yoktur ve
+         durum paketi hiç gelmeyebilir. Bu yüzden burada da bağlantı
+         başlatılır; HTTP modunda startMqtt() zaten bir iş yapmaz. */
+      App.api.startMqtt();
       const s = await App.api.status();
       App.setConnBadge('live', 'Canlı Telemetri');
 
@@ -165,8 +215,15 @@
   async function testConnection() {
     const btn = $('testBtn');
     const out = $('testResult');
+    const s = App.settings();
     btn.disabled = true;
-    setResult(out, 'Cihaz aranıyor: ' + App.baseUrl() + ' …');
+
+    /* Hangi taşımanın sınandığı açıkça yazılır: MQTT'de "gecikme" yayıncıya
+       gidiş-dönüş demek, HTTP'de cihazın kendisine demek. */
+    const viaMqtt = App.api.transport();
+    setResult(out, viaMqtt
+      ? 'Yayıncı üzerinden cihaz aranıyor: ' + (s.mqttUrl || '(adres boş)') + ' …'
+      : 'Cihaz aranıyor: ' + App.baseUrl() + ' …');
     try {
       const r = await App.api.ping();
       App.setConnBadge('live', 'Bağlantı Canlı');
@@ -174,7 +231,9 @@
       App.haptic(25);
       setResult(out,
         'Bağlantı başarılı — Gecikme: ' + r.ms + ' ms · Firmware: v' + (r.status.fw || '?') +
-        (r.status.fs ? ' · LittleFS devrede' : ' · LittleFS bulunamadı (API-only)'), 'ok');
+        (viaMqtt
+          ? (r.status.mqtt ? ' · MQTT: bağlı' : ' · MQTT: bağlı değil')
+          : (r.status.fs ? ' · LittleFS devrede' : ' · LittleFS bulunamadı (API-only)')), 'ok');
     } catch (err) {
       App.setConnBadge('offline', 'Bağlantı Yok');
       App.sound.alarm();
@@ -307,6 +366,21 @@
 
     $('settingsForm').addEventListener('submit', save);
     $('testBtn').addEventListener('click', testConnection);
+    $('transport').addEventListener('change', applyTransportVisibility);
+    /* Yöntem ya da yayıncı bilgisi değişince bağlantıyı tazele:
+       eski yayıncıya bağlı kalmış bir istemci kalmasın. */
+    ['mqttUrl', 'mqttTopic', 'mqttUser', 'mqttPass'].forEach(function (id) {
+      const el = $(id);
+      if (el) el.addEventListener('change', function () {
+        App.saveSettings({
+          transport: $('transport').value,
+          mqttUrl: $('mqttUrl').value.trim(),
+          mqttTopic: $('mqttTopic').value.trim(),
+          mqttUser: $('mqttUser').value.trim()
+        });
+        if (App.mqtt) App.mqtt.restart();
+      });
+    });
     $('updateBtn').addEventListener('click', checkUpdate);
     $('clearCacheBtn').addEventListener('click', clearCache);
     $('resetBtn').addEventListener('click', resetSettings);

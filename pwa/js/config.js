@@ -13,9 +13,27 @@
   App.STORAGE_KEY = 'deneyap.settings.v2';
 
   App.DEFAULTS = {
-    host: '',          // boş = panelin açıldığı adres (ESP32 AP modu)
+    /* --- Taşıma (transport) seçimi ---
+       'http' : Cihazın kendi web sunucusuna doğrudan fetch.
+                Yalnızca cihazın kendi ağından (http://192.168.4.1) açılınca
+                çalışır; bu panel https üzerinden açıldığında tarayıcı mixed
+                content engeline takılır.
+       'mqtt' : Cihaz bir MQTT yayıncısına bağlanır, panel de aynı yayıncıya
+                WebSocket ile bağlanır. https üzerinden de sorunsuz çalışır.
+       Boş bırakılırsa mqttUrl varsa otomatik 'mqtt' seçilir.            */
+    transport: 'mqtt',
+
+    /* --- MQTT / bulut rölesi ---
+       Bu ayarlar firmware'deki MQTT_HOST / MQTT_USER / MQTT_PASS /
+       MQTT_TOPIC değerleriyle AYNI olmalı. */
+    mqttUrl: 'wss://broker.emqx.io:8084/mqtt',  /* yayıncının WebSocket adresi */
+    mqttUser: '',
+    mqttPass: '',
+    mqttTopic: 'deneyap/kart1',    /* firmware'deki MQTT_TOPIC ile aynı olmalı */
+
+    host: '',          // yalnızca 'http' taşımasında kullanılır
     token: '',         // config.h içinde API_TOKEN tanımlıysa gerekli
-    pollMs: 2000,      // anlık durum yoklama periyodu (ms)
+    pollMs: 2000,      // http taşımasında yoklama periyodu (ms); mqtt'te itme kullanılır
     gasWarn: 250,      // donanım eşikleriyle senkronize
     gasDanger: 400,
     rainInvert: false, // true = ters mantık

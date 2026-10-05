@@ -330,6 +330,36 @@
     pollTimer = setTimeout(poll, nextDelay());
   }
 
+  /* --- MQTT modu: itme tabanlı -------------------------------------------
+     Yayıncı üzerinden durum her geldiğinde anında çizilir; periyodik
+     yoklama yapılmaz. Polling yalnızca "cihaz hâlâ konuşuyor mu" denetimi
+     ve tekrar bağlanma tetikleyicisi olarak kalır. */
+  function startPush() {
+    App.api.onStatus(function (msg) {
+      if (!msg || msg.__relay) return;          /* yayıncı durumu ayrı ele alınır */
+      const at = Date.now();
+      if (lastData && Number(msg.t) && Number(msg.t) <= Number(lastData.t) &&
+          Number(msg.uptime) <= Number(lastData.uptime)) return;  /* eski kopyayı yut */
+      setText('pingMs', Math.max(0, Date.now() - at + (msg.__rtt || 0)) + ' ms');
+      lastData = msg;
+      markOnline();
+      render(msg);
+    });
+
+    /* Yayıncı bağlantısı koparsa kumandalar kilitlenir: komut gönderilse
+       de gitmez. Yayıncı "bağlı" olsa bile cihazın LWT ile bildirdiği
+       çevrimdışı durumu da aynı sonucu doğurur. */
+    App.api.onStatus(function (msg) {
+      if (!msg || !msg.__relay) return;
+      if (msg.online) return;
+      failStreak += 1;
+      App.setConnBadge('offline', msg.msg || 'Cihaz Çevrimdışı');
+      setControlsEnabled(false);
+    });
+
+    App.api.startMqtt();
+  }
+
   /* ------------------------------------------------------------ Kumandalar */
 
   function disarmPump() {
@@ -502,7 +532,13 @@
 
     setControlsEnabled(false);
     App.setConnBadge('connecting', 'Bağlanıyor…');
-    poll();
+
+    if (App.api.transport()) {
+      startPush();
+      poll();               /* ilk durumu iste; sonrası yayıncıdan gelir */
+    } else {
+      poll();
+    }
 
     document.addEventListener('visibilitychange', function () {
       if (document.hidden) {

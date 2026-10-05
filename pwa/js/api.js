@@ -1,7 +1,20 @@
 /* ==========================================================================
    api.js — cihazla iletişim.
-   Tüm ağ trafiği buradan geçer: zaman aşımı, iptal (AbortController), token
-   başlığı ve JSON ayrıştırma hatalarının tek yerde ele alınması için.
+
+   İki taşıma (transport) katmanı vardır; App.settings().transport ile seçilir:
+
+     'http'  Cihazın kendi web sunucusuna doğrudan fetch.
+             Yalnızca panel cihazın kendi ağından açıldığında çalışır
+             (http://192.168.4.1 gibi).
+
+     'mqtt'  Cihaz bir MQTT yayıncısına (broker) bağlanır, panel de aynı
+             yayıncıya WebSocket ile bağlanır (bkz. js/mqtt.js).
+             Panel https üzerinden açılsa BİLE çalışır; tarayıcının mixed
+             content engeli devreye girmez ve cihazın internete çıkması
+             dışında hiçbir ağ ayarı gerekmez.
+
+   app.js bu dosyayı değiştirmeden kullanır: status() ve control() her iki
+   modda da "durum JSON'u" döndürür.
    ========================================================================== */
 
 (function () {
@@ -10,11 +23,23 @@
   const App = window.App;
   const DEFAULT_TIMEOUT = 6000;
 
+  /* Durum itme (push) ile gelir; app.js yine de her periyotta status()
+     çağırır, biz dondurulmuş son değeri döner. */
+  let pushed = null;
+  const statusSubs = new Set();
+
+  function usingMqtt() {
+    const s = App.settings();
+    return s.transport === 'mqtt' || (!!s.mqttUrl && s.transport !== 'http');
+  }
+
   function buildUrl(path) {
     return App.baseUrl() + path;
   }
 
-  async function request(path, options) {
+  /* ---------------------------------------------------------- HTTP taşıma */
+
+  async function httpRequest(path, options) {
     const o = options || {};
     const s = App.settings();
     const controller = new AbortController();
@@ -73,36 +98,75 @@
     }
   }
 
+  /* -------------------------------------------------------- genel arayüz */
+
   App.api = {
     url: buildUrl,
 
     status: function () {
-      return request('/api/status');
+      if (usingMqtt()) return App.mqtt.status();
+      return httpRequest('/api/status');
     },
 
     control: function (device, action, value) {
-      return request('/api/control', {
+      if (usingMqtt()) return App.mqtt.control(device, action, value);
+      return httpRequest('/api/control', {
         method: 'POST',
         json: { device: device, action: action, value: value !== undefined ? Number(value) : 0 }
       });
     },
 
     saveSettings: function (payload) {
-      return request('/api/settings', {
+      if (usingMqtt()) return App.mqtt.saveSettings(payload);
+      return httpRequest('/api/settings', {
         method: 'POST',
         json: payload
       });
     },
 
     getSettings: function () {
-      return request('/api/settings');
+      if (usingMqtt()) return App.mqtt.getSettings();
+      return httpRequest('/api/settings');
     },
 
     /* Gecikme ölçümü — ayarlar sayfasındaki "Bağlantıyı Test Et" düğmesi */
     ping: async function () {
       const t0 = performance.now();
-      const s = await request('/api/status', { timeout: 4000 });
+      const s = await this.status();
       return { ms: Math.round(performance.now() - t0), status: s };
-    }
+    },
+
+    /* --- MQTT tarafından çağrılan iç kancalar ---------------------------- */
+
+    /* Durum itmesi: abone olan herkesi anında bilgilendir. */
+    _pushStatus: function (data) {
+      pushed = data;
+      statusSubs.forEach(function (fn) {
+        try { fn(data); } catch (e) { console.warn('[api] itme abonesi hata verdi', e); }
+      });
+    },
+
+    /* Yayıncı bağlantı durumu — panelde bağlantı rozetini günceller. */
+    _setRelayOnline: function (online, msg) {
+      App.relayOnline = !!online;
+      App.relayMsg = msg || '';
+      statusSubs.forEach(function (fn) {
+        try { fn({ __relay: true, online: !!online, msg: msg }); } catch (e) { /* yoksay */ }
+      });
+    },
+
+    onStatus: function (fn) {
+      statusSubs.add(fn);
+      return function () { statusSubs.delete(fn); };
+    },
+
+    _pushed: function () { return pushed; },
+
+    /* MQTT modundayken yayıncıya bağlanmayı başlat. */
+    startMqtt: function () {
+      if (usingMqtt() && App.mqtt) App.mqtt.connect();
+    },
+
+    transport: usingMqtt
   };
 })();

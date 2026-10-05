@@ -112,6 +112,81 @@
         </div>
 
         <div class="field">
+          <label for="transport">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49M7.76 16.24a6 6 0 0 1 0-8.49M19.07 4.93a10 10 0 0 1 0 14.14M4.93 19.07a10 10 0 0 1 0-14.14"/>
+            </svg>
+            Bağlantı Yöntemi
+          </label>
+          <select id="transport" name="transport">
+            <option value="mqtt">Bulut Rölesi (MQTT) — Önerilen</option>
+            <option value="http">Doğrudan IP (WiFi / AP modu)</option>
+          </select>
+          <p class="help">
+            <strong>Bulut Rölesi:</strong> bu panel <code>https://</code> üzerinden açılırsa tarayıcı
+            <code>http://192.168.x.x</code> adresine erişimi "mixed content" diye engeller. MQTT yönteminde
+            cihaz bir yayıncıya (broker) bağlanır, panel de aynı yayıncıya WebSocket ile bağlanır — iki taraf da
+            <code>https</code> konuşur. Cihazın internete çıkması yeterlidir; yönlendirici ayarı gerekmez.
+            <br><strong>Doğrudan IP:</strong> yalnızca cihazın kendi ağına bağlandığınızda
+            (<code>http://192.168.4.1</code>) çalışır.
+          </p>
+        </div>
+
+        <div class="field">
+          <label for="mqttUrl">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M4 7a16 16 0 0 1 16 0M7 11a11 11 0 0 1 10 0M10 15a6 6 0 0 1 4 0"/><circle cx="12" cy="19" r="1"/>
+            </svg>
+            Yayıncı (MQTT Broker) WebSocket Adresi
+          </label>
+          <input type="url" id="mqttUrl" name="mqttUrl" inputmode="url" autocomplete="off"
+                 placeholder="wss://broker.emqx.io:8084/mqtt" spellcheck="false">
+          <p class="help">
+            Bu adres, firmware'deki <code>MQTT_HOST</code> ve <code>MQTT_PORT</code> ile eşleşmelidir.
+            Ücretsiz ve hesap gerektirmeyen test yayıncısı:
+            <code>wss://broker.emqx.io:8084/mqtt</code>
+          </p>
+        </div>
+
+        <div class="field">
+          <label for="mqttTopic">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M4 4h16v16H4z"/><path d="M4 9h16M9 4v16"/>
+            </svg>
+            Cihaz Konu Adı
+          </label>
+          <input type="text" id="mqttTopic" name="mqttTopic" autocomplete="off"
+                 placeholder="deneyap/kart1" spellcheck="false">
+          <p class="help">
+            Firmware'deki <code>MQTT_TOPIC</code> ile <strong>birebir aynı</strong> olmalı.
+            Birden fazla kart kullanıyorsanız her kartın konusu farklı olsun.
+          </p>
+        </div>
+
+        <div class="field">
+          <label for="mqttUser">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+            </svg>
+            Yayıncı Kullanıcı Adı <span class="opt">opsiyonel</span>
+          </label>
+          <input type="text" id="mqttUser" name="mqttUser" autocomplete="off"
+                 placeholder="anonim yayıncılarda boş bırakın" spellcheck="false">
+        </div>
+
+        <div class="field">
+          <label for="mqttPass">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            Yayıncı Şifresi <span class="opt">opsiyonel</span>
+          </label>
+          <input type="password" id="mqttPass" name="mqttPass" autocomplete="off"
+                 placeholder="yayıncı şifresi">
+        </div>
+
+        <div class="field">
           <label for="host">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/>
@@ -120,9 +195,10 @@
             Cihaz IP / Ana Makine Adresi
           </label>
           <input type="url" id="host" name="host" inputmode="url" autocomplete="url"
-                 placeholder="http://192.168.4.1 (ESP32 AP modu)" spellcheck="false">
+                 placeholder="http://192.168.4.1 (yalnızca Doğrudan IP yöntemi)" spellcheck="false">
           <p class="help">
-            Boş bırakıldığında konsolun açıldığı adres kullanılır (ESP32 AP modunda doğrudan erişim).
+            Yalnızca <strong>Doğrudan IP</strong> yönteminde kullanılır. Bulut Rölesi seçiliyken
+            bu alanı boş bırakabilirsiniz.
           </p>
         </div>
 
@@ -401,7 +477,13 @@
   </nav>
 
   <script src="./js/config.js"></script>
+
+  <!-- MQTT taşıması: ESP32'ye https üzerinden ulaşmayı sağlar.
+       Yüklemezse panel otomatik olarak HTTP moduna düşer, sorun çıkmaz. -->
+  <script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
+
   <script src="./js/api.js"></script>
+  <script src="./js/mqtt.js"></script>
   <script src="./js/settings.js"></script>
 </body>
 </html>
