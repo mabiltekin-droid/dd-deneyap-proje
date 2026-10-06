@@ -1,26 +1,26 @@
 /* ==========================================================================
-   sw.js — Service Worker
+   sw.js â€” Service Worker
    ----------------------------------------------------------------------------
-   ÖNEMLİ: Bu dosya "eski site açılıyor" hatasının ana kaynağıydı.
-   Önceki sürüm tüm isteklerde cache-first kullanıyordu ve cache'e yeni
-   sürümü hiç yazmıyordu; index.html kalıcı olarak ilk yüklenen haliyle
+   Ã–NEMLÄ°: Bu dosya "eski site aÃ§Ä±lÄ±yor" hatasÄ±nÄ±n ana kaynaÄŸÄ±ydÄ±.
+   Ã–nceki sÃ¼rÃ¼m tÃ¼m isteklerde cache-first kullanÄ±yordu ve cache'e yeni
+   sÃ¼rÃ¼mÃ¼ hiÃ§ yazmÄ±yordu; index.html kalÄ±cÄ± olarak ilk yÃ¼klenen haliyle
    sunuluyordu.
 
    Yeni strateji:
-     • Cihaz yerel ağda olduğu için ağ öncelikli (network-first) tercih
-       edildi — her açılışta güncel dosya gelir.
-     • Cihaz yanıt vermezse (çevrimdışı / kapalı) son bilinen iyi sürüm
-       cache'ten sunulur, böylece panel çalışmaya devam eder.
-     • /api/* istekleri ASLA cache'lenmez — sensör verisi her seferinde
-       cihazdan alınır.
-     • activate sırasında eski cache'ler silinir (sürüm artışı temizliği).
-     • Yeni sürüm sayfayı zorla değiştirmez; panel "Yenile" bildirimi gösterir.
+     â€¢ Cihaz yerel aÄŸda olduÄŸu iÃ§in aÄŸ Ã¶ncelikli (network-first) tercih
+       edildi â€” her aÃ§Ä±lÄ±ÅŸta gÃ¼ncel dosya gelir.
+     â€¢ Cihaz yanÄ±t vermezse (Ã§evrimdÄ±ÅŸÄ± / kapalÄ±) son bilinen iyi sÃ¼rÃ¼m
+       cache'ten sunulur, bÃ¶ylece panel Ã§alÄ±ÅŸmaya devam eder.
+     â€¢ /api/* istekleri ASLA cache'lenmez â€” sensÃ¶r verisi her seferinde
+       cihazdan alÄ±nÄ±r.
+     â€¢ activate sÄ±rasÄ±nda eski cache'ler silinir (sÃ¼rÃ¼m artÄ±ÅŸÄ± temizliÄŸi).
+     â€¢ Yeni sÃ¼rÃ¼m sayfayÄ± zorla deÄŸiÅŸtirmez; panel "Yenile" bildirimi gÃ¶sterir.
    ========================================================================== */
 
-const VERSION = '2.4.2';
+const VERSION = '2.4.3';
 const CACHE = 'deneyap-pwa-v' + VERSION;
 const SHELL = './index.html';
-const NETWORK_TIMEOUT = 4000;   // cihaz yanıt vermezse cache'e düş (ms)
+const NETWORK_TIMEOUT = 4000;   // cihaz yanÄ±t vermezse cache'e dÃ¼ÅŸ (ms)
 
 const PRECACHE = [
   './',
@@ -45,16 +45,16 @@ const PRECACHE = [
 self.addEventListener('install', function (event) {
   event.waitUntil(
     caches.open(CACHE).then(function (cache) {
-      /* Tek tek ekle: bir dosya 404 olursa kurulumun tamamı başarısız olmasın */
+      /* Tek tek ekle: bir dosya 404 olursa kurulumun tamamÄ± baÅŸarÄ±sÄ±z olmasÄ±n */
       return Promise.all(PRECACHE.map(function (url) {
         return cache.add(new Request(url, { cache: 'reload' })).catch(function (err) {
-          console.warn('[sw] önbelleğe alınamadı:', url, err && err.message);
+          console.warn('[sw] Ã¶nbelleÄŸe alÄ±namadÄ±:', url, err && err.message);
         });
       }));
     })
   );
-  /* skipWaiting bilerek çağrılmıyor: açık sayfaların durumunu bozmamak için
-     yeni sürüm "waiting" durumunda bekler, panel onaylayınca etkinleşir. */
+  /* skipWaiting bilerek Ã§aÄŸrÄ±lmÄ±yor: aÃ§Ä±k sayfalarÄ±n durumunu bozmamak iÃ§in
+     yeni sÃ¼rÃ¼m "waiting" durumunda bekler, panel onaylayÄ±nca etkinleÅŸir. */
 });
 
 /* ----------------------------------------------------------------- activate */
@@ -64,13 +64,13 @@ self.addEventListener('activate', function (event) {
     caches.keys().then(function (keys) {
       return Promise.all(keys.map(function (k) {
         if (k !== CACHE) {
-          console.log('[sw] eski önbellek siliniyor:', k);
+          console.log('[sw] eski Ã¶nbellek siliniyor:', k);
           return caches.delete(k);
         }
         return null;
       }));
     }).then(function () {
-      /* İlk açılışta da kontrol etsin */
+      /* Ä°lk aÃ§Ä±lÄ±ÅŸta da kontrol etsin */
       if (self.registration.navigationPreload) {
         return self.registration.navigationPreload.enable();
       }
@@ -91,7 +91,7 @@ self.addEventListener('message', function (event) {
 
 /* -------------------------------------------------------------------- fetch */
 
-/* İkonlar değişmez: önce cache'den gel, arkada tazele */
+/* Ä°konlar deÄŸiÅŸmez: Ã¶nce cache'den gel, arkada tazele */
 function cacheFirst(request) {
   return caches.open(CACHE).then(function (cache) {
     return cache.match(request).then(function (cached) {
@@ -104,7 +104,7 @@ function cacheFirst(request) {
   });
 }
 
-/* Metin kaynakları (HTML/JS/CSS/JSON): önce ağ, hata olursa cache */
+/* Metin kaynaklarÄ± (HTML/JS/CSS/JSON): Ã¶nce aÄŸ, hata olursa cache */
 function networkFirst(request) {
   return caches.open(CACHE).then(function (cache) {
     const controller = new AbortController();
@@ -120,7 +120,7 @@ function networkFirst(request) {
         clearTimeout(timer);
         return cache.match(request).then(function (cached) {
           if (cached) return cached;
-          /* Sayfa isteğiysek uygulama kabuğunu göster — panel açılsın */
+          /* Sayfa isteÄŸiysek uygulama kabuÄŸunu gÃ¶ster â€” panel aÃ§Ä±lsÄ±n */
           if (request.mode === 'navigate') {
             return cache.match(SHELL);
           }
@@ -133,18 +133,18 @@ function networkFirst(request) {
 self.addEventListener('fetch', function (event) {
   const request = event.request;
 
-  /* Sadece GET önbelleklenir */
+  /* Sadece GET Ã¶nbelleklenir */
   if (request.method !== 'GET') return;
 
   const url = new URL(request.url);
 
-  /* Başka bir kaynak (geliştirme sırasında farklı port vs.) — dokunma */
+  /* BaÅŸka bir kaynak (geliÅŸtirme sÄ±rasÄ±nda farklÄ± port vs.) â€” dokunma */
   if (url.origin !== self.location.origin) return;
 
   /* Cihaz API'si asla cache'e girmez */
   if (url.pathname.indexOf('/api/') === 0) return;
 
-  /* Service Worker'ın kendisi de cache'e girmez */
+  /* Service Worker'Ä±n kendisi de cache'e girmez */
   if (url.pathname === '/sw.js') return;
 
   if (request.mode === 'navigate') {
@@ -159,3 +159,4 @@ self.addEventListener('fetch', function (event) {
 
   event.respondWith(networkFirst(request));
 });
+

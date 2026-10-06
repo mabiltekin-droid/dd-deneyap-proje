@@ -1,7 +1,7 @@
 /* ==========================================================================
-   config.js — Cyber-Console Yapılandırması, Tema, Ses Sentezleyici,
-   Haptik Geri Bildirim ve Etkileşim Motoru.
-   Bu dosya diğer tüm modüllerden önce yüklenir.
+   config.js â€” Cyber-Console YapÄ±landÄ±rmasÄ±, Tema, Ses Sentezleyici,
+   Haptik Geri Bildirim ve EtkileÅŸim Motoru.
+   Bu dosya diÄŸer tÃ¼m modÃ¼llerden Ã¶nce yÃ¼klenir.
    ========================================================================== */
 
 (function () {
@@ -9,41 +9,41 @@
 
   const App = (window.App = window.App || {});
 
-  App.VERSION = '2.4.2';
+  App.VERSION = '2.4.3';
   App.STORAGE_KEY = 'deneyap.settings.v2';
 
   App.DEFAULTS = {
-    /* --- Taşıma (transport) seçimi ---
-       'http' : Cihazın kendi web sunucusuna doğrudan fetch.
-                Yalnızca cihazın kendi ağından (http://192.168.4.1) açılınca
-                çalışır; bu panel https üzerinden açıldığında tarayıcı mixed
-                content engeline takılır.
-       'mqtt' : Cihaz bir MQTT yayıncısına bağlanır, panel de aynı yayıncıya
-                WebSocket ile bağlanır. https üzerinden de sorunsuz çalışır.
-       Boş bırakılırsa mqttUrl varsa otomatik 'mqtt' seçilir.            */
+    /* --- TaÅŸÄ±ma (transport) seÃ§imi ---
+       'http' : CihazÄ±n kendi web sunucusuna doÄŸrudan fetch.
+                YalnÄ±zca cihazÄ±n kendi aÄŸÄ±ndan (http://192.168.4.1) aÃ§Ä±lÄ±nca
+                Ã§alÄ±ÅŸÄ±r; bu panel https Ã¼zerinden aÃ§Ä±ldÄ±ÄŸÄ±nda tarayÄ±cÄ± mixed
+                content engeline takÄ±lÄ±r.
+       'mqtt' : Cihaz bir MQTT yayÄ±ncÄ±sÄ±na baÄŸlanÄ±r, panel de aynÄ± yayÄ±ncÄ±ya
+                WebSocket ile baÄŸlanÄ±r. https Ã¼zerinden de sorunsuz Ã§alÄ±ÅŸÄ±r.
+       BoÅŸ bÄ±rakÄ±lÄ±rsa mqttUrl varsa otomatik 'mqtt' seÃ§ilir.            */
     transport: 'mqtt',
 
-    /* --- MQTT / bulut rölesi ---
+    /* --- MQTT / bulut rÃ¶lesi ---
        Bu ayarlar firmware'deki MQTT_HOST / MQTT_USER / MQTT_PASS /
-       MQTT_TOPIC değerleriyle AYNI olmalı. */
-    mqttUrl: 'wss://broker.emqx.io:8084/mqtt',  /* yayıncının WebSocket adresi */
+       MQTT_TOPIC deÄŸerleriyle AYNI olmalÄ±. */
+    mqttUrl: 'wss://broker.emqx.io:8084/mqtt',  /* yayÄ±ncÄ±nÄ±n WebSocket adresi */
     mqttUser: '',
     mqttPass: '',
-    mqttTopic: 'deneyap/kart1',    /* firmware'deki MQTT_TOPIC ile aynı olmalı */
+    mqttTopic: 'deneyap/kart1',    /* firmware'deki MQTT_TOPIC ile aynÄ± olmalÄ± */
 
-    host: '',          // yalnızca 'http' taşımasında kullanılır
-    token: '',         // config.h içinde API_TOKEN tanımlıysa gerekli
-    pollMs: 2000,      // http taşımasında yoklama periyodu (ms); mqtt'te itme kullanılır
-    gasWarn: 250,      // donanım eşikleriyle senkronize
+    host: '',          // yalnÄ±zca 'http' taÅŸÄ±masÄ±nda kullanÄ±lÄ±r
+    token: '',         // config.h iÃ§inde API_TOKEN tanÄ±mlÄ±ysa gerekli
+    pollMs: 2000,      // http taÅŸÄ±masÄ±nda yoklama periyodu (ms); mqtt'te itme kullanÄ±lÄ±r
+    gasWarn: 250,      // donanÄ±m eÅŸikleriyle senkronize
     gasDanger: 400,
-    rainInvert: false, // true = ters mantık
-    autoControl: true, // otomatik fan, servo ve güvenlik müdahalesi
+    rainInvert: false, // true = ters mantÄ±k
+    autoControl: true, // otomatik fan, servo ve gÃ¼venlik mÃ¼dahalesi
     theme: 'dark',     // 'dark' | 'amoled' | 'light' | 'system'
     soundEnabled: true,// Web Audio API sesli geri bildirim
-    vibrateEnabled: true // Haptik titreşim desteği
+    vibrateEnabled: true // Haptik titreÅŸim desteÄŸi
   };
 
-  App.GAS_FS_MAX = 10000; // Sensör tam skalası (10.000 PPM)
+  App.GAS_FS_MAX = 10000; // SensÃ¶r tam skalasÄ± (10.000 PPM)
 
   /* ------------------------------------------------------------ ayar deposu */
 
@@ -52,7 +52,7 @@
     try {
       raw = localStorage.getItem(App.STORAGE_KEY);
     } catch (e) {
-      console.warn('[ayarlar] localStorage erişilemiyor, varsayılanlar kullanılacak.', e);
+      console.warn('[ayarlar] localStorage eriÅŸilemiyor, varsayÄ±lanlar kullanÄ±lacak.', e);
       return Object.assign({}, App.DEFAULTS);
     }
     if (!raw) return Object.assign({}, App.DEFAULTS);
@@ -64,7 +64,7 @@
       });
       return out;
     } catch (e) {
-      console.warn('[ayarlar] bozuk JSON, varsayılanlara dönülüyor.', e);
+      console.warn('[ayarlar] bozuk JSON, varsayÄ±lanlara dÃ¶nÃ¼lÃ¼yor.', e);
       return Object.assign({}, App.DEFAULTS);
     }
   }
@@ -93,8 +93,8 @@
     return (settings.host || location.origin).replace(/\/+$/, '');
   };
 
-  /* ------------------------------------------------------------ SVG ikonları */
-  /* Harici font/CDN bağımlılığı olmaksızın hafif, yüksek netlikte SVG kütüphanesi */
+  /* ------------------------------------------------------------ SVG ikonlarÄ± */
+  /* Harici font/CDN baÄŸÄ±mlÄ±lÄ±ÄŸÄ± olmaksÄ±zÄ±n hafif, yÃ¼ksek netlikte SVG kÃ¼tÃ¼phanesi */
   App.ICONS = {
     sun: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>',
     moon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/><path d="M19 3v4M21 5h-4"/></svg>',
@@ -151,13 +151,13 @@
     const toggleBtn = document.getElementById('themeToggleBtn');
     if (toggleBtn) {
       toggleBtn.setAttribute('aria-checked', isDarkTheme ? 'true' : 'false');
-      toggleBtn.setAttribute('aria-label', isDarkTheme ? 'Aydınlık temaya geç' : 'Karanlık temaya geç');
+      toggleBtn.setAttribute('aria-label', isDarkTheme ? 'AydÄ±nlÄ±k temaya geÃ§' : 'KaranlÄ±k temaya geÃ§');
     }
 
     const icon = document.getElementById('themeIcon');
     if (icon) {
       icon.innerHTML = isDarkTheme ? App.ICONS.sun : App.ICONS.moon;
-      icon.setAttribute('aria-label', isDarkTheme ? 'Aydınlık temaya geç' : 'Koyu temaya geç');
+      icon.setAttribute('aria-label', isDarkTheme ? 'AydÄ±nlÄ±k temaya geÃ§' : 'Koyu temaya geÃ§');
     }
 
     return isDarkTheme;
@@ -177,7 +177,7 @@
   };
 
   /* ------------------------------------------- Web Audio API Sentezleyici */
-  /* Harici ses dosyası indirmeden tarayıcının yerleşik osilatörü ile ses üretir */
+  /* Harici ses dosyasÄ± indirmeden tarayÄ±cÄ±nÄ±n yerleÅŸik osilatÃ¶rÃ¼ ile ses Ã¼retir */
 
   let audioCtx = null;
   function getAudioCtx() {
@@ -365,7 +365,7 @@
         return reg;
       })
       .catch(function (err) {
-        console.error('[sw] kayıt hatası:', err);
+        console.error('[sw] kayÄ±t hatasÄ±:', err);
         return null;
       });
   };
@@ -388,10 +388,10 @@
     });
   };
 
-  /* ----------------------------------------------------------- biçimlendirme */
+  /* ----------------------------------------------------------- biÃ§imlendirme */
 
   App.fmtDuration = function (ms) {
-    if (typeof ms !== 'number' || ms < 0) return '—';
+    if (typeof ms !== 'number' || ms < 0) return 'â€”';
     const s = Math.floor(ms / 1000);
     const d = Math.floor(s / 86400);
     const h = Math.floor((s % 86400) / 3600);
@@ -404,22 +404,22 @@
   };
 
   App.fmtBytes = function (b) {
-    if (typeof b !== 'number' || b <= 0) return '—';
+    if (typeof b !== 'number' || b <= 0) return 'â€”';
     if (b >= 1048576) return (b / 1048576).toFixed(1) + ' MB';
     if (b >= 1024) return Math.round(b / 1024) + ' KB';
     return b + ' B';
   };
 
   App.fmtAgo = function (ts) {
-    if (!ts) return '—';
+    if (!ts) return 'â€”';
     const s = Math.round((Date.now() - ts) / 1000);
-    if (s < 2) return 'az önce';
-    if (s < 60) return s + ' sn önce';
+    if (s < 2) return 'az Ã¶nce';
+    if (s < 60) return s + ' sn Ã¶nce';
     const m = Math.floor(s / 60);
-    if (m < 60) return m + ' dk önce';
+    if (m < 60) return m + ' dk Ã¶nce';
     const h = Math.floor(m / 60);
-    if (h < 24) return h + ' sa önce';
-    return Math.floor(h / 24) + ' gün önce';
+    if (h < 24) return h + ' sa Ã¶nce';
+    return Math.floor(h / 24) + ' gÃ¼n Ã¶nce';
   };
 
   /* --------------------------------------------------------------- toast */
@@ -468,16 +468,17 @@
     clearTimeout(toastTimer);
   };
 
-  /* Bağlantı rozetini güncelle */
+  /* BaÄŸlantÄ± rozetini gÃ¼ncelle */
   App.setConnBadge = function (state, text) {
     const badge = document.getElementById('conn');
-    const label = badge ? badge.querySelector('#connText') : document.getElementById('connText');
-    if (badge) badge.setAttribute('data-state', state);
+    if (!badge) return;
+    badge.setAttribute('data-state', state);
+    const label = badge.querySelector('#connText');
     if (label) {
       label.textContent = text;
-    } else if (badge) {
-      badge.textContent = text;
+      return;
     }
+    badge.innerHTML = '<span class="dot" aria-hidden="true"></span><span id="connText">' + String(text).replace(/</g, '&lt;') + '</span>';
   };
 
   App.renderDeviceInfo = function (s) {
@@ -485,15 +486,15 @@
       const el = document.getElementById(id);
       if (el) el.textContent = value;
     };
-    put('fw', s.fw ? 'v' + s.fw : '—');
-    put('ip', s.ip || '—');
-    put('rssi', typeof s.rssi === 'number' ? s.rssi + ' dBm' : '—');
+    put('fw', s.fw ? 'v' + s.fw : 'â€”');
+    put('ip', s.ip || 'â€”');
+    put('rssi', typeof s.rssi === 'number' ? s.rssi + ' dBm' : 'â€”');
     put('heap', App.fmtBytes(s.heap));
     put('uptime', App.fmtDuration(s.uptime));
     put('fsState', s.fs ? 'LittleFS Aktif' : 'API-Only');
   };
 
-  /* -------------------------------------------------- PWA İndirme / Yükleme */
+  /* -------------------------------------------------- PWA Ä°ndirme / YÃ¼kleme */
   App.setupPwaInstall = function (btnId) {
     const btn = document.getElementById(btnId || 'pwaInstallBtn');
     if (!btn) return;
@@ -507,7 +508,7 @@
     window.addEventListener('appinstalled', function () {
       window.__pwaDeferredPrompt = null;
       btn.classList.remove('has-prompt');
-      App.toast('Ev Koruma başarıyla yüklendi! 🎉', { kind: 'ok' });
+      App.toast('Ev Koruma baÅŸarÄ±yla yÃ¼klendi! ğŸ‰', { kind: 'ok' });
     });
 
     btn.addEventListener('click', async function () {
@@ -520,10 +521,10 @@
         try {
           const choice = await promptEvent.userChoice;
           if (choice && choice.outcome === 'accepted') {
-            App.toast('Uygulama yükleniyor...', { kind: 'ok' });
+            App.toast('Uygulama yÃ¼kleniyor...', { kind: 'ok' });
           }
         } catch (err) {
-          console.warn('[pwa] seçim hatası:', err);
+          console.warn('[pwa] seÃ§im hatasÄ±:', err);
         }
         window.__pwaDeferredPrompt = null;
         btn.classList.remove('has-prompt');
@@ -532,16 +533,17 @@
 
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
       if (isStandalone) {
-        App.toast('Uygulama zaten cihazınızda kurulu ve bağımsız çalışıyor.', { kind: 'ok' });
+        App.toast('Uygulama zaten cihazÄ±nÄ±zda kurulu ve baÄŸÄ±msÄ±z Ã§alÄ±ÅŸÄ±yor.', { kind: 'ok' });
         return;
       }
 
       const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
       if (isIos) {
-        App.toast('iOS Safari: "Paylaş" ➔ "Ana Ekrana Ekle" butonuna dokunun.', { kind: 'warn', duration: 6000 });
+        App.toast('iOS Safari: "PaylaÅŸ" â” "Ana Ekrana Ekle" butonuna dokunun.', { kind: 'warn', duration: 6000 });
       } else {
-        App.toast('Tarayıcı menüsünden (⋮) "Uygulamayı Yükle" veya "Ana ekrana ekle"yi seçebilirsiniz.', { kind: 'ok', duration: 5000 });
+        App.toast('TarayÄ±cÄ± menÃ¼sÃ¼nden (â‹®) "UygulamayÄ± YÃ¼kle" veya "Ana ekrana ekle"yi seÃ§ebilirsiniz.', { kind: 'ok', duration: 5000 });
       }
     });
   };
 })();
+
