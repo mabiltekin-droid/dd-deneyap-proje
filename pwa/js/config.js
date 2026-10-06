@@ -9,7 +9,7 @@
 
   const App = (window.App = window.App || {});
 
-  App.VERSION = '2.4.1';
+  App.VERSION = '2.4.2';
   App.STORAGE_KEY = 'deneyap.settings.v2';
 
   App.DEFAULTS = {
@@ -471,9 +471,13 @@
   /* Bağlantı rozetini güncelle */
   App.setConnBadge = function (state, text) {
     const badge = document.getElementById('conn');
-    const label = document.getElementById('connText');
+    const label = badge ? badge.querySelector('#connText') : document.getElementById('connText');
     if (badge) badge.setAttribute('data-state', state);
-    if (label) label.textContent = text;
+    if (label) {
+      label.textContent = text;
+    } else if (badge) {
+      badge.textContent = text;
+    }
   };
 
   App.renderDeviceInfo = function (s) {
