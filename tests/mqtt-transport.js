@@ -244,7 +244,7 @@ const tick = (ms) => new Promise(r => setTimeout(r, ms || 60));
     check('ayni t tekrari yutuldu', App.api._pushed().gasPpm === 111);
   }
 
-  /* --- 7) online/ofline (LWT) rozeti --------------------------------- */
+  /* --- 7) online/ofline (LWT) durumu ---------------------------------- */
   console.log('\n7) Cihaz cevrimdisi bildirimi');
   {
     const { App, broker } = makeEnv();
@@ -252,10 +252,14 @@ const tick = (ms) => new Promise(r => setTimeout(r, ms || 60));
     await tick(120);
     broker.fire('message', 'deneyap/kart1/online', Buffer.from('offline'));
     await tick(30);
-    check('relay cevrimdisi olarak isaretlendi', App.relayOnline === false);
+    /* Yici (broker) hatti ile cihazin kendi durumu AYRI kanallardir:
+       yayinciya bagli kalmak, cihazin da bagli oldugu anlamina gelmez. */
+    check('cihaz cevrimdisi olarak isaretlendi', App.deviceOnline === false);
+    check('yayinci hatti bagli kaliyor', App.relayOnline === true);
     broker.fire('message', 'deneyap/kart1/online', Buffer.from('online'));
     await tick(30);
-    check('relay cevrimici olarak isaretlendi', App.relayOnline === true);
+    check('cihaz cevrimici olarak isaretlendi', App.deviceOnline === true);
+    check('yayinci hatti hala bagli', App.relayOnline === true);
   }
 
   /* --- 8) yayinci kapanirsa yeniden baglanma ------------------------- */
@@ -312,6 +316,29 @@ const tick = (ms) => new Promise(r => setTimeout(r, ms || 60));
     check('gasDanger dogru', s.gasDanger === 425);
     check('rainInvert donusumlu', s.rainInvert === true);
     check('autoControl alan adi donusumlu', s.autoControl === false);
+  }
+
+  /* --- 11) biz kapatmistak istemci zincir uretmez --------------------- */
+  console.log('\n11) Yeniden baglanma zinciri olusmaz (istemci patlamasi)');
+  {
+    const { App, broker } = makeEnv();
+    App.mqtt.connect();
+    await tick(120);
+    check('ilk baglanti kuruldu', App.mqtt.connected() === true);
+
+    App.mqtt.restart();
+    await tick(120);
+    check('restart sonrasi yeniden baglandi', App.mqtt.connected() === true);
+
+    const before = broker.handlers.close.length;
+    /* Eski kodda kapatma ('close') olayi kendi kendine yeniden baglanma
+       zinciri dogurur, her zincir yeni istemci olustururdu; istemciler
+       katlanarak cogalir (sahada 140+ baglanti ve sayfa catlamasi
+       goruldu). Artik tek bekleyen deneme var. */
+    await tick(2600);
+    check('kapatma zincir uretmedi', broker.handlers.close.length === before,
+          'once ' + before + ', sonra ' + broker.handlers.close.length);
+    check('tek baglanti suruyor', App.mqtt.connected() === true);
   }
 
   console.log('\n' + '='.repeat(50));

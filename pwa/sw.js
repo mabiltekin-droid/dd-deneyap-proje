@@ -17,7 +17,7 @@
      â€¢ Yeni sÃ¼rÃ¼m sayfayÄ± zorla deÄŸiÅŸtirmez; panel "Yenile" bildirimi gÃ¶sterir.
    ========================================================================== */
 
-const VERSION = '2.4.3';
+const VERSION = '2.4.4';
 const CACHE = 'deneyap-pwa-v' + VERSION;
 const SHELL = './index.html';
 const NETWORK_TIMEOUT = 4000;   // cihaz yanÄ±t vermezse cache'e dÃ¼ÅŸ (ms)

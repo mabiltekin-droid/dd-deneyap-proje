@@ -28,7 +28,7 @@
    Örnek: "gizli-anahtar" -> PWA'da Ayarlar > Cihaz Token alanına aynısını yaz. */
 #define API_TOKEN          ""
 
-#define FW_VERSION         "2.3.0"
+#define FW_VERSION         "2.4.4"   // package.json / config.js / sw.js ile aynı olmalı
 
 /* ============================ PIN HARİTASI ============================= */
 /* Analog girişler ADC1 kanalında olmalı (Wi-Fi açıkken ADC2 kullanılamaz). */
@@ -88,7 +88,13 @@
 /* ============================ ZAMANLAMA =============================== */
 #define SENSOR_INTERVAL_MS   200       // sensör okuma periyodu
 #define SERIAL_REPORT_MS     2000      // seri monitör raporu
-#define HTTP_TIMEOUT_MS      6000      // WebServer istek zaman aşımı
+/* AP istemcisi bu süre boyunca 0 kalırsa röleler güvenli duruma alınır.
+   Kısa sıçramaları (ekran kilidi / yeniden bağlanma) yutar. */
+#define CLIENT_DROP_MS       5000      // istemci yokluğu toleransı (ms)
+/* HTTP_TIMEOUT_MS kullanımdan kaldırıldı: ESP32 WebServer sınıfında çalışma
+   zamanında ayarlanabilir bir zaman aşımı yoktur (setTimeout() üye değil).
+   Süreleri çekirdek sabitleri belirler: HTTP_MAX_DATA_WAIT,
+   HTTP_MAX_POST_WAIT, HTTP_MAX_SEND_WAIT (WebServer.h içinde 5000 ms). */
 #define SERVO_MOVE_MS        800       // "hareket ediyor" göstergesi için
 #define STATUS_JSON_MAX      1024      // JSON yanıt tamponu
 

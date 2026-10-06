@@ -56,7 +56,7 @@ function oku(rel) {
 
 /* ------------------------------------------------- 1. JavaScript sözdizimi */
 
-console.log('\n[1/5] JavaScript sözdizimi');
+console.log('\n[1/6] JavaScript sözdizimi');
 const jsFiles = walk(PWA).filter(function (f) { return f.endsWith('.js'); })
   .concat(walk(path.join(ROOT, 'tools')).filter(function (f) { return f.endsWith('.js'); }));
 
@@ -75,7 +75,7 @@ if (jsHata === 0) basarili(jsFiles.length + ' dosya sorunsuz');
 
 /* --------------------------------------------- 2. sürüm üç yerden eşleşmeli */
 
-console.log('\n[2/5] Sürüm tutarlılığı');
+console.log('\n[2/6] Sürüm tutarlılığı');
 let surumler = {};
 
 const pkg = oku('package.json');
@@ -120,7 +120,7 @@ if (Object.keys(surumler).length < 3) {
 
 /* -------------------------------------------------- 3. sw.js PRECACHE listesi */
 
-console.log('\n[3/5] sw.js PRECACHE listesi');
+console.log('\n[3/6] sw.js PRECACHE listesi');
 if (swJs) {
   const blok = swJs.match(/const\s+PRECACHE\s*=\s*\[([\s\S]*?)\]/);
   if (!blok) {

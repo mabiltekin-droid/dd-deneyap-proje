@@ -146,12 +146,24 @@
       });
     },
 
-    /* Yayıncı bağlantı durumu — panelde bağlantı rozetini günceller. */
+    /* Yayıncı (broker) bağlantı durumu — panelde bağlantı rozetini günceller. */
     _setRelayOnline: function (online, msg) {
       App.relayOnline = !!online;
       App.relayMsg = msg || '';
       statusSubs.forEach(function (fn) {
         try { fn({ __relay: true, online: !!online, msg: msg }); } catch (e) { /* yoksay */ }
+      });
+    },
+
+    /* Cihazın kendi bağlantı durumu (LWT, <T>/online konusu). Yayıncıya
+       bağlı olmak cihazın da bağlı olduğu anlamına GELMEZ: yayıncı açık
+       kalırken cihaz fişten çekilebilir. Panelin "canlı" diyebilmesi için
+       bu alanın false olmaması gerekir. */
+    _setDeviceOnline: function (online, msg) {
+      App.deviceOnline = !!online;
+      App.deviceMsg = msg || '';
+      statusSubs.forEach(function (fn) {
+        try { fn({ __device: true, online: !!online, msg: msg }); } catch (e) { /* yoksay */ }
       });
     },
 

@@ -244,6 +244,13 @@
     }
   }
 
+  /* Kumandalar yalnızca cihaz gerçekten yanıt verebiliyorsa açık olsun:
+     saklanmış durum mesajı gelse bile LWT "çevrimdışı" diyorsa tuşlar
+     kapalı kalmalıdır. */
+  function controlsAllowed() {
+    return !(App.api.transport() && App.deviceOnline === false);
+  }
+
   function render(data) {
     lastData = data;
     lastUpdateTs = Date.now();
@@ -254,7 +261,7 @@
     renderOutlets(data);
     renderAmbientAlarm(state);
     renderBanner(state);
-    setControlsEnabled(true);
+    setControlsEnabled(controlsAllowed());
   }
 
   function setControlsEnabled(enabled) {
@@ -266,6 +273,12 @@
   /* ------------------------------------------------------- Bağlantı Durumu */
 
   function markOnline() {
+    /* Durum mesajı tek başına "canlı" kanıtı DEĞİLDİR: saklanmış (retained)
+       paket, cihaz koptuktan sonra da broker'da kalır ve panele taze
+       veri gibi gelir. Cihazın gerçekten bağlı olduğunu LWT (/online
+       konusu) söyler; o "çevrimdışı" dediyse hiçbir durum mesajı rozeti
+       "Canlı Telemetri"ye çeviremez. */
+    if (App.api.transport() && App.deviceOnline === false) return;
     online = true;
     failStreak = 0;
     App.setConnBadge('live', 'Canlı Telemetri');
@@ -276,6 +289,7 @@
     failStreak += 1;
     const reason = err && err.legacy ? 'Eski Firmware'
                  : err && err.timeout ? 'Zaman Aşımı'
+                 : App.api.transport() && App.deviceOnline === false ? 'Cihaz Çevrimdışı'
                  : 'Bağlantı Yok';
     App.setConnBadge('offline', reason);
 
@@ -336,7 +350,7 @@
      ve tekrar bağlanma tetikleyicisi olarak kalır. */
   function startPush() {
     App.api.onStatus(function (msg) {
-      if (!msg || msg.__relay) return;          /* yayıncı durumu ayrı ele alınır */
+      if (!msg || msg.__relay || msg.__device) return;  /* bağlantı olayları ayrı ele alınır */
       const at = Date.now();
       if (lastData && Number(msg.t) && Number(msg.t) <= Number(lastData.t) &&
           Number(msg.uptime) <= Number(lastData.uptime)) return;  /* eski kopyayı yut */
@@ -346,12 +360,20 @@
       render(msg);
     });
 
-    /* Yayıncı bağlantısı koparsa kumandalar kilitlenir: komut gönderilse
-       de gitmez. Yayıncı "bağlı" olsa bile cihazın LWT ile bildirdiği
-       çevrimdışı durumu da aynı sonucu doğurur. */
+    /* Yayıncı (broker) bağlantısı koparsa kumandalar kilitlenir: komut
+       gönderilse de gitmez. */
     App.api.onStatus(function (msg) {
-      if (!msg || !msg.__relay) return;
-      if (msg.online) return;
+      if (!msg || !msg.__relay || msg.online) return;
+      failStreak += 1;
+      App.setConnBadge('offline', msg.msg || 'Bağlantı Yok');
+      setControlsEnabled(false);
+    });
+
+    /* Cihazın LWT ile bildirdiği kendi durumu. Cihaz koptuğunda rozet
+       "Canlı Telemetri"ye dönemez; bir sonraki (saklanmış) durum mesajı
+       da bunu değiştiremez — markOnline() bunu zaten reddediyor. */
+    App.api.onStatus(function (msg) {
+      if (!msg || !msg.__device || msg.online) return;
       failStreak += 1;
       App.setConnBadge('offline', msg.msg || 'Cihaz Çevrimdışı');
       setControlsEnabled(false);
@@ -387,10 +409,24 @@
       if (device === 'test' && action === 'simulate_alarm') App.toast('5 saniyelik alarm simülasyonu başlatıldı', { kind: 'warn' });
       if (action === 'set') App.toast(device === 'window' ? 'Pencere açısı güncellendi' : 'Panjur açısı güncellendi', { kind: 'ok' });
     } catch (err) {
-      markOffline(err);
-      App.sound.alarm();
-      App.toast('Komut iletilemedi: ' + err.message, { kind: 'danger', duration: 7000 });
-      setTimeout(poll, 1200);
+      /* Cihazın kendisi reddetti (HTTP 4xx/5xx ya da MQTT cmdErr) ile
+         bağlantının kopması AYNI ŞEY DEĞİLDİR. Eski kod her hatada
+         markOffline() çağırıyordu; pompa gaz alarmında 409 döndüğünde
+         panel "Cihaza Ulaşılamıyor" deyip tüm kumandaları kilitliyordu. */
+      const rejected = !!(err && (typeof err.status === 'number' || err.device));
+      if (rejected) {
+        App.sound.alarm();
+        App.toast('Komut reddedildi: ' + err.message, { kind: 'warn', duration: 7000 });
+      } else {
+        markOffline(err);
+        App.sound.alarm();
+        App.toast('Komut iletilemedi: ' + err.message, { kind: 'danger', duration: 7000 });
+      }
+      /* İzlenen zamanlayıcıyı kullan: setTimeout(poll, ...) pollTimer
+         dışında bir sayaç yaratıyor ve iki ayrı yoklama döngüsüne
+         yol açabiliyordu. */
+      clearTimeout(pollTimer);
+      pollTimer = setTimeout(poll, 1200);
     } finally {
       if (btn) btn.classList.remove('is-busy');
     }

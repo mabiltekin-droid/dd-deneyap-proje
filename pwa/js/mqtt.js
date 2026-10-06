@@ -37,6 +37,7 @@
   let lastStatus = null;       /* son gelen durum (paket kaybında tekrar kullanılır) */
   let lastStatusAt = 0;
   let retryMs = RECONNECT_MIN;
+  let reconnectTimer = null;   /* bekleyen tek yeniden bağlanma denemesi */
   const waiters = new Map();   /* cmdId -> {resolve, reject, timer} */
 
   /* mqtt.js CDN'den gelir. Panel çevrimdışıyken (kapalı AP'de) dosya
@@ -68,8 +69,11 @@
     const w = waiters.get(id);
     waiters.delete(id);
     clearTimeout(w.timer);
-    if (status.cmdErr) w.reject(new Error(status.cmdErr));
-    else w.resolve(status);
+    if (status.cmdErr) {
+      const e = new Error(status.cmdErr);
+      e.device = true;   /* cihaz yanıtladı ve reddetti — bağlantı sorunu değil */
+      w.reject(e);
+    } else w.resolve(status);
   }
 
   function onMessage(topic, payload) {
@@ -77,8 +81,10 @@
     const base = topicBase();
 
     if (t === base + '/online') {
+      /* Cihazın LWT durumu. Yayıncıya (broker) bağlı olmak, cihazın da
+         bağlı olduğu anlamına gelmez — ikisi ayrı ele alınır. */
       const online = String(payload) !== 'offline';
-      App.api._setRelayOnline(online, online ? 'cihaz yayıncıya bağlı' : 'cihaz çevrimdışı');
+      App.api._setDeviceOnline(online, online ? 'Cihaz yayıncıya bağlı' : 'Cihaz Çevrimdışı');
       return;
     }
     if (t !== base + '/status') return;
@@ -96,7 +102,8 @@
   function connect() {
     const M = lib();
     if (!M) { console.warn('[mqtt] mqtt.js yüklenemedi'); return; }
-    if (client) { try { client.end(true); } catch (e) { /* yoksay */ } client = null; }
+    if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+    dropClient();
 
     const s = App.settings();
     const url = String(s.mqttUrl || '').trim();
@@ -120,46 +127,65 @@
     /* mqtt.connect() fabrika fonksiyonudur: adresi okur, ws/wss taşımasını
        seçer ve istemciyi doğru kurar. MqttClient iç sınıftır; doğrudan
        çağırmak "this.streamBuilder is not a function" hatası verir. */
-    try { client = M.connect(url, opts); }
+    let c;
+    try { c = M.connect(url, opts); }
     catch (e) {
       console.warn('[mqtt] istemci oluşturulamadı', e);
       App.api._setRelayOnline(false, 'yayıncı adresi geçersiz');
+      scheduleReconnect();
       return;
     }
+    client = c;
 
-    client.on('connect', function () {
+    /* Olay dinleyicileri "c" üzerinden bağlanır: biz yeni bir istemciye
+       geçtiğimizde eskisinin olayları yeni zinciri tetiklemesin. */
+    c.on('connect', function () {
+      if (client !== c) return;
       connected = true;
       retryMs = RECONNECT_MIN;
       const base = topicBase();
-      client.subscribe(base + '/status', { qos: 0 });
-      client.subscribe(base + '/online', { qos: 0 });
+      c.subscribe(base + '/status', { qos: 0 });
+      c.subscribe(base + '/online', { qos: 0 });
       App.api._setRelayOnline(true, 'yayıncıya bağlandı');
       console.log('[mqtt] bağlandı:', url, 'konu:', base);
     });
 
-    client.on('message', onMessage);
+    c.on('message', onMessage);
 
-    client.on('error', function (err) {
+    c.on('error', function (err) {
       console.warn('[mqtt] hata:', err && err.message);
     });
 
-    client.on('close', function () {
+    c.on('close', function () {
+      if (client !== c) return;      /* biz çoktan yenisine geçtik */
       connected = false;
       App.api._setRelayOnline(false, 'yayıncı bağlantısı koptu');
       scheduleReconnect();
     });
 
-    client.on('offline', function () { connected = false; });
+    c.on('offline', function () { if (client === c) connected = false; });
     /* connect() zaten bağlantıyı kurar; ayrıca connect() çağırma.
        Gerçek mqtt.js'te ikinci çağrı "already connected" hatası verir. */
   }
 
+  /* Mevcut istemciyi bırak. Önce referansı sıfırlıyoruz: kapatma işlemi
+     'close' olayını tetikler; o olay hâlâ "bizim" istemci sanılırsa zincire
+     geri döner ve istemciler katlanarak çoğalır (sahada 140+ bağlantı ve
+     sayfaların çökmesi görüldü). Tek bir bekleyen deneme yeterlidir. */
+  function dropClient() {
+    const old = client;
+    client = null;
+    if (old) { try { old.end(true); } catch (e) { /* yoksay */ } }
+  }
+
   function scheduleReconnect() {
-    setTimeout(function () {
-      const wait = retryMs;
-      retryMs = Math.min(RECONNECT_MAX, Math.round(retryMs * 1.8));
-      setTimeout(connect, wait);
-    }, 0);
+    if (reconnectTimer) return;               /* zaten bir deneme bekliyor */
+    const wait = retryMs;
+    retryMs = Math.min(RECONNECT_MAX, Math.round(retryMs * 1.8));
+    reconnectTimer = setTimeout(function () {
+      reconnectTimer = null;
+      connect();
+    }, wait);
   }
 
   function publish(topic, payload) {
@@ -178,7 +204,7 @@
 
   App.mqtt = {
     /* Ayarlar değişince yeniden bağlan */
-    restart: function () { if (client) { try { client.end(true); } catch (e) { /* yoksay */ } } client = null; connect(); },
+    restart: function () { dropClient(); connect(); },
 
     isEnabled: function () {
       const s = App.settings();

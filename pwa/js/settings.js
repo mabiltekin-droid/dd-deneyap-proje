@@ -175,7 +175,10 @@
          başlatılır; HTTP modunda startMqtt() zaten bir iş yapmaz. */
       App.api.startMqtt();
       const s = await App.api.status();
-      App.setConnBadge('live', 'Canlı Telemetri');
+      /* Durum taze geldiyse cihaz canlıdır; LWT tersini söylemişsa rozet
+         "canlı" diyemez (bkz. app.js markOnline). */
+      if (App.deviceOnline === false) App.setConnBadge('offline', 'Cihaz Çevrimdışı');
+      else App.setConnBadge('live', 'Canlı Telemetri');
 
       // ESP32'den dönen gerçek eşikleri forma aktar (kullanıcı alanı düzenlemiyorsa)
       if (s) {
@@ -226,7 +229,8 @@
       : 'Cihaz aranıyor: ' + App.baseUrl() + ' …');
     try {
       const r = await App.api.ping();
-      App.setConnBadge('live', 'Bağlantı Canlı');
+      if (App.deviceOnline === false) App.setConnBadge('offline', 'Cihaz Çevrimdışı');
+      else App.setConnBadge('live', 'Bağlantı Canlı');
       App.sound.chime();
       App.haptic(25);
       setResult(out,
@@ -344,14 +348,36 @@
     }
   }
 
-  function resetSettings() {
+  async function resetSettings() {
     const out = $('maintResult');
     if (!window.confirm('Tüm panel ve cihaz ayarları fabrika varsayılanlarına döndürülsün mü?')) return;
+
+    /* Eski kod yalnızca localStorage'ı sıfırlıyordu; onay metni ise "panel VE
+       cihaz" diyordu, yani cihazdaki (NVS) eşikler kalıcı kalıyordu. Cihaza da
+       fabrika varsayılanlarını gönderiyoruz.
+       DİKKAT: bunu App.resetSettings()'ten SONRA yapmak doğru değil — o çağrı
+       taşıma (transport) seçimini de varsayılana döndürür ve komut gitemeyebilir. */
+    let devErr = null;
+    try {
+      await App.api.saveSettings({
+        gasWarn: App.DEFAULTS.gasWarn,
+        gasDanger: App.DEFAULTS.gasDanger,
+        rainInvert: App.DEFAULTS.rainInvert,
+        autoControl: App.DEFAULTS.autoControl
+      });
+    } catch (err) {
+      devErr = err;
+    }
+
     App.resetSettings();
     fillForm();
     App.applyTheme('dark');
     App.sound.chime();
-    setResult(out, 'Tüm ayarlar sıfırlandı.', 'ok');
+
+    setResult(out, devErr
+      ? 'Panel sıfırlandı; cihaz ayarları güncellenemedi: ' + devErr.message
+      : 'Panel ve cihaz ayarları fabrika varsayılanlarına döndürüldü.',
+      devErr ? 'fail' : 'ok');
   }
 
   /* ------------------------------------------------------------- Başlatma */
