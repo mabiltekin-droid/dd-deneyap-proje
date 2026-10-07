@@ -46,15 +46,15 @@
     try {
       var isUltra = (tier === 'ultra');
       lenisInstance = new window.Lenis({
-        duration: isUltra ? 1.15 : 0.75,
+        duration: isUltra ? 0.9 : 0.65,
         easing: function (t) {
           return Math.min(1, 1.001 - Math.pow(2, -10 * t));
         },
         orientation: 'vertical',
         gestureOrientation: 'vertical',
-        smoothWheel: true,
+        smoothWheel: false,
         wheelMultiplier: 1.0,
-        touchMultiplier: 1.25
+        touchMultiplier: 1.0
       });
 
       if (window.ScrollTrigger) {
@@ -214,6 +214,7 @@
 
   function setupSmoothAnchorNavigation() {
     document.addEventListener('click', function (e) {
+      if (e.button && e.button !== 0) return; // Orta tuş (button 1) veya sağ tuş için varsayılan tarayıcı davranışı korunsun
       var link = e.target.closest('a[href^="#"], [data-scroll-to]');
       if (!link) return;
 
@@ -482,11 +483,15 @@
       } catch (e) {}
     }
 
-    document.querySelectorAll('a[href$=".html"], a[href^="./"], .bottom-nav a, .nav-back-pill').forEach(function (el) {
+    document.querySelectorAll('a[href$=".html"], a[href^="./"], .bottom-nav a, .nav-back-pill, .acct-pill').forEach(function (el) {
       var href = el.getAttribute('href');
+      if (!href && el.getAttribute('onclick')) {
+        var m = el.getAttribute('onclick').match(/location\.href=['"]([^'"]+)['"]/);
+        if (m) href = m[1];
+      }
       if (!href) return;
-      el.addEventListener('mouseenter', function () { prefetchUrl(href); }, { passive: true });
-      el.addEventListener('touchstart', function () { prefetchUrl(href); }, { passive: true });
+      el.addEventListener('pointerenter', function () { prefetchUrl(href); }, { passive: true });
+      el.addEventListener('pointerdown', function () { prefetchUrl(href); }, { passive: true });
     });
   }
 

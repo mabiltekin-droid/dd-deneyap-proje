@@ -2443,7 +2443,6 @@ main {
 .mission-control-body {
   overflow-x: hidden;
   position: relative;
-  scroll-behavior: smooth;
 }
 
 .mission-main {

@@ -100,42 +100,21 @@ self.addEventListener('message', function (event) {
 
 /* -------------------------------------------------------------------- fetch */
 
-/* İkonlar değişmez: önce cache'den gel, arkada tazele */
-function cacheFirst(request) {
+/* Hızlı Uygulama Kabuğu (HTML/JS/CSS/İkon): önce anında önbellekten ver (0 ms), arkada tazele */
+function staleWhileRevalidate(request) {
   return caches.open(CACHE).then(function (cache) {
     return cache.match(request).then(function (cached) {
-      const network = fetch(request).then(function (res) {
-        if (res && res.ok) cache.put(request, res.clone());
+      const fetchPromise = fetch(request).then(function (res) {
+        if (res && res.ok && res.type === 'basic') {
+          cache.put(request, res.clone());
+        }
         return res;
-      }).catch(function () { return cached; });
-      return cached || network;
-    });
-  });
-}
-
-/* Metin kaynakları (HTML/JS/CSS/JSON): önce ağ, hata olursa cache */
-function networkFirst(request) {
-  return caches.open(CACHE).then(function (cache) {
-    const controller = new AbortController();
-    const timer = setTimeout(function () { controller.abort(); }, NETWORK_TIMEOUT);
-
-    return fetch(request, { signal: controller.signal })
-      .then(function (res) {
-        clearTimeout(timer);
-        if (res && res.ok && res.type === 'basic') cache.put(request, res.clone());
-        return res;
-      })
-      .catch(function (err) {
-        clearTimeout(timer);
-        return cache.match(request).then(function (cached) {
-          if (cached) return cached;
-          /* Sayfa isteğiysek uygulama kabuğunu göster — panel açılsın */
-          if (request.mode === 'navigate') {
-            return cache.match(SHELL);
-          }
-          throw err;
-        });
+      }).catch(function () {
+        return cached;
       });
+
+      return cached || fetchPromise;
+    });
   });
 }
 
@@ -150,22 +129,33 @@ self.addEventListener('fetch', function (event) {
   /* Başka bir kaynak (geliştirme sırasında farklı port vs.) — dokunma */
   if (url.origin !== self.location.origin) return;
 
-  /* Cihaz API'si asla cache'e girmez */
+  /* Cihaz API'si asla cache'e girmez — her zaman anlık canlı veri */
   if (url.pathname.indexOf('/api/') === 0) return;
 
   /* Service Worker'ın kendisi de cache'e girmez */
   if (url.pathname === '/sw.js') return;
 
+  /* Sayfalar arası geçiş: anında önbellekten ver, arka planda tazele (sıfır gecikme) */
   if (request.mode === 'navigate') {
-    event.respondWith(networkFirst(request));
+    event.respondWith(
+      caches.open(CACHE).then(function (cache) {
+        return cache.match(request).then(function (cached) {
+          const fetchPromise = fetch(request).then(function (res) {
+            if (res && res.ok && res.type === 'basic') {
+              cache.put(request, res.clone());
+            }
+            return res;
+          }).catch(function () {
+            return cached || cache.match(SHELL);
+          });
+          return cached || fetchPromise;
+        });
+      })
+    );
     return;
   }
 
-  if (request.destination === 'image') {
-    event.respondWith(cacheFirst(request));
-    return;
-  }
-
-  event.respondWith(networkFirst(request));
+  /* Yerel statik kaynaklar: önce önbellekten anında sun */
+  event.respondWith(staleWhileRevalidate(request));
 });
 
