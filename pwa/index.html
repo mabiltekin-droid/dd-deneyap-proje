@@ -11,6 +11,8 @@
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" href="./icons/favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <link rel="prefetch" href="./settings.html">
+  <link rel="preconnect" href="https://unpkg.com">
   <link rel="stylesheet" href="./css/style.css">
   <script>
     /* FOUC önleme: tema depodan anında yüklenir */
@@ -72,6 +74,15 @@
     </nav>
 
     <div class="header-actions">
+      <!-- Ayarlar Sayfasına Hızlı Geçiş -->
+      <a href="./settings.html" class="nav-back-pill nav-settings-pill" title="Sistem Ayarlarına Git">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+        <span>Ayarlar</span>
+      </a>
+
       <button id="accountBtn" class="acct-pill" type="button"
               aria-label="Hesap" title="Hesap & Roller"
               onclick="location.href='./settings.html#accountCard'">

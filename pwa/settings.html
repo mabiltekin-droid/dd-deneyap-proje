@@ -11,6 +11,8 @@
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" href="./icons/favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <link rel="prefetch" href="./index.html">
+  <link rel="preconnect" href="https://unpkg.com">
   <link rel="stylesheet" href="./css/style.css">
   <script>
     (function () {
@@ -41,7 +43,7 @@
 
   <a class="skip-link" href="#main">İçeriğe geç</a>
 
-  <!-- Cam-morfik SCADA Üst Bar -->
+  <!-- Cam-morfik SCADA Üst Bar (Sensörlerdeki gibi seçenekler üst çubukta) -->
   <header class="glass-header">
     <div class="brand">
       <div class="brand-icon">
@@ -59,16 +61,27 @@
       </div>
     </div>
 
-    <!-- Görev Kontrolüne Dönüş Butonu -->
-    <a href="./index.html" class="nav-back-pill" title="Görev Kontrol Merkezine Dön">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <line x1="19" y1="12" x2="5" y2="12"></line>
-        <polyline points="12 19 5 12 12 5"></polyline>
-      </svg>
-      <span>Görev Kontrolü</span>
-    </a>
+    <!-- Seçenekler / Kategori Sekmeleri (Sensörlerdeki gibi üst çubukta) -->
+    <nav class="header-nav settings-header-nav" aria-label="Ayar kategorileri">
+      <div class="nav-liquid-bubble" aria-hidden="true"></div>
+      <a href="#accountCard" class="nav-item active">Hesap &amp; Roller</a>
+      <a href="#connSection" class="nav-item">Cihaz &amp; Ağ</a>
+      <a href="#thresholdSection" class="nav-item">Eşikler</a>
+      <a href="#telegramSection" class="nav-item">Telegram</a>
+      <a href="#themeSection" class="nav-item">Görünüm</a>
+      <a href="#backupSection" class="nav-item">Bakım</a>
+    </nav>
 
     <div class="header-actions">
+      <!-- Sensörler Ekranına Hızlı Dönüş -->
+      <a href="./index.html" class="nav-back-pill" title="Sensörler ve Görev Kontrol Merkezine Dön">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        <span>Sensörler</span>
+      </a>
+
       <button id="pwaInstallBtn" class="pwa-install-btn" type="button" aria-label="Uygulamayı İndir" title="Ev Koruma Uygulamasını Cihazınıza İndirin">
         <svg class="install-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -108,29 +121,17 @@
 
   <main id="main" class="settings-studio-main">
 
-    <!-- Sinematik Stüdyo Başlığı -->
-    <header class="settings-studio-hero">
+    <!-- Kompakt ve Akıcı Stüdyo Başlığı (Sabitlenmez, takılı kalmaz) -->
+    <div class="studio-intro-bar">
       <div class="hero-badge">
         <span class="badge-pulse"></span>
-        <span class="badge-text">DENEYAP KART KONSOL YAPILANDIRMASI // YÖNETİM MERKEZİ</span>
+        <span class="badge-text">DENEYAP KART // MERKEZİ YAPILANDIRMA STÜDYOSU</span>
         <span class="badge-version">v2.5.0</span>
       </div>
-      <h2 class="studio-hero-title">Sistem Yapılandırması &amp; Kalibrasyon</h2>
-      <p class="studio-hero-subtitle">
-        Deneyap Kart NVS flash bellek sicili, MQTT bulut köprüsü parametreleri, güvenlik rolleri ve olay bildirim ağ geçidi.
+      <p class="studio-intro-sub">
+        NVS flash kayıtları, MQTT bulut köprüsü, telemetri eşikleri ve alarm kuralları.
       </p>
-
-      <!-- Sıvı Baloncuk Efektli Kategori Sekmeleri (Liquid Spring Tabs) -->
-      <nav class="settings-nav-tabs" aria-label="Ayar kategorileri">
-        <div class="tab-liquid-bubble" aria-hidden="true"></div>
-        <a href="#accountCard" class="studio-tab active">Hesap &amp; Roller</a>
-        <a href="#connSection" class="studio-tab">Cihaz &amp; MQTT</a>
-        <a href="#thresholdSection" class="studio-tab">Donanım Eşikleri</a>
-        <a href="#telegramSection" class="studio-tab">Telegram Alarmı</a>
-        <a href="#themeSection" class="studio-tab">Görünüm &amp; Tema</a>
-        <a href="#backupSection" class="studio-tab">Yedek &amp; Bakım</a>
-      </nav>
-    </header>
+    </div>
 
     <!-- ==================== HESAP & ROLLER ==================== -->
     <section class="config-panel" aria-labelledby="h-acc" id="accountCard">
