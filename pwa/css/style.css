@@ -36,6 +36,13 @@
   --radius-sm: 12px;
   --radius-xs: 8px;
   --nav-h: 64px;
+
+  /* Derinlik & Parallaks Değişkenleri (Hardware Tiering & GPU Katmanları) */
+  --depth-backdrop: -0.15;
+  --depth-card: 0.04;
+  --depth-text: 6px;
+  --scroll-offset: 0px;
+  --scroll-lerp: 0px;
 }
 
 [data-theme="dark"] {
@@ -124,22 +131,36 @@ h1, h2, h3, p, dl, dd, dt {
 /* ---------------------------------------------------- Parallax & Arka Plan */
 .cyber-backdrop {
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
+  inset: 0;
   pointer-events: none;
   z-index: 0;
   overflow: hidden;
+  contain: strict;
 }
 
 .parallax-grid {
   position: absolute;
-  top: -20%; left: -20%; right: -20%; bottom: -20%;
+  inset: -25%;
   background-size: 40px 40px;
   background-image:
     linear-gradient(to right, var(--border-subtle) 1px, transparent 1px),
     linear-gradient(to bottom, var(--border-subtle) 1px, transparent 1px);
   opacity: 0.6;
-  transform: translateY(calc(var(--scroll-y, 0px) * -0.15));
   will-change: transform;
+  contain: paint layout;
+}
+
+[data-tier="ultra"] .parallax-grid {
+  transform: translate3d(0, calc(var(--scroll-offset, 0px) * var(--depth-backdrop, -0.15)), 0);
+}
+
+[data-tier="mid"] .parallax-grid {
+  transform: translate3d(0, calc(var(--scroll-offset, 0px) * -0.08), 0);
+}
+
+[data-tier="low"] .parallax-grid {
+  transform: none !important;
+  will-change: auto !important;
 }
 
 .ambient-orb {
@@ -150,18 +171,40 @@ h1, h2, h3, p, dl, dd, dt {
   opacity: 0.15;
   pointer-events: none;
   will-change: transform;
+  contain: paint layout;
 }
 
-.orb-primary {
+[data-tier="ultra"] .orb-primary {
   top: -120px; right: -80px;
   background: var(--primary);
-  transform: translateY(calc(var(--scroll-y, 0px) * 0.2));
+  transform: translate3d(0, calc(var(--scroll-offset, 0px) * 0.22), 0);
 }
 
-.orb-accent {
+[data-tier="ultra"] .orb-accent {
   bottom: 10%; left: -140px;
   background: var(--accent);
-  transform: translateY(calc(var(--scroll-y, 0px) * -0.1));
+  transform: translate3d(0, calc(var(--scroll-offset, 0px) * -0.12), 0);
+}
+
+[data-tier="mid"] .ambient-orb {
+  filter: blur(60px);
+  opacity: 0.10;
+}
+
+[data-tier="mid"] .orb-primary {
+  top: -120px; right: -80px;
+  background: var(--primary);
+  transform: translate3d(0, calc(var(--scroll-offset, 0px) * 0.11), 0);
+}
+
+[data-tier="mid"] .orb-accent {
+  bottom: 10%; left: -140px;
+  background: var(--accent);
+  transform: translate3d(0, calc(var(--scroll-offset, 0px) * -0.06), 0);
+}
+
+[data-tier="low"] .ambient-orb {
+  display: none !important;
 }
 
 /* Ekran Kenarı Ambient Alarm Parlaması */
@@ -747,6 +790,58 @@ main {
   overflow: hidden;
   transition: border-color 0.25s ease, box-shadow 0.25s ease;
   animation: cardFadeIn 0.5s ease-out backwards;
+  contain: paint layout;
+  will-change: transform;
+}
+
+[data-tier="ultra"] .card {
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  box-shadow: var(--shadow-lg), var(--card-rim), 0 0 25px rgba(0, 0, 0, 0.2);
+  transform-style: preserve-3d;
+}
+
+[data-tier="mid"] .card {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: var(--shadow), var(--card-rim);
+}
+
+[data-tier="low"] .card {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background: var(--surface-alt) !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25) !important;
+  transform: none !important;
+  animation: none !important;
+  transition: none !important;
+  contain: none !important;
+  will-change: auto !important;
+}
+
+/* Floating HUD Tipografi & Mikro-Hareket Katmanı (--depth-text) */
+[data-tier="ultra"] .card-head h2,
+[data-tier="ultra"] .card .value,
+[data-tier="ultra"] .card .chip,
+[data-tier="ultra"] .w-head,
+[data-tier="ultra"] .brand h1 {
+  transform: translate3d(0, 0, var(--depth-text, 6px));
+  transform-style: preserve-3d;
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+[data-tier="mid"] .card-head h2,
+[data-tier="mid"] .card .value,
+[data-tier="mid"] .card .chip {
+  transform: translate3d(0, 0, 2px);
+}
+
+[data-tier="low"] .card-head h2,
+[data-tier="low"] .card .value,
+[data-tier="low"] .card .chip,
+[data-tier="low"] .w-head,
+[data-tier="low"] .brand h1 {
+  transform: none !important;
 }
 
 .card:nth-child(1) { animation-delay: 0.05s; }
@@ -770,6 +865,11 @@ main {
   transition: transform 0.15s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.2s ease;
 }
 
+[data-tier="low"] .tilt-card {
+  transform: none !important;
+  transition: none !important;
+}
+
 .tilt-card:hover {
   border-color: var(--border-bright);
   box-shadow: var(--shadow-lg), var(--card-rim);
@@ -783,6 +883,10 @@ main {
   transition: opacity 0.3s ease;
   border-radius: inherit;
   z-index: 2;
+}
+
+[data-tier="low"] .card-glare {
+  display: none !important;
 }
 
 .card-head {
@@ -2056,8 +2160,255 @@ main {
 .lg-alarm  { color: var(--danger); }
 .lg-ariza  { color: var(--warn); }
 
-@media (max-width: 520px) {
-  .hist-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* --------------------------------- Siber Güvenlik Acil Durum (Danger) Deformasyonu */
+[data-tier="ultra"] #gasCard[data-state="danger"],
+[data-tier="mid"] #gasCard[data-state="danger"] {
+  position: relative;
+  border-color: var(--danger);
+  box-shadow: 0 0 32px var(--danger-glow), inset 0 0 16px rgba(239, 68, 68, 0.2);
+  animation: dangerBorderPulse 2s infinite ease-in-out;
+}
+
+/* CRT Tarama Çizgisi Hissi (Ultra & Mid) */
+[data-tier="ultra"] #gasCard[data-state="danger"]::after,
+[data-tier="mid"] #gasCard[data-state="danger"]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(
+    rgba(18, 16, 16, 0) 50%, 
+    rgba(0, 0, 0, 0.22) 50%
+  ), linear-gradient(
+    90deg,
+    rgba(255, 0, 0, 0.04),
+    rgba(0, 255, 0, 0.02),
+    rgba(0, 0, 255, 0.04)
+  );
+  background-size: 100% 3px, 6px 100%;
+  mix-blend-mode: overlay;
+  opacity: 0.8;
+  z-index: 4;
+}
+
+/* Kromatik Sapma (RGB Split Glitch) — Sadece Ultra */
+[data-tier="ultra"] #gasCard[data-state="danger"]::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: calc(var(--radius) + 2px);
+  pointer-events: none;
+  background: linear-gradient(90deg, #ff0055, #00ffff, #ff0055);
+  opacity: 0.55;
+  filter: blur(3px);
+  z-index: -1;
+  animation: chromaticGlitch 2.6s infinite cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+@keyframes chromaticGlitch {
+  0%, 88%, 100% {
+    transform: translate(0, 0);
+    opacity: 0.35;
+  }
+  89% {
+    transform: translate(-3px, 1px);
+    opacity: 0.75;
+    filter: blur(2px) hue-rotate(90deg);
+  }
+  91% {
+    transform: translate(3px, -1px);
+    opacity: 0.8;
+    filter: blur(1px) hue-rotate(-90deg);
+  }
+  93% {
+    transform: translate(-1px, -2px);
+    opacity: 0.5;
+  }
+  95% {
+    transform: translate(0, 0);
+    opacity: 0.35;
+  }
+}
+
+@keyframes dangerBorderPulse {
+  0%, 100% {
+    border-color: var(--danger);
+    box-shadow: 0 0 25px var(--danger-glow);
+  }
+  50% {
+    border-color: #ff6b6b;
+    box-shadow: 0 0 45px rgba(239, 68, 68, 0.55), inset 0 0 22px rgba(239, 68, 68, 0.3);
+  }
+}
+
+[data-tier="low"] #gasCard[data-state="danger"] {
+  border-color: var(--danger) !important;
+  box-shadow: 0 0 8px var(--danger-glow) !important;
+  animation: none !important;
+}
+[data-tier="low"] #gasCard[data-state="danger"]::after,
+[data-tier="low"] #gasCard[data-state="danger"]::before {
+  display: none !important;
+}
+
+/* --------------------------------- Canlı Telemetri Çizgisi (DSP Osiloskop) */
+.telemetry-bar {
+  margin: 0.85rem 0 0.5rem;
+  padding: 0.65rem 0.8rem;
+  background: var(--surface-alt);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  position: relative;
+}
+
+[data-tier="ultra"] .telemetry-bar {
+  background: rgba(13, 19, 33, 0.65);
+  border-color: rgba(56, 189, 248, 0.22);
+  box-shadow: inset 0 0 16px rgba(0, 0, 0, 0.35);
+}
+
+.telemetry-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.4rem;
+}
+
+.telemetry-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.68rem;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+
+.telemetry-title svg {
+  width: 12px; height: 12px;
+  color: var(--primary);
+}
+
+.telemetry-delta {
+  font-size: 0.7rem;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  color: var(--primary);
+  border: 1px solid color-mix(in srgb, var(--primary) 25%, transparent);
+  transition: all 0.25s ease;
+}
+
+.telemetry-delta[data-state="warn"] {
+  background: color-mix(in srgb, var(--warn) 15%, transparent);
+  color: var(--warn);
+  border-color: color-mix(in srgb, var(--warn) 40%, transparent);
+  box-shadow: 0 0 8px var(--warn-glow);
+}
+
+.telemetry-scope {
+  position: relative;
+  width: 100%;
+  height: 42px;
+  background: rgba(0, 0, 0, 0.22);
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border-subtle);
+  overflow: hidden;
+}
+
+.telemetry-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.scope-grid-center {
+  stroke: var(--border-subtle);
+  stroke-dasharray: 4 4;
+  stroke-width: 1;
+}
+
+.scope-path {
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.scope-raw {
+  stroke: var(--warn);
+  stroke-opacity: 0.75;
+  stroke-dasharray: 3 3;
+}
+
+.scope-filt {
+  stroke: var(--primary);
+  stroke-width: 2.2;
+  filter: drop-shadow(0 0 4px var(--primary-glow));
+}
+
+.telemetry-legend {
+  position: absolute;
+  bottom: 3px;
+  right: 6px;
+  display: flex;
+  gap: 0.6rem;
+  font-size: 0.62rem;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.tl-raw, .tl-filt {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.tl-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.tl-raw { color: var(--warn); }
+.tl-filt { color: var(--primary); }
+
+/* --------------------------------- Donanım Seviyesi (Hardware Tier) Global Kuralları */
+[data-tier="low"] .card,
+[data-tier="low"] .widget,
+[data-tier="low"] .banner,
+[data-tier="low"] header,
+[data-tier="low"] .bottom-nav,
+[data-tier="low"] .pwa-install-btn,
+[data-tier="low"] .icon-btn,
+[data-tier="low"] .telemetry-bar {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+[data-tier="low"] .btn,
+[data-tier="low"] .icon-btn {
+  transition: none !important;
+  transform: none !important;
+}
+
+[data-tier="low"] .btn:hover,
+[data-tier="low"] .btn:active,
+[data-tier="low"] .icon-btn:hover,
+[data-tier="low"] .icon-btn:active {
+  transform: none !important;
+}
+
+[data-tier="low"] #ambientGlow,
+[data-tier="low"] .telemetry-bar,
+[data-tier="low"] .ambient-orb {
+  display: none !important;
 }
 
 /* --------------------------------------------------------------- Responsive */

@@ -276,6 +276,8 @@
     if (reducedMotion) return;
 
     const cards = document.querySelectorAll('.tilt-card');
+    if (!cards.length) return;
+
     cards.forEach(function (card) {
       let glare = card.querySelector('.card-glare');
       if (!glare) {
@@ -285,17 +287,24 @@
       }
 
       function onMouseMove(e) {
+        if (App.Tier && App.Tier.isLow()) return;
+
+        const isUltra = App.Tier && App.Tier.isUltra();
+        const maxDeg = isUltra ? 6.0 : 2.5;
+        const zDepth = isUltra ? 8 : 2;
+        const glareOpacity = isUltra ? 0.16 : 0.08;
+
         const rect = card.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
         const px = (x / rect.width) * 2 - 1;   // -1 .. +1
         const py = (y / rect.height) * 2 - 1;  // -1 .. +1
 
-        const rotX = -py * 5;  // max 5 derece
-        const rotY = px * 5;
+        const rotX = -py * maxDeg;
+        const rotY = px * maxDeg;
 
-        card.style.transform = 'perspective(900px) rotateX(' + rotX.toFixed(2) + 'deg) rotateY(' + rotY.toFixed(2) + 'deg) translateZ(4px)';
-        glare.style.background = 'radial-gradient(circle at ' + (x) + 'px ' + (y) + 'px, rgba(255,255,255,0.14) 0%, transparent 60%)';
+        card.style.transform = 'perspective(900px) rotateX(' + rotX.toFixed(2) + 'deg) rotateY(' + rotY.toFixed(2) + 'deg) translateZ(' + zDepth + 'px)';
+        glare.style.background = 'radial-gradient(circle at ' + x + 'px ' + y + 'px, rgba(255,255,255,' + glareOpacity + ') 0%, transparent 60%)';
         glare.style.opacity = '1';
       }
 
@@ -307,24 +316,93 @@
       card.addEventListener('mousemove', onMouseMove, { passive: true });
       card.addEventListener('mouseleave', onMouseLeave, { passive: true });
     });
+
+    if (App.Tier && App.Tier.onChange) {
+      App.Tier.onChange(function (tier) {
+        if (tier === 'low') {
+          cards.forEach(function (card) {
+            card.style.transform = 'none';
+            const glare = card.querySelector('.card-glare');
+            if (glare) glare.style.opacity = '0';
+          });
+        }
+      });
+    }
   };
 
   App.initParallax = function () {
     const reducedMotion = window.matchMedia &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reducedMotion) return;
 
-    let ticking = false;
-    window.addEventListener('scroll', function () {
-      if (!ticking) {
-        window.requestAnimationFrame(function () {
-          const sy = window.scrollY || window.pageYOffset || 0;
-          document.documentElement.style.setProperty('--scroll-y', sy + 'px');
-          ticking = false;
-        });
-        ticking = true;
+    let targetY = 0;
+    let currentY = 0;
+    let rafId = null;
+    let scrollAttached = false;
+
+    function lerpLoop() {
+      const diff = targetY - currentY;
+      const tier = (App.Tier && App.Tier.get()) || 'mid';
+      const lerpFactor = tier === 'ultra' ? 0.09 : 0.16;
+
+      if (Math.abs(diff) < 0.25) {
+        currentY = targetY;
+        rafId = null; /* rAF döngüsünü uyut — hareketsizken CPU yükü sıfır */
+      } else {
+        currentY += diff * lerpFactor;
+        rafId = requestAnimationFrame(lerpLoop);
       }
-    }, { passive: true });
+
+      const offsetVal = currentY.toFixed(1) + 'px';
+      const lerpVal = (currentY * 0.45).toFixed(1) + 'px';
+
+      document.documentElement.style.setProperty('--scroll-offset', offsetVal);
+      document.documentElement.style.setProperty('--scroll-lerp', lerpVal);
+      document.documentElement.style.setProperty('--scroll-y', offsetVal);
+    }
+
+    function onScroll() {
+      targetY = window.scrollY || window.pageYOffset || 0;
+      if (!rafId) {
+        rafId = requestAnimationFrame(lerpLoop);
+      }
+    }
+
+    function attach() {
+      if (scrollAttached) return;
+      window.addEventListener('scroll', onScroll, { passive: true });
+      scrollAttached = true;
+      onScroll();
+    }
+
+    function detach() {
+      if (!scrollAttached) return;
+      window.removeEventListener('scroll', onScroll);
+      scrollAttached = false;
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+      document.documentElement.style.removeProperty('--scroll-offset');
+      document.documentElement.style.removeProperty('--scroll-lerp');
+      document.documentElement.style.removeProperty('--scroll-y');
+    }
+
+    const initialTier = (App.Tier && App.Tier.get()) || 'mid';
+    if (!reducedMotion && initialTier !== 'low') {
+      attach();
+    } else {
+      detach();
+    }
+
+    if (App.Tier && App.Tier.onChange) {
+      App.Tier.onChange(function (tier) {
+        if (tier === 'low' || reducedMotion) {
+          detach();
+        } else {
+          attach();
+        }
+      });
+    }
   };
 
   App.initRipple = function () {

@@ -28,6 +28,7 @@ const PRECACHE = [
   './settings.html',
   './css/style.css',
   './js/config.js',
+  './js/tier.js',
   './js/api.js',
   './js/mqtt.js',
   './js/app.js',

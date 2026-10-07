@@ -35,6 +35,51 @@
 
   /* ------------------------------------------------------------ Yardımcılar */
 
+  /* Canlı Telemetri DSP Dalga Tamponu */
+  const telemetryHistory = {
+    raw: [],
+    filt: [],
+    maxPoints: 16
+  };
+
+  function updateTelemetryWave(rawVal, filtVal) {
+    telemetryHistory.raw.push(rawVal);
+    telemetryHistory.filt.push(filtVal);
+    if (telemetryHistory.raw.length > telemetryHistory.maxPoints) {
+      telemetryHistory.raw.shift();
+      telemetryHistory.filt.shift();
+    }
+
+    const rawPath = $('gasRawWave');
+    const filtPath = $('gasFiltWave');
+    if (!rawPath || !filtPath) return;
+
+    const count = telemetryHistory.raw.length;
+    if (count < 2) return;
+
+    let min = Infinity, max = -Infinity;
+    for (let i = 0; i < count; i++) {
+      if (telemetryHistory.raw[i] < min) min = telemetryHistory.raw[i];
+      if (telemetryHistory.filt[i] < min) min = telemetryHistory.filt[i];
+      if (telemetryHistory.raw[i] > max) max = telemetryHistory.raw[i];
+      if (telemetryHistory.filt[i] > max) max = telemetryHistory.filt[i];
+    }
+    const span = Math.max(16, max - min);
+    const mid = (max + min) / 2;
+    const stepX = 320 / (count - 1);
+
+    let dRaw = '', dFilt = '';
+    for (let i = 0; i < count; i++) {
+      const x = (i * stepX).toFixed(1);
+      const yRaw = (20 - ((telemetryHistory.raw[i] - mid) / span) * 15).toFixed(1);
+      const yFilt = (20 - ((telemetryHistory.filt[i] - mid) / span) * 15).toFixed(1);
+      dRaw += (i === 0 ? 'M' : 'L') + x + ',' + yRaw + ' ';
+      dFilt += (i === 0 ? 'M' : 'L') + x + ',' + yFilt + ' ';
+    }
+    rawPath.setAttribute('d', dRaw.trim());
+    filtPath.setAttribute('d', dFilt.trim());
+  }
+
   function clampPct(val, max) {
     const m = max || App.GAS_FS_MAX;
     return Math.max(0, Math.min(100, (Number(val) || 0) / m * 100));
@@ -73,9 +118,26 @@
     const dangerTh = (data && typeof data.gasDanger === 'number') ? data.gasDanger : Number(s.gasDanger);
 
     setText('gasPpm', ppm.toLocaleString('tr-TR'));
-    const rawTxt = 'ham: ' + (Number(data.gasRaw) || 0) + (data.gasFiltered !== undefined ? ' · filtre: ' + data.gasFiltered : '');
+    const rawVal = Number(data.gasRaw) || 0;
+    const filtVal = (data.gasFiltered !== undefined) ? Number(data.gasFiltered) : rawVal;
+    const rawTxt = 'ham: ' + rawVal + (data.gasFiltered !== undefined ? ' · filtre: ' + filtVal : '');
     setText('gasRaw', rawTxt);
     setText('gasBase', 'taban: ' + (Number(data.gasBase) || 0));
+
+    /* Canlı Telemetri Osiloskop & DSP Delta Rozeti */
+    const diff = Math.abs(rawVal - filtVal);
+    const deltaBadge = $('gasDeltaBadge');
+    if (deltaBadge) {
+      deltaBadge.textContent = 'Δ ' + diff.toFixed(0) + ' PPM';
+      if (diff > 25) {
+        deltaBadge.setAttribute('data-state', 'warn');
+      } else {
+        deltaBadge.removeAttribute('data-state');
+      }
+    }
+    if (!App.Tier || !App.Tier.isLow()) {
+      updateTelemetryWave(rawVal, filtVal);
+    }
 
     const card = $('gasCard');
     if (card) card.setAttribute('data-state', state);
