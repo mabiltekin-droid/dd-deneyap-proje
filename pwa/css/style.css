@@ -862,7 +862,8 @@ main {
 
 .tilt-card {
   transform-style: preserve-3d;
-  transition: transform 0.15s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.2s ease;
+  transition: box-shadow 0.25s ease, border-color 0.25s ease;
+  will-change: transform;
 }
 
 [data-tier="low"] .tilt-card {
@@ -2526,8 +2527,16 @@ main {
   border-radius: 2px;
 }
 
-.header-nav .nav-item:hover::after {
-  width: 60%;
+.header-nav .nav-item:hover::after,
+.header-nav .nav-item.active::after {
+  width: 75%;
+}
+
+.header-nav .nav-item.active {
+  color: var(--primary);
+  background: rgba(56, 189, 248, 0.12);
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.25);
+  font-weight: 700;
 }
 
 @media (max-width: 860px) {
@@ -2833,7 +2842,11 @@ main {
 }
 
 .section-badge-header {
-  margin-bottom: 2.2rem;
+  margin-bottom: 2.5rem;
+  position: relative;
+  padding-left: 1.25rem;
+  border-left: 3px solid var(--primary);
+  box-shadow: -4px 0 15px rgba(56, 189, 248, 0.2);
 }
 
 .sec-tag {

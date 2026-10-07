@@ -1,9 +1,10 @@
 /* ==========================================================================
    parallax.js — GSAP + Lenis Katmanlı Parallax & Donanım Profili Yöneticisi
-   - 4 Katmanlı Parallax Hero Deneyimi (GSAP ScrollTrigger)
-   - Lenis Yumuşak Kaydırma (Smooth Inertia Scroll) + GSAP Ticker Senkronizasyonu
+   - Sinematik 4 Katmanlı Hero Parallax Sahnesi (Derinlik, Açı, Ölçek & Odak)
+   - Buton & Navigasyon Bağlantılarında Akıcı İnertia ScrollTo Entegrasyonu
+   - Bölümler Arası Derinlik & ScrollSpy Aktif Navigasyon Senkronizasyonu
    - Donanım Kademelerine Duyarlı Adaptasyon (ultra | mid | low)
-   - Tehlike Anında Sinematik HUD / CRT Efekti Yönetimi
+   - Sinematik CRT / RGB Kromatik Sapma Tehdit Efektleri
    ========================================================================== */
 
 (function () {
@@ -40,15 +41,15 @@
     try {
       var isUltra = (tier === 'ultra');
       lenisInstance = new window.Lenis({
-        duration: isUltra ? 1.2 : 0.7,
+        duration: isUltra ? 1.4 : 0.85,
         easing: function (t) {
           return Math.min(1, 1.001 - Math.pow(2, -10 * t));
         },
         orientation: 'vertical',
         gestureOrientation: 'vertical',
         smoothWheel: true,
-        wheelMultiplier: isUltra ? 1.0 : 0.85,
-        touchMultiplier: 1.2
+        wheelMultiplier: isUltra ? 1.05 : 0.9,
+        touchMultiplier: 1.25
       });
 
       if (window.ScrollTrigger) {
@@ -62,7 +63,77 @@
     }
   }
 
-  /* ------------------------------------------- GSAP ScrollTrigger Parallax */
+  /* ------------------------------------------- Buton & Bağlantı ScrollTo Motoru */
+
+  function scrollToElement(target, hash) {
+    if (!target) return;
+
+    var headerHeight = 70;
+    var isUltra = getTier() === 'ultra';
+    var duration = isUltra ? 1.5 : 1.1;
+
+    if (lenisInstance && getTier() !== 'low' && !isReducedMotion()) {
+      lenisInstance.scrollTo(target, {
+        offset: -headerHeight,
+        duration: duration,
+        easing: function (t) {
+          return Math.min(1, 1.001 - Math.pow(2, -10 * t));
+        }
+      });
+    } else {
+      var targetPos = target.getBoundingClientRect().top + (window.pageYOffset || window.scrollY || 0) - headerHeight;
+      window.scrollTo({
+        top: Math.max(0, targetPos),
+        behavior: isReducedMotion() ? 'auto' : 'smooth'
+      });
+    }
+
+    if (hash && window.history && window.history.pushState) {
+      window.history.pushState(null, '', hash);
+    }
+
+    updateActiveNavLink(hash);
+  }
+
+  function updateActiveNavLink(targetId) {
+    if (!targetId) return;
+    var id = targetId.replace(/^#/, '');
+    var navLinks = document.querySelectorAll('.header-nav .nav-item');
+    navLinks.forEach(function (link) {
+      var href = link.getAttribute('href') || '';
+      if (href === '#' + id || (id === '' && href === '#hero')) {
+        link.classList.add('active');
+      } else {
+        link.classList.remove('active');
+      }
+    });
+  }
+
+  function setupSmoothAnchorNavigation() {
+    document.addEventListener('click', function (e) {
+      var link = e.target.closest('a[href^="#"], [data-scroll-to]');
+      if (!link) return;
+
+      var href = link.getAttribute('href') || link.getAttribute('data-scroll-to');
+      if (!href || href === '#' || href.indexOf('#') !== 0) return;
+
+      var targetEl = document.querySelector(href);
+      if (!targetEl) return;
+
+      e.preventDefault();
+
+      if (window.App.sound && window.App.sound.click) {
+        window.App.sound.click();
+      }
+      if (window.App.haptic) {
+        window.App.haptic(20);
+      }
+
+      scrollToElement(targetEl, href);
+    });
+  }
+
+  /* --------------------------------- Sinematik GSAP ScrollTrigger & Parallax */
 
   function cleanupParallax() {
     if (scrollTriggers.length) {
@@ -84,8 +155,16 @@
       var layers = hero.querySelectorAll('[data-parallax-layer]');
       layers.forEach(function (layer) {
         layer.style.transform = '';
+        layer.style.opacity = '';
+        layer.style.filter = '';
       });
     }
+
+    var sections = document.querySelectorAll('.scrolly-section');
+    sections.forEach(function (sec) {
+      sec.style.transform = '';
+      sec.style.opacity = '';
+    });
   }
 
   function initParallax(tier) {
@@ -118,66 +197,154 @@
         window.gsap.ticker.lagSmoothing(0);
       }
 
-      /* Katman Hız Katsayıları (yPercent) */
-      var speeds = {
-        '1': 70, // Derinlik / Siber Izgara katmanı
-        '2': 55, // Atmosferik Partikül / Nebula katmanı
-        '3': 40, // Ana Başlık / HUD Metinleri
-        '4': 10  // Ön Plan Şematik Silüet / Çerçeve
-      };
-
       var isUltra = (tier === 'ultra');
-      var layers = hero.querySelectorAll('[data-parallax-layer]');
 
-      layers.forEach(function (layer) {
-        var layerIndex = layer.getAttribute('data-parallax-layer');
+      /* 1. SİNEMATİK 4-KATMANLI HERO PARALLAX KOREOGRAFİSİ */
+      var layer1 = hero.querySelector('[data-parallax-layer="1"]');
+      var layer2 = hero.querySelector('[data-parallax-layer="2"]');
+      var layer3 = hero.querySelector('[data-parallax-layer="3"]');
+      var layer4 = hero.querySelector('[data-parallax-layer="4"]');
 
-        /* Mid profilde yalnızca katman 1 ve 3 hareket etsin (GPU optimizasyonu) */
-        if (!isUltra && layerIndex !== '1' && layerIndex !== '3') {
-          layer.style.transform = 'none';
-          return;
-        }
-
-        var speed = speeds[layerIndex] || 30;
-        var yVal = isUltra ? speed : speed * 0.65;
-
-        var anim = window.gsap.to(layer, {
-          yPercent: yVal,
+      /* Katman 1: Siber Izgara ve Derin Ufuk (Açı, ölçek ve derin iniş) */
+      if (layer1) {
+        var tl1 = window.gsap.to(layer1, {
+          yPercent: isUltra ? 80 : 50,
+          scale: isUltra ? 1.18 : 1.05,
+          opacity: isUltra ? 0.25 : 0.5,
           ease: 'none',
           scrollTrigger: {
             trigger: hero,
             start: 'top top',
             end: 'bottom top',
-            scrub: true,
+            scrub: isUltra ? 1.2 : 0.8,
             invalidateOnRefresh: true
           }
         });
+        if (tl1 && tl1.scrollTrigger) scrollTriggers.push(tl1.scrollTrigger);
+      }
 
-        if (anim && anim.scrollTrigger) {
-          scrollTriggers.push(anim.scrollTrigger);
+      /* Katman 2: Atmosferik Partikül / Nebula (Yanal kayma, rotasyon ve genişleme) */
+      if (layer2) {
+        if (isUltra) {
+          var tl2 = window.gsap.to(layer2, {
+            yPercent: 60,
+            xPercent: -8,
+            rotation: 12,
+            scale: 1.25,
+            opacity: 0.15,
+            ease: 'none',
+            scrollTrigger: {
+              trigger: hero,
+              start: 'top top',
+              end: 'bottom top',
+              scrub: 1.5,
+              invalidateOnRefresh: true
+            }
+          });
+          if (tl2 && tl2.scrollTrigger) scrollTriggers.push(tl2.scrollTrigger);
+        } else {
+          layer2.style.transform = 'none';
+        }
+      }
+
+      /* Katman 3: Ana Tipografi & HUD Başlık Metinleri (Sinematik sönme & derinlik odağı) */
+      if (layer3) {
+        var tl3 = window.gsap.to(layer3, {
+          yPercent: isUltra ? 45 : 30,
+          scale: isUltra ? 0.92 : 0.96,
+          opacity: 0,
+          filter: isUltra ? 'blur(6px)' : 'none',
+          ease: 'power1.out',
+          scrollTrigger: {
+            trigger: hero,
+            start: 'top top',
+            end: '65% top',
+            scrub: isUltra ? 1.0 : 0.6,
+            invalidateOnRefresh: true
+          }
+        });
+        if (tl3 && tl3.scrollTrigger) scrollTriggers.push(tl3.scrollTrigger);
+      }
+
+      /* Katman 4: Ön Plan Şematik Silüet (Ağır mimari çerçeve) */
+      if (layer4) {
+        if (isUltra) {
+          var tl4 = window.gsap.to(layer4, {
+            yPercent: 12,
+            scale: 1.06,
+            opacity: 0.4,
+            ease: 'none',
+            scrollTrigger: {
+              trigger: hero,
+              start: 'top top',
+              end: 'bottom top',
+              scrub: 1.8,
+              invalidateOnRefresh: true
+            }
+          });
+          if (tl4 && tl4.scrollTrigger) scrollTriggers.push(tl4.scrollTrigger);
+        } else {
+          layer4.style.transform = 'none';
+        }
+      }
+
+      /* 2. BÖLÜM GEÇİŞLERİ & DERİNLİK AÇILMA EFEKTLERİ */
+      var sections = document.querySelectorAll('.scrolly-section');
+      sections.forEach(function (sec) {
+        var header = sec.querySelector('.section-badge-header');
+        if (header) {
+          var hAnim = window.gsap.fromTo(header,
+            { opacity: 0, y: isUltra ? 40 : 20 },
+            {
+              opacity: 1,
+              y: 0,
+              duration: isUltra ? 1.0 : 0.7,
+              ease: 'power3.out',
+              scrollTrigger: {
+                trigger: sec,
+                start: 'top 85%',
+                toggleActions: 'play none none none'
+              }
+            }
+          );
+          if (hAnim && hAnim.scrollTrigger) scrollTriggers.push(hAnim.scrollTrigger);
+        }
+
+        var cards = sec.querySelectorAll('.card');
+        if (cards.length) {
+          var cAnim = window.gsap.fromTo(cards,
+            { opacity: 0, y: isUltra ? 50 : 25 },
+            {
+              opacity: 1,
+              y: 0,
+              duration: isUltra ? 1.1 : 0.75,
+              stagger: 0.15,
+              ease: 'power3.out',
+              scrollTrigger: {
+                trigger: sec,
+                start: 'top 75%',
+                toggleActions: 'play none none none'
+              }
+            }
+          );
+          if (cAnim && cAnim.scrollTrigger) scrollTriggers.push(cAnim.scrollTrigger);
         }
       });
 
-      /* Bölüm Geçiş Reveal Efektleri (Ultra & Mid) */
-      var sections = document.querySelectorAll('.scrolly-section');
-      sections.forEach(function (sec) {
-        var anim = window.gsap.fromTo(sec, 
-          { opacity: isUltra ? 0.85 : 0.95, y: isUltra ? 30 : 15 },
-          {
-            opacity: 1,
-            y: 0,
-            duration: 0.8,
-            ease: 'power2.out',
-            scrollTrigger: {
-              trigger: sec,
-              start: 'top 85%',
-              toggleActions: 'play none none none'
-            }
-          }
-        );
-        if (anim && anim.scrollTrigger) {
-          scrollTriggers.push(anim.scrollTrigger);
-        }
+      /* 3. SCROLLSPY (Aktif Navigasyon Bölüm Takibi) */
+      var spyTargets = ['hero', 'telemetry', 'command-center', 'analytics', 'diagnostics'];
+      spyTargets.forEach(function (secId) {
+        var el = document.getElementById(secId);
+        if (!el) return;
+
+        var st = window.ScrollTrigger.create({
+          trigger: el,
+          start: 'top 45%',
+          end: 'bottom 45%',
+          onEnter: function () { updateActiveNavLink('#' + secId); },
+          onEnterBack: function () { updateActiveNavLink('#' + secId); }
+        });
+        scrollTriggers.push(st);
       });
 
     } catch (err) {
@@ -210,6 +377,8 @@
   function init() {
     if (isInitialized) return;
     isInitialized = true;
+
+    setupSmoothAnchorNavigation();
 
     var currentTier = getTier();
     applyTier(currentTier);
@@ -254,6 +423,10 @@
     },
     reinit: function () {
       applyTier(getTier());
-    }
+    },
+    scrollTo: scrollToElement,
+    getLenis: function () { return lenisInstance; }
   };
+
+  window.App.scrollTo = scrollToElement;
 })();

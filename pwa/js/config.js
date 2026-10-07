@@ -286,33 +286,63 @@
         card.appendChild(glare);
       }
 
-      function onMouseMove(e) {
-        if (App.Tier && App.Tier.isLow()) return;
+      let ticking = false;
+      let lastX = 0, lastY = 0;
+
+      function updateCardTransform() {
+        if (App.Tier && App.Tier.isLow()) {
+          ticking = false;
+          return;
+        }
 
         const isUltra = App.Tier && App.Tier.isUltra();
-        const maxDeg = isUltra ? 6.0 : 2.5;
+        const maxDeg = isUltra ? 5.5 : 2.5;
         const zDepth = isUltra ? 8 : 2;
         const glareOpacity = isUltra ? 0.16 : 0.08;
 
         const rect = card.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        const px = (x / rect.width) * 2 - 1;   // -1 .. +1
-        const py = (y / rect.height) * 2 - 1;  // -1 .. +1
+        const px = ((lastX - rect.left) / rect.width) * 2 - 1;   // -1 .. +1
+        const py = ((lastY - rect.top) / rect.height) * 2 - 1;  // -1 .. +1
 
         const rotX = -py * maxDeg;
         const rotY = px * maxDeg;
 
+        card.style.transition = 'none';
         card.style.transform = 'perspective(900px) rotateX(' + rotX.toFixed(2) + 'deg) rotateY(' + rotY.toFixed(2) + 'deg) translateZ(' + zDepth + 'px)';
-        glare.style.background = 'radial-gradient(circle at ' + x + 'px ' + y + 'px, rgba(255,255,255,' + glareOpacity + ') 0%, transparent 60%)';
+        glare.style.background = 'radial-gradient(circle at ' + (lastX - rect.left) + 'px ' + (lastY - rect.top) + 'px, rgba(255,255,255,' + glareOpacity + ') 0%, transparent 60%)';
         glare.style.opacity = '1';
+
+        ticking = false;
+      }
+
+      function onMouseMove(e) {
+        if (App.Tier && App.Tier.isLow()) return;
+        lastX = e.clientX;
+        lastY = e.clientY;
+
+        if (!ticking) {
+          ticking = true;
+          requestAnimationFrame(updateCardTransform);
+        }
+      }
+
+      function onMouseEnter(e) {
+        if (App.Tier && App.Tier.isLow()) return;
+        card.style.transition = 'none';
+        lastX = e.clientX;
+        lastY = e.clientY;
+        updateCardTransform();
       }
 
       function onMouseLeave() {
+        ticking = false;
+        card.style.transition = 'transform 0.55s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease';
         card.style.transform = 'perspective(900px) rotateX(0deg) rotateY(0deg) translateZ(0)';
+        glare.style.transition = 'opacity 0.4s ease';
         glare.style.opacity = '0';
       }
 
+      card.addEventListener('mouseenter', onMouseEnter, { passive: true });
       card.addEventListener('mousemove', onMouseMove, { passive: true });
       card.addEventListener('mouseleave', onMouseLeave, { passive: true });
     });
