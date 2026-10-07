@@ -3,6 +3,13 @@
    Saf CSS3, Cam Morfizm (Glassmorphism), GPU Hızlandırmalı Animasyonlar
    ========================================================================== */
 
+/* ------------------------------------------------------------- [hidden] Temeli */
+/* Tarayıcının varsayılan [hidden] kuralı (display:none) yalnızca user-agent
+   sayfasında geçerlidir; .banner{display:flex} gibi herhangi bir yazar kuralı
+   onu ezer. Sonuç: JS elemanı gizlese bile ekranda kalıyordu (kurulum banner'ı,
+   .field, .btn, toast...). Artık [hidden] her koşulda kazanır. */
+[hidden] { display: none !important; }
+
 /* ------------------------------------------------------------- Tema Değişkenleri */
 :root {
   --font-main: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;

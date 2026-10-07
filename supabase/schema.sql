@@ -13,22 +13,7 @@
 --       uyarısını gösterir. Çalıştırıldıktan sonra otomatik etkinleşir.
 -- ==========================================================================
 
--- ---------- 1) Yardımcı: mevcut kullanıcının rolü --------------------------
-create or replace function public.current_role_of(_uid uuid)
-returns text
-language sql stable security definer set search_path = public
-as $$
-  select role from public.profiles where id = _uid;
-$$;
-
-create or replace function public.is_admin()
-returns boolean
-language sql stable security definer set search_path = public
-as $$
-  select coalesce(public.current_role_of(auth.uid()), 'user') = 'admin';
-$$;
-
--- ---------- 2) Tablolar ----------------------------------------------------
+-- ---------- 1) Tablolar ----------------------------------------------------
 create table if not exists public.profiles (
   id           uuid primary key references auth.users(id) on delete cascade,
   email        text not null,
@@ -49,6 +34,24 @@ create table if not exists public.device_bindings (
 
 create index if not exists device_bindings_owner_idx
   on public.device_bindings (owner_id);
+
+-- ---------- 2) Yardımcı: mevcut kullanıcının rolü --------------------------
+--  TABLOLARDAN SONRA tanımlanmalı: PostgreSQL "language sql" fonksiyonun
+--  gövdesini oluştururken tablo adını çözer; profiles henüz yoksa
+--  "relation public.profiles does not exists" (42P01) hatası verir.
+create or replace function public.current_role_of(_uid uuid)
+returns text
+language sql stable security definer set search_path = public
+as $$
+  select role from public.profiles where id = _uid;
+$$;
+
+create or replace function public.is_admin()
+returns boolean
+language sql stable security definer set search_path = public
+as $$
+  select coalesce(public.current_role_of(auth.uid()), 'user') = 'admin';
+$$;
 
 -- ---------- 3) Kayıt sırasında profil satırı otomatik oluşsun --------------
 --  İlk kaydolan kullanıcı ADMIN olur. (Sistemi kuran sizsiniz; sonra

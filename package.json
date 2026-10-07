@@ -12,7 +12,8 @@
   },
   "engines": {
     "node": ">=18"
+  },
+  "devDependencies": {
+    "mqtt": "^5.16.0"
   }
 }
-
-
