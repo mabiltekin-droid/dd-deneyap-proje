@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="tr" data-theme="dark">
+<html lang="tr" data-theme="dark" data-tier="mid">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Ayarlar · Deneyap Ev Koruma</title>
-  <meta name="description" content="ESP32 ev güvenlik konsolu ayar ve kalibrasyon paneli">
+  <title>Ayarlar Stüdyosu · Deneyap Ev Koruma</title>
+  <meta name="description" content="Deneyap Kart ev güvenlik konsolu ayar ve kalibrasyon paneli (SCADA Configuration Suite)">
   <meta name="theme-color" content="#0a0d14" id="metaThemeColor">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Ev Koruma">
@@ -28,7 +28,7 @@
     })();
   </script>
 </head>
-<body>
+<body class="mission-control-body settings-studio-body">
   <!-- Ambient Ekran Kenarı Işığı -->
   <div id="ambientGlow" aria-hidden="true"></div>
 
@@ -41,7 +41,8 @@
 
   <a class="skip-link" href="#main">İçeriğe geç</a>
 
-  <header>
+  <!-- Cam-morfik SCADA Üst Bar -->
+  <header class="glass-header">
     <div class="brand">
       <div class="brand-icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -49,7 +50,7 @@
           <circle cx="12" cy="12" r="3"/>
         </svg>
       </div>
-      <div>
+      <div class="brand-meta">
         <h1>Sistem Ayarları</h1>
         <p class="conn" id="conn" data-state="connecting">
           <span class="dot" aria-hidden="true"></span>
@@ -57,6 +58,16 @@
         </p>
       </div>
     </div>
+
+    <!-- Görev Kontrolüne Dönüş Butonu -->
+    <a href="./index.html" class="nav-back-pill" title="Görev Kontrol Merkezine Dön">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <line x1="19" y1="12" x2="5" y2="12"></line>
+        <polyline points="12 19 5 12 12 5"></polyline>
+      </svg>
+      <span>Görev Kontrolü</span>
+    </a>
+
     <div class="header-actions">
       <button id="pwaInstallBtn" class="pwa-install-btn" type="button" aria-label="Uygulamayı İndir" title="Ev Koruma Uygulamasını Cihazınıza İndirin">
         <svg class="install-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -67,613 +78,652 @@
         <span class="install-text">İndir</span>
       </button>
       <button id="themeToggleBtn" class="sky-pill" type="button" role="switch" aria-label="Tema Değiştir" aria-checked="true">
-      <span class="sky-track">
-        <span class="sky-stars" aria-hidden="true">
-          <span class="star star-1"></span>
-          <span class="star star-2"></span>
-          <span class="star star-3"></span>
-          <span class="star star-4"></span>
-          <span class="star star-5"></span>
-        </span>
-        <span class="sky-clouds" aria-hidden="true">
-          <span class="cloud cloud-1"></span>
-          <span class="cloud cloud-2"></span>
-          <span class="cloud cloud-3"></span>
-        </span>
-        <span class="sky-thumb" aria-hidden="true"></span>
-        <span class="celestial-body sky-sun" aria-hidden="true">
-          <span class="sun-orb"></span>
-        </span>
-        <span class="celestial-body sky-moon" aria-hidden="true">
-          <span class="moon-orb">
-            <span class="moon-crater cr-1"></span>
-            <span class="moon-crater cr-2"></span>
+        <span class="sky-track">
+          <span class="sky-stars" aria-hidden="true">
+            <span class="star star-1"></span>
+            <span class="star star-2"></span>
+            <span class="star star-3"></span>
+            <span class="star star-4"></span>
+            <span class="star star-5"></span>
+          </span>
+          <span class="sky-clouds" aria-hidden="true">
+            <span class="cloud cloud-1"></span>
+            <span class="cloud cloud-2"></span>
+            <span class="cloud cloud-3"></span>
+          </span>
+          <span class="sky-thumb" aria-hidden="true"></span>
+          <span class="celestial-body sky-sun" aria-hidden="true">
+            <span class="sun-orb"></span>
+          </span>
+          <span class="celestial-body sky-moon" aria-hidden="true">
+            <span class="moon-orb">
+              <span class="moon-crater cr-1"></span>
+              <span class="moon-crater cr-2"></span>
+            </span>
           </span>
         </span>
-      </span>
-    </button>
+      </button>
     </div>
   </header>
 
-  <main id="main">
+  <main id="main" class="settings-studio-main">
+
+    <!-- Sinematik Stüdyo Başlığı -->
+    <header class="settings-studio-hero">
+      <div class="hero-badge">
+        <span class="badge-pulse"></span>
+        <span class="badge-text">DENEYAP KART KONSOL YAPILANDIRMASI // YÖNETİM MERKEZİ</span>
+        <span class="badge-version">v2.5.0</span>
+      </div>
+      <h2 class="studio-hero-title">Sistem Yapılandırması &amp; Kalibrasyon</h2>
+      <p class="studio-hero-subtitle">
+        Deneyap Kart NVS flash bellek sicili, MQTT bulut köprüsü parametreleri, güvenlik rolleri ve olay bildirim ağ geçidi.
+      </p>
+
+      <!-- Sıvı Baloncuk Efektli Kategori Sekmeleri (Liquid Spring Tabs) -->
+      <nav class="settings-nav-tabs" aria-label="Ayar kategorileri">
+        <div class="tab-liquid-bubble" aria-hidden="true"></div>
+        <a href="#accountCard" class="studio-tab active">Hesap &amp; Roller</a>
+        <a href="#connSection" class="studio-tab">Cihaz &amp; MQTT</a>
+        <a href="#thresholdSection" class="studio-tab">Donanım Eşikleri</a>
+        <a href="#telegramSection" class="studio-tab">Telegram Alarmı</a>
+        <a href="#themeSection" class="studio-tab">Görünüm &amp; Tema</a>
+        <a href="#backupSection" class="studio-tab">Yedek &amp; Bakım</a>
+      </nav>
+    </header>
 
     <!-- ==================== HESAP & ROLLER ==================== -->
-    <section class="card tilt-card" aria-labelledby="h-acc" id="accountCard">
-      <div class="card-head">
-        <div class="head-title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-          </svg>
-          <h2 id="h-acc">Hesap &amp; Roller</h2>
-        </div>
-        <span class="chip" id="authChip" data-state="unknown">-</span>
-      </div>
-
-      <div class="banner" id="authSetupBanner" hidden>
-        <strong>Veritabanı şeması henüz yüklenmedi.</strong><br>
-        <code>dd-deneyap-proje/supabase/schema.sql</code> dosyasını Supabase Dashboard →
-        SQL Editor'a yapıştırıp çalıştırın; bu bölüm kendiliğinden etkinleşir.
-      </div>
-
-      <!-- ---- Giriş yapılmadı ---- -->
-      <div id="authSignedOut">
-        <div class="field">
-          <label for="authEmail">E-posta</label>
-          <input type="email" id="authEmail" autocomplete="username"
-                 inputmode="email" spellcheck="false" placeholder="ornek@eposta.com">
-        </div>
-        <div class="field">
-          <label for="authPass">Şifre</label>
-          <input type="password" id="authPass" autocomplete="current-password"
-                 placeholder="••••••••">
-        </div>
-        <div class="btn-row">
-          <button class="btn primary" type="button" id="authSignInBtn">Giriş Yap</button>
-          <button class="btn" type="button" id="authSignUpBtn">Yeni Hesap Aç</button>
-        </div>
-        <p class="help">
-          <strong>İlk açılan hesap otomatik ADMIN olur</strong> ve kendi menüsünden
-          yeni (admin dahil) hesap açabilir. Cihaz bir hesaba bağlandığında yalnızca
-          sahibi veya admin kumanda gönderebilir.
-        </p>
-      </div>
-
-      <!-- ---- Giriş yapıldı ---- -->
-      <div id="authSignedIn" hidden>
-        <div class="kv">
-          <div class="kv-item">
-            <span class="kv-icon">E-posta</span>
-            <span class="kv-data" id="authUserEmail">—</span>
-          </div>
-          <div class="kv-item">
-            <span class="kv-icon">Rol</span>
-            <span class="kv-data" id="authUserRole">—</span>
-          </div>
-          <div class="kv-item">
-            <span class="kv-icon">Kayıt</span>
-            <span class="kv-data" id="authUserSince">—</span>
-          </div>
-        </div>
-        <div class="btn-row">
-          <button class="btn ghost" type="button" id="authSignOutBtn">Çıkış Yap</button>
-        </div>
-      </div>
-
-      <p class="result" id="authResult" role="status" aria-live="polite"></p>
-
-      <!-- ---- Admin menüsü ---- -->
-      <div id="adminPanel" hidden>
-        <div class="admin-head">
-          <span class="chip" data-state="normal">ADMIN</span>
-          <span>Kayıtlı hesaplar</span>
-        </div>
-
-        <div class="user-table-wrap">
-          <table class="user-table" id="userTable">
-            <thead>
-              <tr><th>E-posta</th><th>Rol</th><th>Kayıt</th><th></th></tr>
-            </thead>
-            <tbody id="userTableBody">
-              <tr><td colspan="4">Yükleniyor…</td></tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="admin-create">
-          <div class="field">
-            <label for="newUserEmail">Yeni hesap — e-posta</label>
-            <input type="email" id="newUserEmail" autocomplete="off"
-                   inputmode="email" spellcheck="false" placeholder="ornek@eposta.com">
-          </div>
-          <div class="field">
-            <label for="newUserPass">Yeni hesap — şifre</label>
-            <input type="password" id="newUserPass" autocomplete="new-password"
-                   placeholder="en az 6 karakter">
-          </div>
-          <div class="field">
-            <label for="newUserRole">Rol</label>
-            <select id="newUserRole">
-              <option value="user">Kullanıcı — yalnız kendi cihazları</option>
-              <option value="admin">Admin — tüm cihazlar + hesap yönetimi</option>
-            </select>
-          </div>
-          <div class="btn-row">
-            <button class="btn primary" type="button" id="createUserBtn">Hesabı Oluştur</button>
-          </div>
-          <p class="help">
-            Supabase'de e-posta doğrulaması açıksa kullanıcı, kendisine gelen
-            bağlantıya tıklamadan giriş yapamaz. Hesap açmak <em>kayıt</em>
-            (signup) ile yapılır; admin'in başkasının şifresini görme/değiştirme
-            yetkisi yoktur.
-          </p>
-        </div>
-      </div>
-
-      <!-- ---- Cihaz Mülkiyeti ---- -->
-      <div id="deviceOwnership" hidden>
-        <div class="admin-head">
-          <span class="chip" data-state="normal">CİHAZ</span>
-          <span>Mülkiyet &amp; Erişim</span>
-        </div>
-        <div class="kv">
-          <div class="kv-item">
-            <span class="kv-icon">Kimlik</span>
-            <span class="kv-data" id="ownDevId">—</span>
-          </div>
-          <div class="kv-item">
-            <span class="kv-icon">Sahibi</span>
-            <span class="kv-data" id="ownOwner">—</span>
-          </div>
-          <div class="kv-item">
-            <span class="kv-icon">Kumanda</span>
-            <span class="kv-data" id="ownState">—</span>
-          </div>
-        </div>
-        <div class="btn-row">
-          <button class="btn primary" type="button" id="claimBtn">Cihazı Hesabıma Bağla</button>
-          <button class="btn ghost" type="button" id="releaseBtn">Bağlantıyı Kaldır</button>
-        </div>
-        <p class="help">
-          Cihaz kimliği kartın efuse MAC'inden üretilir ve açılıştan açılışa
-          değişmez. Bir kez bağlandığında <strong>yalnızca sahibi veya admin</strong>
-          kumanda gönderebilir; bağlanmamış bir cihazı ilk bağlayan kişi sahibi olur.
-        </p>
-      </div>
-    </section>
-
-    <form id="settingsForm" novalidate>
-
-      <!-- Cihaz Bağlantısı -->
-      <section class="card tilt-card" aria-labelledby="h-conn">
-        <div class="card-head">
+    <section class="config-panel" aria-labelledby="h-acc" id="accountCard">
+      <div class="panel-header">
+        <span class="panel-tag">[CONFIG 01 // KİMLİK &amp; ERİŞİM KONTROLÜ]</span>
+        <div class="panel-title-row">
           <div class="head-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <circle cx="12" cy="12" r="10"/>
-              <line x1="2" y1="12" x2="22" y2="12"/>
-              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-            </svg>
-            <h2 id="h-conn">Cihaz Bağlantı Noktası</h2>
-          </div>
-        </div>
-
-        <div class="field">
-          <label for="transport">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49M7.76 16.24a6 6 0 0 1 0-8.49M19.07 4.93a10 10 0 0 1 0 14.14M4.93 19.07a10 10 0 0 1 0-14.14"/>
-            </svg>
-            Bağlantı Yöntemi
-          </label>
-          <select id="transport" name="transport">
-            <option value="mqtt">Bulut Rölesi (MQTT) — Önerilen</option>
-            <option value="http">Doğrudan IP (WiFi / AP modu)</option>
-          </select>
-          <p class="help">
-            <strong>Bulut Rölesi:</strong> bu panel <code>https://</code> üzerinden açılırsa tarayıcı
-            <code>http://192.168.x.x</code> adresine erişimi "mixed content" diye engeller. MQTT yönteminde
-            cihaz bir yayıncıya (broker) bağlanır, panel de aynı yayıncıya WebSocket ile bağlanır — iki taraf da
-            <code>https</code> konuşur. Cihazın internete çıkması yeterlidir; yönlendirici ayarı gerekmez.
-            <br><strong>Doğrudan IP:</strong> yalnızca cihazın kendi ağına bağlandığınızda
-            (<code>http://192.168.4.1</code>) çalışır.
-          </p>
-        </div>
-
-        <div class="field">
-          <label for="mqttUrl">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M4 7a16 16 0 0 1 16 0M7 11a11 11 0 0 1 10 0M10 15a6 6 0 0 1 4 0"/><circle cx="12" cy="19" r="1"/>
-            </svg>
-            Yayıncı (MQTT Broker) WebSocket Adresi
-          </label>
-          <input type="url" id="mqttUrl" name="mqttUrl" inputmode="url" autocomplete="off"
-                 placeholder="wss://broker.emqx.io:8084/mqtt" spellcheck="false">
-          <p class="help">
-            Bu adres, firmware'deki <code>MQTT_HOST</code> ve <code>MQTT_PORT</code> ile eşleşmelidir.
-            Ücretsiz ve hesap gerektirmeyen test yayıncısı:
-            <code>wss://broker.emqx.io:8084/mqtt</code>
-          </p>
-        </div>
-
-        <div class="field">
-          <label for="mqttTopic">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M4 4h16v16H4z"/><path d="M4 9h16M9 4v16"/>
-            </svg>
-            Cihaz Konu Adı
-          </label>
-          <input type="text" id="mqttTopic" name="mqttTopic" autocomplete="off"
-                 placeholder="deneyap/kart1" spellcheck="false">
-          <p class="help">
-            Firmware'deki <code>MQTT_TOPIC</code> ile <strong>birebir aynı</strong> olmalı.
-            Birden fazla kart kullanıyorsanız her kartın konusu farklı olsun.
-          </p>
-        </div>
-
-        <div class="field">
-          <label for="mqttUser">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
             </svg>
-            Yayıncı Kullanıcı Adı <span class="opt">opsiyonel</span>
-          </label>
-          <input type="text" id="mqttUser" name="mqttUser" autocomplete="off"
-                 placeholder="anonim yayıncılarda boş bırakın" spellcheck="false">
+            <h3 id="h-acc">Hesap &amp; Roller</h3>
+          </div>
+          <span class="chip" id="authChip" data-state="unknown">-</span>
+        </div>
+        <p class="panel-desc">Kullanıcı kimlik doğrulama, yönetici yetkileri ve Deneyap Kart cihaz mülkiyet denetimi.</p>
+      </div>
+
+      <div class="panel-content">
+        <div class="banner" id="authSetupBanner" hidden>
+          <strong>Veritabanı şeması henüz yüklenmedi.</strong><br>
+          <code>dd-deneyap-proje/supabase/schema.sql</code> dosyasını Supabase Dashboard →
+          SQL Editor'a yapıştırıp çalıştırın; bu bölüm kendiliğinden etkinleşir.
         </div>
 
-        <div class="field">
-          <label for="mqttPass">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-            </svg>
-            Yayıncı Şifresi <span class="opt">opsiyonel</span>
-          </label>
-          <input type="password" id="mqttPass" name="mqttPass" autocomplete="off"
-                 placeholder="yayıncı şifresi">
-        </div>
-
-        <div class="field">
-          <label for="host">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/>
-              <line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/>
-            </svg>
-            Cihaz IP / Ana Makine Adresi
-          </label>
-          <input type="url" id="host" name="host" inputmode="url" autocomplete="url"
-                 placeholder="http://192.168.4.1 (yalnızca Doğrudan IP yöntemi)" spellcheck="false">
+        <!-- ---- Giriş yapılmadı ---- -->
+        <div id="authSignedOut">
+          <div class="field-row">
+            <div class="field">
+              <label for="authEmail">E-posta</label>
+              <input type="email" id="authEmail" autocomplete="username"
+                     inputmode="email" spellcheck="false" placeholder="ornek@eposta.com">
+            </div>
+            <div class="field">
+              <label for="authPass">Şifre</label>
+              <input type="password" id="authPass" autocomplete="current-password"
+                     placeholder="••••••••">
+            </div>
+          </div>
+          <div class="btn-row">
+            <button class="btn primary" type="button" id="authSignInBtn">Giriş Yap</button>
+            <button class="btn" type="button" id="authSignUpBtn">Yeni Hesap Aç</button>
+          </div>
           <p class="help">
-            Yalnızca <strong>Doğrudan IP</strong> yönteminde kullanılır. Bulut Rölesi seçiliyken
-            bu alanı boş bırakabilirsiniz.
+            <strong>İlk açılan hesap otomatik ADMIN olur</strong> ve kendi menüsünden
+            yeni (admin dahil) hesap açabilir. Cihaz bir hesaba bağlandığında yalnızca
+            sahibi veya admin kumanda gönderebilir.
           </p>
         </div>
 
-        <div class="field">
-          <label for="token">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-            </svg>
-            Güvenlik Token'ı (API_TOKEN) <span class="opt">opsiyonel</span>
-          </label>
-          <input type="password" id="token" name="token" autocomplete="off"
-                 placeholder="config.h dosyasında API_TOKEN tanımlıysa girin">
-        </div>
-
-        <div class="field">
-          <label for="pollMs">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-            </svg>
-            Telemetri Yenileme Sıklığı
-          </label>
-          <select id="pollMs" name="pollMs">
-            <option value="1000">1 saniye (Yüksek Hassasiyet)</option>
-            <option value="2000">2 saniye (Önerilen Denge)</option>
-            <option value="5000">5 saniye (Düşük Trafik)</option>
-            <option value="10000">10 saniye (Pil Tasarrufu)</option>
-          </select>
-        </div>
-
-        <div class="btn-row">
-          <button class="btn" type="button" id="testBtn">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-            </svg>
-            Bağlantıyı & Gecikmeyi Test Et
-          </button>
-        </div>
-        <p class="result" id="testResult" role="status" aria-live="polite"></p>
-      </section>
-
-      <!-- Eşikler & Donanım Otomasyonu (NVS Senkronizasyonu) -->
-      <section class="card tilt-card" aria-labelledby="h-th">
-        <div class="card-head">
-          <div class="head-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-            </svg>
-            <h2 id="h-th">Donanım Eşikleri & Otomasyon</h2>
+        <!-- ---- Giriş yapıldı ---- -->
+        <div id="authSignedIn" hidden>
+          <div class="kv">
+            <div class="kv-item">
+              <span class="kv-icon">E-posta</span>
+              <span class="kv-data" id="authUserEmail">—</span>
+            </div>
+            <div class="kv-item">
+              <span class="kv-icon">Rol</span>
+              <span class="kv-data" id="authUserRole">—</span>
+            </div>
+            <div class="kv-item">
+              <span class="kv-icon">Kayıt</span>
+              <span class="kv-data" id="authUserSince">—</span>
+            </div>
+          </div>
+          <div class="btn-row">
+            <button class="btn ghost" type="button" id="authSignOutBtn">Çıkış Yap</button>
           </div>
         </div>
 
-        <div class="field-row">
-          <div class="field">
-            <label for="gasWarn">
+        <p class="result" id="authResult" role="status" aria-live="polite"></p>
+
+        <!-- ---- Admin menüsü ---- -->
+        <div id="adminPanel" hidden>
+          <div class="admin-head">
+            <span class="chip" data-state="normal">ADMIN</span>
+            <span>Kayıtlı Kullanıcı Hesapları</span>
+          </div>
+
+          <div class="user-table-wrap">
+            <table class="user-table" id="userTable">
+              <thead>
+                <tr><th>E-posta</th><th>Rol</th><th>Kayıt</th><th>İşlem</th></tr>
+              </thead>
+              <tbody id="userTableBody">
+                <tr><td colspan="4">Yükleniyor…</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="admin-create">
+            <div class="field-row">
+              <div class="field">
+                <label for="newUserEmail">Yeni Hesap — E-posta</label>
+                <input type="email" id="newUserEmail" autocomplete="off"
+                       inputmode="email" spellcheck="false" placeholder="ornek@eposta.com">
+              </div>
+              <div class="field">
+                <label for="newUserPass">Yeni Hesap — Şifre</label>
+                <input type="password" id="newUserPass" autocomplete="new-password"
+                       placeholder="en az 6 karakter">
+              </div>
+            </div>
+            <div class="field">
+              <label for="newUserRole">Rol</label>
+              <select id="newUserRole">
+                <option value="user">Kullanıcı — yalnız kendi cihazları</option>
+                <option value="admin">Admin — tüm cihazlar + hesap yönetimi</option>
+              </select>
+            </div>
+            <div class="btn-row">
+              <button class="btn primary" type="button" id="createUserBtn">Hesabı Oluştur</button>
+            </div>
+            <p class="help">
+              Supabase'de e-posta doğrulaması açıksa kullanıcı, kendisine gelen bağlantıya tıklamadan giriş yapamaz.
+            </p>
+          </div>
+        </div>
+
+        <!-- ---- Cihaz Mülkiyeti ---- -->
+        <div id="deviceOwnership" hidden>
+          <div class="admin-head">
+            <span class="chip" data-state="normal">CİHAZ</span>
+            <span>Mülkiyet &amp; Erişim</span>
+          </div>
+          <div class="kv">
+            <div class="kv-item">
+              <span class="kv-icon">Kimlik</span>
+              <span class="kv-data" id="ownDevId">—</span>
+            </div>
+            <div class="kv-item">
+              <span class="kv-icon">Sahibi</span>
+              <span class="kv-data" id="ownOwner">—</span>
+            </div>
+            <div class="kv-item">
+              <span class="kv-icon">Kumanda</span>
+              <span class="kv-data" id="ownState">—</span>
+            </div>
+          </div>
+          <div class="btn-row">
+            <button class="btn primary" type="button" id="claimBtn">Cihazı Hesabıma Bağla</button>
+            <button class="btn ghost" type="button" id="releaseBtn">Bağlantıyı Kaldır</button>
+          </div>
+          <p class="help">
+            Cihaz kimliği kartın efuse MAC'inden üretilir. Bir kez bağlandığında <strong>yalnızca sahibi veya admin</strong>
+            kumanda gönderebilir; bağlanmamış bir cihazı ilk bağlayan kişi sahibi olur.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- FORM BAŞLANGICI -->
+    <form id="settingsForm" novalidate>
+
+      <!-- ==================== CİHAZ BAĞLANTISI ==================== -->
+      <section class="config-panel" aria-labelledby="h-conn" id="connSection">
+        <div class="panel-header">
+          <span class="panel-tag">[CONFIG 02 // TAŞIYICI &amp; BULUT RÖLESİ]</span>
+          <div class="panel-title-row">
+            <div class="head-title">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="2" y1="12" x2="22" y2="12"/>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
               </svg>
-              Gaz Uyarı Eşiği (PPM)
-            </label>
-            <input type="number" id="gasWarn" name="gasWarn" min="50" max="600" step="10" inputmode="numeric">
+              <h3 id="h-conn">Deneyap Kart Bağlantı Noktası</h3>
+            </div>
           </div>
+          <p class="panel-desc">Deneyap Kart ile tarayıcı arasındaki gerçek zamanlı WebSocket / MQTT iletişim kanalı.</p>
+        </div>
+
+        <div class="panel-content">
           <div class="field">
-            <label for="gasDanger">
+            <label for="transport">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
-                <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                <circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49M7.76 16.24a6 6 0 0 1 0-8.49M19.07 4.93a10 10 0 0 1 0 14.14M4.93 19.07a10 10 0 0 1 0-14.14"/>
               </svg>
-              Gaz Tehlike Eşiği (PPM)
+              Bağlantı Yöntemi
             </label>
-            <input type="number" id="gasDanger" name="gasDanger" min="100" max="1500" step="10" inputmode="numeric">
+            <select id="transport" name="transport">
+              <option value="mqtt">Bulut Rölesi (MQTT) — Önerilen &amp; Güvenli</option>
+              <option value="http">Doğrudan IP (WiFi / AP modu)</option>
+            </select>
+            <p class="help">
+              <strong>Bulut Rölesi (WSS):</strong> HTTPS üzerinden çalışırken tarayıcının Mixed Content engeline takılmaz.
+              Deneyap Kart yayıncıya (broker) bağlanır; yönlendirici/port yönlendirme gerekmez.
+            </p>
           </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label for="mqttUrl">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M4 7a16 16 0 0 1 16 0M7 11a11 11 0 0 1 10 0M10 15a6 6 0 0 1 4 0"/><circle cx="12" cy="19" r="1"/>
+                </svg>
+                Yayıncı (MQTT Broker) WebSocket Adresi
+              </label>
+              <input type="url" id="mqttUrl" name="mqttUrl" inputmode="url" autocomplete="off"
+                     placeholder="wss://broker.emqx.io:8084/mqtt" spellcheck="false">
+              <p class="help">Firmware <code>MQTT_HOST</code> ve <code>MQTT_PORT</code> ile eşleşmelidir.</p>
+            </div>
+
+            <div class="field">
+              <label for="mqttTopic">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M4 4h16v16H4z"/><path d="M4 9h16M9 4v16"/>
+                </svg>
+                Cihaz Konu Adı
+              </label>
+              <input type="text" id="mqttTopic" name="mqttTopic" autocomplete="off"
+                     placeholder="deneyap/kart1" spellcheck="false">
+              <p class="help">Firmware <code>MQTT_TOPIC</code> ile <strong>birebir aynı</strong> olmalıdır.</p>
+            </div>
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label for="mqttUser">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                </svg>
+                Yayıncı Kullanıcı Adı <span class="opt">opsiyonel</span>
+              </label>
+              <input type="text" id="mqttUser" name="mqttUser" autocomplete="off"
+                     placeholder="anonim yayıncılarda boş bırakın" spellcheck="false">
+            </div>
+
+            <div class="field">
+              <label for="mqttPass">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+                Yayıncı Şifresi <span class="opt">opsiyonel</span>
+              </label>
+              <input type="password" id="mqttPass" name="mqttPass" autocomplete="off"
+                     placeholder="yayıncı şifresi">
+            </div>
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label for="host">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/>
+                  <line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/>
+                </svg>
+                Cihaz IP Adresi (Doğrudan HTTP)
+              </label>
+              <input type="url" id="host" name="host" inputmode="url" autocomplete="url"
+                     placeholder="http://192.168.4.1" spellcheck="false">
+            </div>
+
+            <div class="field">
+              <label for="token">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+                API Güvenlik Anahtarı (API_TOKEN) <span class="opt">opsiyonel</span>
+              </label>
+              <input type="password" id="token" name="token" autocomplete="off"
+                     placeholder="config.h dosyasında API_TOKEN varsa girin">
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="pollMs">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+              </svg>
+              Telemetri Sorgu Periyodu
+            </label>
+            <select id="pollMs" name="pollMs">
+              <option value="1000">1 saniye (Yüksek Hassasiyet)</option>
+              <option value="2000">2 saniye (Önerilen Denge)</option>
+              <option value="5000">5 saniye (Düşük Trafik)</option>
+              <option value="10000">10 saniye (Pil Tasarrufu)</option>
+            </select>
+          </div>
+
+          <div class="btn-row">
+            <button class="btn" type="button" id="testBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+              </svg>
+              Bağlantı Hattını &amp; Gecikmeyi Test Et
+            </button>
+          </div>
+          <p class="result" id="testResult" role="status" aria-live="polite"></p>
         </div>
-        <p class="help">
-          Bu eşikler doğrudan ESP32 NVS (Flash) hafızasına yazılır ve donanımın bağımsız çalışmasını yönetir.
-        </p>
-
-        <!-- Yağmur Ters Çevirme -->
-        <label class="switch">
-          <input type="checkbox" id="rainInvert" name="rainInvert">
-          <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
-          <span class="switch-body">
-            <strong>Yağmur Sensörü Polarite Tersleme</strong>
-            <small>Sensör modülü ıslakken düşük analog voltaj veriyorsa bu seçeneği etkinleştirin.</small>
-          </span>
-        </label>
-
-        <!-- Otomatik Müdahale -->
-        <label class="switch">
-          <input type="checkbox" id="autoControl" name="autoControl">
-          <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
-          <span class="switch-body">
-            <strong>Otonom Müdahale & Koruma</strong>
-            <small>Tehlike anında fanı otomatik açar, su motorunu kilitler; yağmur başladığında pencereyi kapatır.</small>
-          </span>
-        </label>
-
-        <!-- Sesli Bildirimler -->
-        <label class="switch">
-          <input type="checkbox" id="soundEnabled" name="soundEnabled">
-          <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
-          <span class="switch-body">
-            <strong>Sesli Uyarılar (Web Audio Sentezleyici)</strong>
-            <small>Buton tıklamalarında, işlem onaylarında ve alarm durumlarında sentetik sesli geri bildirim üretir.</small>
-          </span>
-        </label>
-
-        <!-- Haptik Titreşim -->
-        <label class="switch">
-          <input type="checkbox" id="vibrateEnabled" name="vibrateEnabled">
-          <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
-          <span class="switch-body">
-            <strong>Haptik Titreşim Geri Bildirimi</strong>
-            <small>Destekleyen mobil cihazlarda dokunsal titreşim ile etkileşimi zenginleştirir.</small>
-          </span>
-        </label>
       </section>
 
-      <!-- Telegram Bildirimleri -->
-      <section class="card tilt-card" aria-labelledby="h-tg">
-        <div class="card-head">
-          <div class="head-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M21.5 2.5 11 13"/><path d="M21.5 2.5 15 21.5l-4-8.5-8.5-4z"/>
-            </svg>
-            <h2 id="h-tg">Telegram Bildirimleri</h2>
+      <!-- ==================== EŞİKLER & DONANIM OTOMASYONU ==================== -->
+      <section class="config-panel" aria-labelledby="h-th" id="thresholdSection">
+        <div class="panel-header">
+          <span class="panel-tag">[CONFIG 03 // EŞİKLER &amp; OTONOM KORUMA]</span>
+          <div class="panel-title-row">
+            <div class="head-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+              <h3 id="h-th">Donanım Eşikleri &amp; NVS Flash Otomasyonu</h3>
+            </div>
           </div>
+          <p class="panel-desc">Deneyap Kart kalıcı hafızasına kaydedilen otonom tehlike tetikleyicileri.</p>
         </div>
 
-        <p class="help">
-          <strong>Bu bölüm alarmın kendisi değildir.</strong> Kart; gaz ve su baskını
-          alarmını internet, telefon veya Telegram <em>olmadan da</em> yerelde çalıştırır
-          (buzzer + fan + pompa). Telegram yalnızca olayları telefonunuza düşürür —
-          kapalıysa, token yanlışsa ya da internet kopuksa koruma aynen devam eder.
-        </p>
-
-        <label class="switch">
-          <input type="checkbox" id="tgEnabled" name="tgEnabled">
-          <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
-          <span class="switch-body">
-            <strong>Telegram bildirimlerini aç</strong>
-            <small>Gaz alarmı, gaz uyarısı, su baskını, sensör arızası, açılış ve WiFi dönüşü bildirilir.</small>
-          </span>
-        </label>
-
-        <div class="field">
-          <label for="tgToken">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M21 2 2 9l7 3 3 7z"/><circle cx="17.5" cy="6.5" r="1.5"/>
-            </svg>
-            Bot Token
-          </label>
-          <input type="password" id="tgToken" name="tgToken" autocomplete="off"
-                 spellcheck="false" placeholder="123456789:AA...">
+        <div class="panel-content">
+          <div class="field-row">
+            <div class="field">
+              <label for="gasWarn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                Gaz Uyarı Eşiği (PPM)
+              </label>
+              <input type="number" id="gasWarn" name="gasWarn" min="50" max="600" step="10" inputmode="numeric">
+            </div>
+            <div class="field">
+              <label for="gasDanger">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                Gaz Tehlike Eşiği (PPM)
+              </label>
+              <input type="number" id="gasDanger" name="gasDanger" min="100" max="1500" step="10" inputmode="numeric">
+            </div>
+          </div>
           <p class="help">
-            Telegram'da <code>@BotFather</code>'a <code>/newbot</code> yazın; size verdiği
-            <code>123456789:AA...</code> biçimindeki metni buraya yapıştırın.
-            Token zaten kayıtlıysa <strong>boş bırakın</strong> — değişmez.
+            Bu eşikler doğrudan Deneyap Kart NVS (Flash) hafızasına yazılır ve donanımın bağımsız çalışmasını yönetir.
           </p>
+
+          <div class="switch-grid">
+            <!-- Yağmur Ters Çevirme -->
+            <label class="switch">
+              <input type="checkbox" id="rainInvert" name="rainInvert">
+              <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+              <span class="switch-body">
+                <strong>Yağmur Sensörü Polarite Tersleme</strong>
+                <small>Sensör plakası ıslakken düşük analog sinyal veriyorsa etkinleştirin.</small>
+              </span>
+            </label>
+
+            <!-- Otomatik Müdahale -->
+            <label class="switch">
+              <input type="checkbox" id="autoControl" name="autoControl">
+              <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+              <span class="switch-body">
+                <strong>Otonom Müdahale &amp; Tahliye</strong>
+                <small>Tehlikede fanı otomatik çalıştırır, su motorunu kilitler, yağmurda pencereyi kapatır.</small>
+              </span>
+            </label>
+
+            <!-- Sesli Bildirimler -->
+            <label class="switch">
+              <input type="checkbox" id="soundEnabled" name="soundEnabled">
+              <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+              <span class="switch-body">
+                <strong>Sesli Geri Bildirim (Web Audio)</strong>
+                <small>İşlem onaylarında ve alarmlarda sentetik sesli sinyaller üretir.</small>
+              </span>
+            </label>
+
+            <!-- Haptik Titreşim -->
+            <label class="switch">
+              <input type="checkbox" id="vibrateEnabled" name="vibrateEnabled">
+              <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+              <span class="switch-body">
+                <strong>Haptik Dokunma Titreşimi</strong>
+                <small>Destekleyen mobil cihazlarda dokunsal titreşim geri bildirimi sağlar.</small>
+              </span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== TELEGRAM BİLDİRİMLERİ ==================== -->
+      <section class="config-panel" aria-labelledby="h-tg" id="telegramSection">
+        <div class="panel-header">
+          <span class="panel-tag">[CONFIG 04 // ANLIK TELEGRAM ALARM MOTORU]</span>
+          <div class="panel-title-row">
+            <div class="head-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21.5 2.5 11 13"/><path d="M21.5 2.5 15 21.5l-4-8.5-8.5-4z"/>
+              </svg>
+              <h3 id="h-tg">Telegram Bildirim Ağ Geçidi</h3>
+            </div>
+          </div>
+          <p class="panel-desc">Kritik gaz sızıntısı, su baskını ve donanım arızalarını anlık olarak telefonunuza iletir.</p>
         </div>
 
-        <div class="field">
-          <label for="tgChatId">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-            </svg>
-            Sohbet Kimliği <span class="opt">opsiyonel</span>
-          </label>
-          <input type="text" id="tgChatId" name="tgChatId" inputmode="numeric"
-                 autocomplete="off" spellcheck="false" placeholder="boş bırakılabilir">
+        <div class="panel-content">
           <p class="help">
-            Boş bırakırsanız kart, bota gönderdiğiniz ilk <code>/start</code> mesajından
-            kimliği <strong>otomatik keşfeder</strong> ve NVS'ye yazar. Grup sohbeti için
-            grubun kimliğini girin.
+            <strong>Bağımsız Güvenlik:</strong> Deneyap Kart, gaz ve su baskını anında internet veya Telegram olmasa dahi
+            yerelde siren, fan ve tahliye kilitlerini otomatik devreye sokar.
           </p>
-        </div>
 
-        <div class="btn-row">
-          <button class="btn" type="button" id="tgTestBtn">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/>
-            </svg>
-            Test bildirimi gönder
-          </button>
-          <button class="btn ghost" type="button" id="tgDiscoverBtn">Kimliği yeniden keşfet</button>
-          <button class="btn ghost" type="button" id="tgForgetBtn">Tokenı sil</button>
+          <label class="switch" style="margin-bottom:1.5rem;">
+            <input type="checkbox" id="tgEnabled" name="tgEnabled">
+            <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+            <span class="switch-body">
+              <strong>Telegram Bildirimlerini Etkinleştir</strong>
+              <small>Gaz tehlikesi, sel baskını, sensör arızası ve yeniden başlama olaylarını gönderir.</small>
+            </span>
+          </label>
+
+          <div class="field-row">
+            <div class="field">
+              <label for="tgToken">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M21 2 2 9l7 3 3 7z"/><circle cx="17.5" cy="6.5" r="1.5"/>
+                </svg>
+                Bot Token (BotFather)
+              </label>
+              <input type="password" id="tgToken" name="tgToken" autocomplete="off"
+                     spellcheck="false" placeholder="123456789:AA...">
+              <p class="help">Token kayıtlıysa boş bırakabilirsiniz, mevcut şifre korunur.</p>
+            </div>
+
+            <div class="field">
+              <label for="tgChatId">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+                Sohbet / Grup Kimliği (Chat ID) <span class="opt">opsiyonel</span>
+              </label>
+              <input type="text" id="tgChatId" name="tgChatId" inputmode="numeric"
+                     autocomplete="off" spellcheck="false" placeholder="boş bırakılabilir">
+              <p class="help">Boşsa bota attığınız ilk <code>/start</code> mesajından otomatik keşfedilir.</p>
+            </div>
+          </div>
+
+          <div class="btn-row">
+            <button class="btn" type="button" id="tgTestBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/>
+              </svg>
+              Test Bildirimi Gönder
+            </button>
+            <button class="btn ghost" type="button" id="tgDiscoverBtn">Kimliği Yeniden Keşfet</button>
+            <button class="btn ghost" type="button" id="tgForgetBtn">Token'ı Sil</button>
+          </div>
+          <p class="result" id="tgResult" role="status" aria-live="polite"></p>
         </div>
-        <p class="result" id="tgResult" role="status" aria-live="polite"></p>
       </section>
 
-      <!-- Görsel Tema Seçici (Palette Kartları) -->
-      <section class="card tilt-card" aria-labelledby="h-theme">
-        <div class="card-head">
-          <div class="head-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 0 0 20v-20z"/>
-            </svg>
-            <h2 id="h-theme">Görünüm & Atmosfer</h2>
+      <!-- ==================== GÖRÜNÜM & TEMA ==================== -->
+      <section class="config-panel" aria-labelledby="h-theme" id="themeSection">
+        <div class="panel-header">
+          <span class="panel-tag">[CONFIG 05 // GÖRSEL ATMOSFER &amp; MATRİS]</span>
+          <div class="panel-title-row">
+            <div class="head-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 0 0 20v-20z"/>
+              </svg>
+              <h3 id="h-theme">Görünüm &amp; Renk Atmosferi</h3>
+            </div>
+          </div>
+          <p class="panel-desc">Arayüz renk uzayı, AMOLED derin siyah modu ve sistem kontrastı.</p>
+        </div>
+
+        <div class="panel-content">
+          <div class="theme-cards" role="radiogroup" aria-label="Tema seçimi">
+            <!-- Aydınlık -->
+            <label class="theme-card-option">
+              <input type="radio" name="theme" value="light">
+              <div class="theme-card-box">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+                <div class="theme-preview-palette">
+                  <span class="palette-swatch" style="background:#f0f4f9;"></span>
+                  <span class="palette-swatch" style="background:#0284c7;"></span>
+                  <span class="palette-swatch" style="background:#059669;"></span>
+                </div>
+                <span class="theme-card-title">Aydınlık</span>
+              </div>
+            </label>
+
+            <!-- Karanlık (Cyber Dark) -->
+            <label class="theme-card-option">
+              <input type="radio" name="theme" value="dark">
+              <div class="theme-card-box">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+                <div class="theme-preview-palette">
+                  <span class="palette-swatch" style="background:#0a0d14;"></span>
+                  <span class="palette-swatch" style="background:#38bdf8;"></span>
+                  <span class="palette-swatch" style="background:#10b981;"></span>
+                </div>
+                <span class="theme-card-title">Karanlık (Cyber)</span>
+              </div>
+            </label>
+
+            <!-- AMOLED Gece -->
+            <label class="theme-card-option">
+              <input type="radio" name="theme" value="amoled">
+              <div class="theme-card-box">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4" fill="currentColor"/></svg>
+                <div class="theme-preview-palette">
+                  <span class="palette-swatch" style="background:#000000;"></span>
+                  <span class="palette-swatch" style="background:#00f0ff;"></span>
+                  <span class="palette-swatch" style="background:#00ff88;"></span>
+                </div>
+                <span class="theme-card-title">AMOLED Derin</span>
+              </div>
+            </label>
+
+            <!-- Sistem -->
+            <label class="theme-card-option">
+              <input type="radio" name="theme" value="system">
+              <div class="theme-card-box">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                <div class="theme-preview-palette">
+                  <span class="palette-swatch" style="background:#0a0d14;"></span>
+                  <span class="palette-swatch" style="background:#f0f4f9;"></span>
+                  <span class="palette-swatch" style="background:#38bdf8;"></span>
+                </div>
+                <span class="theme-card-title">İşletim Sistemi</span>
+              </div>
+            </label>
           </div>
         </div>
-
-        <div class="theme-cards" role="radiogroup" aria-label="Tema seçimi">
-          <!-- Aydınlık -->
-          <label class="theme-card-option">
-            <input type="radio" name="theme" value="light">
-            <div class="theme-card-box">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
-              <div class="theme-preview-palette">
-                <span class="palette-swatch" style="background:#f0f4f9;"></span>
-                <span class="palette-swatch" style="background:#0284c7;"></span>
-                <span class="palette-swatch" style="background:#059669;"></span>
-              </div>
-              <span class="theme-card-title">Aydınlık</span>
-            </div>
-          </label>
-
-          <!-- Karanlık (Cyber Dark) -->
-          <label class="theme-card-option">
-            <input type="radio" name="theme" value="dark">
-            <div class="theme-card-box">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
-              <div class="theme-preview-palette">
-                <span class="palette-swatch" style="background:#0a0d14;"></span>
-                <span class="palette-swatch" style="background:#38bdf8;"></span>
-                <span class="palette-swatch" style="background:#10b981;"></span>
-              </div>
-              <span class="theme-card-title">Karanlık</span>
-            </div>
-          </label>
-
-          <!-- AMOLED Gece (Derin Siyah) -->
-          <label class="theme-card-option">
-            <input type="radio" name="theme" value="amoled">
-            <div class="theme-card-box">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4" fill="currentColor"/></svg>
-              <div class="theme-preview-palette">
-                <span class="palette-swatch" style="background:#000000;"></span>
-                <span class="palette-swatch" style="background:#00f0ff;"></span>
-                <span class="palette-swatch" style="background:#00ff88;"></span>
-              </div>
-              <span class="theme-card-title">AMOLED</span>
-            </div>
-          </label>
-
-          <!-- Sistem -->
-          <label class="theme-card-option">
-            <input type="radio" name="theme" value="system">
-            <div class="theme-card-box">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-              <div class="theme-preview-palette">
-                <span class="palette-swatch" style="background:#0a0d14;"></span>
-                <span class="palette-swatch" style="background:#f0f4f9;"></span>
-                <span class="palette-swatch" style="background:#38bdf8;"></span>
-              </div>
-              <span class="theme-card-title">Sistem</span>
-            </div>
-          </label>
-        </div>
       </section>
 
-      <!-- Ayar Yedekleme & Geri Yükleme -->
-      <section class="card tilt-card" aria-labelledby="h-backup">
-        <div class="card-head">
-          <div class="head-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-            <h2 id="h-backup">Ayar Yedekleme & Geri Yükleme</h2>
+      <!-- ==================== YEDEKLEME & BAKIM ==================== -->
+      <section class="config-panel" aria-labelledby="h-backup" id="backupSection">
+        <div class="panel-header">
+          <span class="panel-tag">[CONFIG 06 // YEDEKLEME &amp; FLASH BAKIMI]</span>
+          <div class="panel-title-row">
+            <div class="head-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              <h3 id="h-backup">Ayar Yedekleme &amp; Konsol Bakımı</h3>
+            </div>
+          </div>
+          <p class="panel-desc">Yapılandırmayı JSON olarak dışa aktarın, geri yükleyin veya Service Worker önbelleğini temizleyin.</p>
+        </div>
+
+        <div class="panel-content">
+          <div class="backup-actions">
+            <button class="btn sm" type="button" id="exportBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Ayarları Dışa Aktar (JSON İndir)
+            </button>
+            <button class="btn sm" type="button" id="importBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              Ayarları İçe Aktar (JSON Yükle)
+            </button>
+            <input type="file" id="importFileInput" accept=".json" style="display:none;">
+          </div>
+
+          <div class="maintenance-box" style="margin-top:2rem;">
+            <div class="maint-title-row">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+              </svg>
+              <strong>Konsol Önbellek &amp; Sıfırlama İstasyonu</strong>
+            </div>
+            <div class="btn-row" style="margin-top:1rem;">
+              <button class="btn sm" type="button" id="updateBtn">Yeni Sürümü Denetle</button>
+              <button class="btn sm warn" type="button" id="clearCacheBtn">Önbelleği Temizle</button>
+              <button class="btn sm ghost" type="button" id="resetBtn">Varsayılanlara Sıfırla</button>
+            </div>
+            <p class="result" id="maintResult" role="status" aria-live="polite"></p>
           </div>
         </div>
-        <p class="help">
-          Panel ve cihaz yapılandırmasını tek bir JSON dosyası olarak bilgisayarınıza veya telefonunuza kaydedebilir veya geri yükleyebilirsiniz.
-        </p>
-        <div class="backup-actions">
-          <button class="btn sm" type="button" id="exportBtn">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-            Ayarları Dışa Aktar (JSON İndir)
-          </button>
-          <button class="btn sm" type="button" id="importBtn">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
-            </svg>
-            Ayarları İçe Aktar (JSON Yükle)
-          </button>
-          <input type="file" id="importFileInput" accept=".json" style="display:none;">
-        </div>
       </section>
 
-      <!-- Bakım & Önbellek -->
-      <section class="card tilt-card danger-zone" aria-labelledby="h-maint">
-        <div class="card-head">
-          <div class="head-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
-            </svg>
-            <h2 id="h-maint">Konsol Bakım & Sıfırlama</h2>
-          </div>
-        </div>
-        <p class="help">
-          Panel güncellemeleri Service Worker tarafından denetlenir. En güncel arayüz için önbelleği temizleyebilirsiniz.
-        </p>
-        <div class="btn-row">
-          <button class="btn sm" type="button" id="updateBtn">Yeni Sürümü Kontrol Et</button>
-          <button class="btn sm warn" type="button" id="clearCacheBtn">Önbelleği Temizle</button>
-          <button class="btn sm ghost" type="button" id="resetBtn">Varsayılanlara Sıfırla</button>
-        </div>
-        <p class="result" id="maintResult" role="status" aria-live="polite"></p>
-      </section>
-
-      <div class="form-actions">
-        <button class="btn primary" type="submit">
+      <!-- Sabit Kaydetme Çubuğu -->
+      <div class="studio-actions-bar">
+        <button class="btn primary studio-submit-btn" type="submit">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <polyline points="20 6 9 17 4 12"/>
           </svg>
-          Ayarları Cihaza & Hafızaya Kaydet
+          Ayarları Deneyap Kart'a &amp; Hafızaya Kaydet
         </button>
         <a class="btn ghost" href="./index.html">İptal</a>
       </div>
     </form>
 
-    <p class="card-foot center" style="margin-top:2rem;">
-      Deneyap Ev Koruma Konsolu <span id="appVersion">—</span>
-    </p>
+    <footer class="studio-footer">
+      <p>Deneyap Ev Koruma Konsolu · Sürüm <span id="appVersion">—</span></p>
+    </footer>
   </main>
 
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
-  <!-- Modern Alt Navigasyon (Saf Vektör) -->
+  <!-- Mobil Alt Navigasyon -->
   <nav class="bottom-nav" aria-label="Ana gezinme">
     <a href="./index.html">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -700,8 +750,7 @@
   <script src="./js/vendor/ScrollTrigger.min.js"></script>
   <script src="./js/vendor/lenis.min.js"></script>
 
-  <!-- MQTT taşıması: ESP32'ye https üzerinden ulaşmayı sağlar.
-       Yüklemezse panel otomatik olarak HTTP moduna düşer, sorun çıkmaz. -->
+  <!-- MQTT Taşıması -->
   <script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
 
   <script src="./js/tier.js"></script>

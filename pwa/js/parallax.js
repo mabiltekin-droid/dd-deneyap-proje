@@ -98,7 +98,7 @@
   function updateActiveNavLink(targetId) {
     if (!targetId) return;
     var id = targetId.replace(/^#/, '');
-    var navLinks = document.querySelectorAll('.header-nav .nav-item');
+    var navLinks = document.querySelectorAll('.header-nav .nav-item, .settings-nav-tabs .studio-tab');
     navLinks.forEach(function (link) {
       var href = link.getAttribute('href') || '';
       if (href === '#' + id || (id === '' && href === '#hero')) {
@@ -106,6 +106,85 @@
       } else {
         link.classList.remove('active');
       }
+    });
+
+    document.querySelectorAll('.header-nav, .settings-nav-tabs').forEach(function (nav) {
+      if (typeof nav._syncBubble === 'function') {
+        nav._syncBubble(true);
+      }
+    });
+  }
+
+  /* ------------------------------- Yaylanmalı Sıvı Baloncuk Motoru (Liquid Spring Bubble) */
+
+  function setupLiquidBubbleNav() {
+    var navContainers = document.querySelectorAll('.header-nav, .settings-nav-tabs');
+    navContainers.forEach(function (nav) {
+      var bubble = nav.querySelector('.nav-liquid-bubble, .tab-liquid-bubble');
+      if (!bubble) return;
+
+      var items = nav.querySelectorAll('.nav-item, .studio-tab');
+      if (!items.length) return;
+
+      function moveBubbleTo(target, animate) {
+        if (!target) return;
+        var navRect = nav.getBoundingClientRect();
+        var targetRect = target.getBoundingClientRect();
+
+        var left = targetRect.left - navRect.left + nav.scrollLeft;
+        var top = targetRect.top - navRect.top + nav.scrollTop;
+        var width = targetRect.width;
+        var height = targetRect.height;
+
+        if (!animate || typeof window.gsap === 'undefined' || getTier() === 'low') {
+          bubble.style.transform = 'translate3d(' + left + 'px, ' + top + 'px, 0)';
+          bubble.style.width = width + 'px';
+          bubble.style.height = height + 'px';
+          bubble.style.opacity = '1';
+          return;
+        }
+
+        bubble.style.opacity = '1';
+        window.gsap.to(bubble, {
+          x: left,
+          y: top,
+          width: width,
+          height: height,
+          duration: 0.65,
+          ease: 'elastic.out(1, 0.72)',
+          overwrite: 'auto'
+        });
+      }
+
+      function syncToActive(animate) {
+        var active = nav.querySelector('.active') || items[0];
+        moveBubbleTo(active, animate);
+      }
+
+      items.forEach(function (item) {
+        item.addEventListener('mouseenter', function () {
+          moveBubbleTo(item, true);
+        });
+        item.addEventListener('click', function () {
+          items.forEach(function (i) { i.classList.remove('active'); });
+          item.classList.add('active');
+          moveBubbleTo(item, true);
+        });
+      });
+
+      nav.addEventListener('mouseleave', function () {
+        syncToActive(true);
+      });
+
+      requestAnimationFrame(function () {
+        syncToActive(false);
+      });
+
+      window.addEventListener('resize', function () {
+        syncToActive(false);
+      });
+
+      nav._syncBubble = syncToActive;
     });
   }
 
@@ -379,6 +458,7 @@
     isInitialized = true;
 
     setupSmoothAnchorNavigation();
+    setupLiquidBubbleNav();
 
     var currentTier = getTier();
     applyTier(currentTier);

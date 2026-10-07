@@ -311,7 +311,7 @@
 
       App.sound.chime();
       App.haptic(30);
-      App.toast('Ayarlar ESP32 flash hafızasına ve panele kaydedildi', { kind: 'ok' });
+      App.toast('Ayarlar Deneyap Kart flash hafızasına ve panele kaydedildi', { kind: 'ok' });
       setResult($('testResult'), 'Cihaza ve panele başarıyla kaydedildi.', 'ok');
     } catch (err) {
       console.warn('[ayarlar] Donanıma POST başarısız:', err);
