@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="tr" data-theme="dark">
+<html lang="tr" data-theme="dark" data-tier="mid">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Deneyap Ev Koruma — Cyber-Console</title>
-  <meta name="description" content="ESP32 tabanlı akıllı ev güvenlik ve koruma konsolu">
+  <title>Deneyap Ev Koruma — Görev Kontrol Merkezi</title>
+  <meta name="description" content="ESP32 tabanlı otonom akıllı ev güvenlik ve görev kontrol merkezi (SCADA Web Experience)">
   <meta name="theme-color" content="#0a0d14" id="metaThemeColor">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Ev Koruma">
@@ -13,7 +13,7 @@
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
   <link rel="stylesheet" href="./css/style.css">
   <script>
-    /* FOUC (Flash of Unstyled Content) önleme: tema depodan anında yüklenir */
+    /* FOUC önleme: tema depodan anında yüklenir */
     (function () {
       try {
         var s = JSON.parse(localStorage.getItem('deneyap.settings.v2') || '{}');
@@ -29,9 +29,10 @@
     })();
   </script>
 </head>
-<body>
-  <!-- Ambient Ekran Kenarı Alarm Işığı -->
+<body class="mission-control-body">
+  <!-- Ambient Ekran Kenarı Alarm & CRT Katmanları -->
   <div id="ambientGlow" aria-hidden="true"></div>
+  <div class="crt-overlay" aria-hidden="true"></div>
 
   <!-- Parallaks Derinlik Katmanları -->
   <div class="cyber-backdrop" aria-hidden="true">
@@ -42,7 +43,8 @@
 
   <a class="skip-link" href="#main">İçeriğe geç</a>
 
-  <header>
+  <!-- Cam-morfik Yapışkan SCADA Üst Bar -->
+  <header class="glass-header">
     <div class="brand">
       <div class="brand-icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -50,14 +52,24 @@
           <circle cx="12" cy="11" r="2.5" fill="currentColor"/>
         </svg>
       </div>
-      <div>
-        <h1>Ev Koruma</h1>
+      <div class="brand-meta">
+        <h1>Deneyap Ev Koruma</h1>
         <p class="conn" id="conn" data-state="connecting">
           <span class="dot" aria-hidden="true"></span>
           <span id="connText">Bağlanıyor…</span>
         </p>
       </div>
     </div>
+
+    <!-- Web Sitesi Bölüm Gezintisi (Desktop SCADA Links) -->
+    <nav class="header-nav" aria-label="Bölüm gezintisi">
+      <a href="#hero" class="nav-item">Genel Bakış</a>
+      <a href="#telemetry" class="nav-item">Telemetri</a>
+      <a href="#command-center" class="nav-item">Savunma</a>
+      <a href="#analytics" class="nav-item">Analitik</a>
+      <a href="#diagnostics" class="nav-item">Teşhis</a>
+    </nav>
+
     <div class="header-actions">
       <button id="accountBtn" class="acct-pill" type="button"
               aria-label="Hesap" title="Hesap & Roller"
@@ -76,157 +88,506 @@
         <span class="install-text">İndir</span>
       </button>
       <button id="themeToggleBtn" class="sky-pill" type="button" role="switch" aria-label="Tema Değiştir" aria-checked="true">
-      <span class="sky-track">
-        <span class="sky-stars" aria-hidden="true">
-          <span class="star star-1"></span>
-          <span class="star star-2"></span>
-          <span class="star star-3"></span>
-          <span class="star star-4"></span>
-          <span class="star star-5"></span>
-        </span>
-        <span class="sky-clouds" aria-hidden="true">
-          <span class="cloud cloud-1"></span>
-          <span class="cloud cloud-2"></span>
-          <span class="cloud cloud-3"></span>
-        </span>
-        <span class="sky-thumb" aria-hidden="true"></span>
-        <span class="celestial-body sky-sun" aria-hidden="true">
-          <span class="sun-orb"></span>
-        </span>
-        <span class="celestial-body sky-moon" aria-hidden="true">
-          <span class="moon-orb">
-            <span class="moon-crater cr-1"></span>
-            <span class="moon-crater cr-2"></span>
+        <span class="sky-track">
+          <span class="sky-stars" aria-hidden="true">
+            <span class="star star-1"></span>
+            <span class="star star-2"></span>
+            <span class="star star-3"></span>
+            <span class="star star-4"></span>
+            <span class="star star-5"></span>
+          </span>
+          <span class="sky-clouds" aria-hidden="true">
+            <span class="cloud cloud-1"></span>
+            <span class="cloud cloud-2"></span>
+            <span class="cloud cloud-3"></span>
+          </span>
+          <span class="sky-thumb" aria-hidden="true"></span>
+          <span class="celestial-body sky-sun" aria-hidden="true">
+            <span class="sun-orb"></span>
+          </span>
+          <span class="celestial-body sky-moon" aria-hidden="true">
+            <span class="moon-orb">
+              <span class="moon-crater cr-1"></span>
+              <span class="moon-crater cr-2"></span>
+            </span>
           </span>
         </span>
-      </span>
-    </button>
+      </button>
     </div>
   </header>
 
-  <main id="main">
+  <!-- 1. SİNEMATİK HERO & PARALLAX BÖLÜMÜ -->
+  <section class="hero-section" id="hero" aria-label="Sinematik Başlangıç ve Canlı Hat">
+    <div class="parallax-stage" data-parallax-layers>
+      <!-- Katman 1: Derinlik & Siber Izgara (yPercent: 70) -->
+      <div class="p-layer p-layer-1" data-parallax-layer="1" aria-hidden="true">
+        <div class="hero-cyber-grid"></div>
+        <div class="hero-horizon-glow"></div>
+      </div>
+
+      <!-- Katman 2: Atmosferik Işık & Siber Partiküller (yPercent: 55) -->
+      <div class="p-layer p-layer-2" data-parallax-layer="2" aria-hidden="true">
+        <div class="hero-nebula nebula-1"></div>
+        <div class="hero-nebula nebula-2"></div>
+        <div class="hero-particles"></div>
+      </div>
+
+      <!-- Katman 3: Ana Tipografi & HUD Başlık Metinleri (yPercent: 40) -->
+      <div class="p-layer p-layer-3" data-parallax-layer="3">
+        <div class="hero-hud-content">
+          <div class="hero-badge">
+            <span class="badge-pulse"></span>
+            <span class="badge-text">OTONOM SİBER TEHDİT &amp; ÇEVRE GÜVENLİK HATTI</span>
+            <span class="badge-version">SCADA v2.5</span>
+          </div>
+
+          <h2 class="hero-title">
+            <span class="hero-title-sub">DENEYAP</span>
+            <span class="hero-title-main">EV KORUMA SİSTEMİ</span>
+          </h2>
+
+          <p class="hero-desc">
+            Endüstriyel seviye ESP32 mikrodenetleyici mimarisi, milisaniyelik gaz &amp; duman DSP filtreleme hattı,
+            otonom mekanik tahliye ve güvenli bulut telemetrisi ile tam zamanlı yaşam koruması.
+          </p>
+
+          <div class="hero-cta-group">
+            <a href="#telemetry" class="btn primary hero-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+              </svg>
+              Görev Kontrol Merkezine İn
+            </a>
+            <a href="#command-center" class="btn hero-btn ghost">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="2" y="3" width="20" height="14" rx="2"/>
+                <line x1="8" y1="21" x2="16" y2="21"/>
+                <line x1="12" y1="17" x2="12" y2="21"/>
+              </svg>
+              Savunma Konsolu
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Katman 4: Ön Plan Şematik Silüet & Güvenlik Çerçevesi (yPercent: 10) -->
+      <div class="p-layer p-layer-4" data-parallax-layer="4" aria-hidden="true">
+        <div class="schematic-wrap">
+          <svg class="schematic-svg" viewBox="0 0 1000 480" fill="none" preserveAspectRatio="xMidYMid meet">
+            <!-- Arka Plan Güvenlik Çemberleri -->
+            <circle cx="500" cy="240" r="220" stroke="var(--primary)" stroke-opacity="0.12" stroke-width="1.5" stroke-dasharray="6 8" />
+            <circle cx="500" cy="240" r="160" stroke="var(--primary)" stroke-opacity="0.18" stroke-width="1.5" />
+            <circle cx="500" cy="240" r="90" stroke="var(--accent)" stroke-opacity="0.22" stroke-width="2" />
+
+            <!-- Şematik Mimari Çizgiler (Ev & Koruma Silüeti) -->
+            <path d="M260 380 L260 210 L500 70 L740 210 L740 380 Z" stroke="var(--primary)" stroke-opacity="0.45" stroke-width="2" stroke-linejoin="round"/>
+            <path d="M300 380 L300 230 L500 110 L700 230 L700 380" stroke="var(--primary)" stroke-opacity="0.2" stroke-width="1.2" stroke-dasharray="4 4"/>
+            <!-- Kat Bölüntüleri & Çatı Vektörü -->
+            <line x1="260" y1="260" x2="740" y2="260" stroke="var(--primary)" stroke-opacity="0.25" stroke-width="1.5"/>
+            <!-- Giriş ve Güvenlik Odası -->
+            <rect x="460" y="270" width="80" height="110" stroke="var(--accent)" stroke-opacity="0.5" stroke-width="1.8" rx="4"/>
+            <circle cx="500" cy="325" r="5" fill="var(--accent)" fill-opacity="0.8"/>
+            <!-- Pencere Servosu Hattı -->
+            <rect x="330" y="280" width="70" height="60" stroke="var(--primary)" stroke-opacity="0.4" stroke-width="1.5" rx="3"/>
+            <line x1="365" y1="280" x2="365" y2="340" stroke="var(--primary)" stroke-opacity="0.3"/>
+            <line x1="330" y1="310" x2="400" y2="310" stroke="var(--primary)" stroke-opacity="0.3"/>
+            <!-- Panjur Servosu Hattı -->
+            <rect x="600" y="280" width="70" height="60" stroke="var(--primary)" stroke-opacity="0.4" stroke-width="1.5" rx="3"/>
+            <line x1="600" y1="295" x2="670" y2="295" stroke="var(--primary)" stroke-opacity="0.3"/>
+            <line x1="600" y1="310" x2="670" y2="310" stroke="var(--primary)" stroke-opacity="0.3"/>
+            <line x1="600" y1="325" x2="670" y2="325" stroke="var(--primary)" stroke-opacity="0.3"/>
+
+            <!-- Çatı Baca / Gaz Tahliye Fanı Vektörü -->
+            <path d="M630 145 L630 90 L670 90 L670 170" stroke="var(--primary)" stroke-opacity="0.35" stroke-width="1.5"/>
+            <!-- Sensör Düğümleri & Radar Nabzı -->
+            <circle cx="500" cy="180" r="10" stroke="var(--danger)" stroke-opacity="0.6" stroke-width="2" class="radar-node-pulse" />
+            <circle cx="500" cy="180" r="4" fill="var(--danger)" />
+            <circle cx="365" cy="200" r="8" stroke="var(--accent)" stroke-opacity="0.6" stroke-width="1.8" />
+            <circle cx="365" cy="200" r="3" fill="var(--accent)" />
+            <circle cx="635" cy="200" r="8" stroke="var(--primary)" stroke-opacity="0.6" stroke-width="1.8" />
+            <circle cx="635" cy="200" r="3" fill="var(--primary)" />
+
+            <!-- Radar Tarama Hattı -->
+            <line x1="500" y1="240" x2="720" y2="120" stroke="var(--primary)" stroke-opacity="0.4" stroke-width="1.5" stroke-dasharray="3 3"/>
+            <text x="515" y="185" fill="var(--text-dim)" font-size="11" font-family="var(--font-mono)" letter-spacing="1">MQ2 GAZ SENSÖRÜ</text>
+            <text x="250" y="195" fill="var(--text-dim)" font-size="11" font-family="var(--font-mono)" letter-spacing="1">YAĞMUR DEDEKTÖRÜ</text>
+            <text x="650" y="195" fill="var(--text-dim)" font-size="11" font-family="var(--font-mono)" letter-spacing="1">TAHLİYE KANALI</text>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hero Tabanında Canlı Özet Telemetri HUD Şeridi (widget) -->
+    <div class="hero-telemetry-hud">
+      <section class="widget" id="homeWidget" aria-label="Canlı Sistem Özeti" data-state="unknown">
+        <div class="w-head">
+          <span class="w-dot" aria-hidden="true"></span>
+          <span class="w-state" id="wState">Bağlanıyor…</span>
+          <span class="w-since" id="wSince"></span>
+        </div>
+        <div class="w-items">
+          <div class="w-item">
+            <span class="w-lbl">Gaz Konsantrasyonu</span>
+            <strong id="wGas">—</strong>
+          </div>
+          <div class="w-item">
+            <span class="w-lbl">Yağmur Polaritesi</span>
+            <strong id="wRain">—</strong>
+          </div>
+          <div class="w-item">
+            <span class="w-lbl">Pencere Konumu</span>
+            <strong id="wWindow">—</strong>
+          </div>
+          <div class="w-item">
+            <span class="w-lbl">Son Telemetri</span>
+            <strong id="wAge">—</strong>
+          </div>
+        </div>
+      </section>
+
+      <!-- Scrollytelling Kaydırma Göstergesi -->
+      <a href="#telemetry" class="scroll-cue" aria-label="Aşağı kaydır">
+        <span class="scroll-cue-text">GÖREV KONTROL MERKEZİ</span>
+        <svg class="scroll-cue-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </a>
+    </div>
+  </section>
+
+  <!-- ANA İÇERİK: GENİŞ BANTLI SCROLLYTELLING BÖLÜMLERİ -->
+  <main id="main" class="mission-main">
+    <!-- Kritik Durum Banner'ı -->
     <div id="banner" class="banner" role="status" hidden></div>
 
-    <!-- Ana ekran özeti (widget) — tek bakışta durum.
-         Telefonda uygulama ana ekranına eklendiğinde ilk görülen şerittir. -->
-    <section class="widget" id="homeWidget" aria-label="Ana ekran özeti" data-state="unknown">
-      <div class="w-head">
-        <span class="w-dot" aria-hidden="true"></span>
-        <span class="w-state" id="wState">Bağlanıyor…</span>
-        <span class="w-since" id="wSince"></span>
+    <!-- 2. CANLI GÜVENLİK & TELEMETRİ VİTRİNİ -->
+    <section class="scrolly-section telemetry-section" id="telemetry" aria-label="Canlı Sensör ve Telemetri Vitrini">
+      <div class="section-badge-header">
+        <span class="sec-tag">[01 // TELEMETRİ &amp; TEHDİT TESPİTİ]</span>
+        <h2 class="sec-title">Canlı Güvenlik &amp; Telemetri Vitrini</h2>
+        <p class="sec-subtitle">Gaz, duman, hava kalitesi ve yağmur sensörlerinin milisaniyelik DSP işleme hattı.</p>
       </div>
-      <div class="w-items">
-        <div class="w-item">
-          <span class="w-lbl">Gaz</span>
-          <strong id="wGas">—</strong>
+
+      <div class="telemetry-panoramic-grid">
+        <!-- Gaz & Duman Ana Vitrin Kartı -->
+        <article class="card tilt-card gauge-card panoramic-card" id="gasCard" data-state="unknown">
+          <div class="card-head">
+            <div class="head-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M8.5 14.5A3.5 3.5 0 0 0 12 18a3.5 3.5 0 0 0 3.5-3.5c0-2-1.5-3-2-4.5-.5 1.5-1.5 2-1.5 2s-.5-1.5-1-2.5c-.8 1.5-2.5 3-2.5 5Z"/>
+                <path d="M12 2c1 3 4 5.5 5.5 8.5a7 7 0 1 1-13 3.5c0-4 3.5-7.5 5-10.5.5 2 2 3 2.5 3 .5-.5 1-2.5 0-4.5Z"/>
+              </svg>
+              <h3>Gaz / Duman Yoğunluğu</h3>
+            </div>
+            <span class="chip" id="gasChip" data-state="unknown">—</span>
+          </div>
+
+          <div class="telemetry-readout-row">
+            <div class="telemetry-main-val">
+              <p class="value"><span id="gasPpm">—</span><small>PPM</small></p>
+              <span class="readout-caption">MQ-2 Çevre Hava İndeksi</span>
+            </div>
+
+            <!-- 20 Segmentli Cyber LED Bar & Enerji Çubuğu -->
+            <div class="cyber-gauge-wrap" role="img" aria-label="Gaz seviyesi göstergesi">
+              <div class="seg-meter" id="gasSegMeter">
+                <!-- 20 adet LED segmenti dinamik aydınlatılır -->
+                <span class="seg"></span><span class="seg"></span><span class="seg"></span><span class="seg"></span>
+                <span class="seg"></span><span class="seg"></span><span class="seg"></span><span class="seg"></span>
+                <span class="seg"></span><span class="seg"></span><span class="seg"></span><span class="seg"></span>
+                <span class="seg"></span><span class="seg"></span><span class="seg"></span><span class="seg"></span>
+                <span class="seg"></span><span class="seg"></span><span class="seg"></span><span class="seg"></span>
+              </div>
+              <div class="gauge">
+                <div class="gauge-fill" id="gasFill" style="width:0%"></div>
+                <div class="gauge-mark" id="markWarn" title="Uyarı Eşiği"></div>
+                <div class="gauge-mark danger" id="markDanger" title="Tehlike Eşiği"></div>
+              </div>
+              <div class="gauge-labels">
+                <span>0 PPM</span>
+                <span id="labelWarn">250 UYARI</span>
+                <span id="labelDanger">400 TEHLİKE</span>
+                <span>10K FS</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Canlı Telemetri Osiloskop / DSP Çizgisi -->
+          <div class="telemetry-bar" id="gasTelemetryBar" aria-hidden="true">
+            <div class="telemetry-head">
+              <span class="telemetry-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                </svg>
+                DSP FİLTRE TELEMETRİSİ &amp; SPEKTRUM ÇİZGİSİ
+              </span>
+              <span class="telemetry-delta" id="gasDeltaBadge">Δ 0 PPM</span>
+            </div>
+            <div class="telemetry-scope">
+              <svg class="telemetry-svg" viewBox="0 0 320 40" preserveAspectRatio="none">
+                <line x1="0" y1="20" x2="320" y2="20" class="scope-grid-center" />
+                <path class="scope-path scope-raw" id="gasRawWave" d="M0,20 L320,20" />
+                <path class="scope-path scope-filt" id="gasFiltWave" d="M0,20 L320,20" />
+              </svg>
+              <div class="telemetry-legend">
+                <span class="tl-raw"><span class="tl-dot"></span>Ham Sinyal (gasRaw)</span>
+                <span class="tl-filt"><span class="tl-dot"></span>EMA Filtrelenmiş (gasFiltered)</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="card-foot">
+            <span id="gasRaw">ham: —</span>
+            <span id="gasBase">taban: —</span>
+          </div>
+        </article>
+
+        <!-- Yağmur Sensörü & Nem Durumu Kartı -->
+        <article class="card tilt-card panoramic-card" id="rainCard">
+          <div class="card-head">
+            <div class="head-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/>
+                <path d="M16 14v6M8 14v6M12 16v6"/>
+              </svg>
+              <h3>Yağmur Polaritesi &amp; Yağış Durumu</h3>
+            </div>
+            <span class="chip" id="rainChip" data-state="unknown">—</span>
+          </div>
+
+          <div class="rain-showcase-box">
+            <div class="rain-visual-icon" aria-hidden="true">
+              <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 40 A16 16 0 0 1 44 26 A12 12 0 0 1 56 40" stroke="var(--primary)" />
+                <line x1="20" y1="46" x2="16" y2="56" stroke="var(--accent)" stroke-width="3" stroke-dasharray="2 4"/>
+                <line x1="32" y1="46" x2="28" y2="56" stroke="var(--accent)" stroke-width="3" stroke-dasharray="2 4"/>
+                <line x1="44" y1="46" x2="40" y2="56" stroke="var(--accent)" stroke-width="3" stroke-dasharray="2 4"/>
+              </svg>
+            </div>
+            <div class="rain-data-block">
+              <p class="value"><span id="rainValue">—</span></p>
+              <p class="rain-desc">Hassas direnç plakası nem ve yağış iletkenliği</p>
+            </div>
+          </div>
+
+          <div class="card-foot">
+            <span id="rainRaw">ham: —</span>
+            <span id="rainMode">otomatik kapama: aktif</span>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- 3. OTONOM SAVUNMA & AKTÜATÖR İSTASYONU -->
+    <section class="scrolly-section command-section" id="command-center" aria-label="Otonom Savunma ve Aktüatör Konsolu">
+      <div class="section-badge-header">
+        <span class="sec-tag">[02 // AKTÜATÖR &amp; OTONOM SAVUNMA]</span>
+        <h2 class="sec-title">Otonom Savunma &amp; Aktüatör İstasyonu</h2>
+        <p class="sec-subtitle">Mekanik tahliye, emniyet kilitli müdahale ve servo açı konumlandırma konsolu.</p>
+      </div>
+
+      <div class="card tilt-card command-card" aria-label="Cihaz kontrolü">
+        <div class="card-head">
+          <div class="head-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="2" y="3" width="20" height="14" rx="2"/>
+              <line x1="8" y1="21" x2="16" y2="21"/>
+              <line x1="12" y1="17" x2="12" y2="21"/>
+            </svg>
+            <h3>Aktüatör &amp; Güvenlik Kumandası</h3>
+          </div>
+          <span class="hint" id="controlHint"></span>
         </div>
-        <div class="w-item">
-          <span class="w-lbl">Yağmur</span>
-          <strong id="wRain">—</strong>
-        </div>
-        <div class="w-item">
-          <span class="w-lbl">Pencere</span>
-          <strong id="wWindow">—</strong>
-        </div>
-        <div class="w-item">
-          <span class="w-lbl">Son veri</span>
-          <strong id="wAge">—</strong>
+
+        <div class="controls-grid controls">
+          <!-- Havalandırma Fanı -->
+          <div class="ctrl-group">
+            <div class="ctrl-header">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="2"/>
+                <path d="M12 10a4 4 0 0 0-4-4c-2.2 0-3 1.8-1.5 3.5L10 12"/>
+                <path d="M14 12a4 4 0 0 0 4-4c0-2.2-1.8-3-3.5-1.5L12 10"/>
+                <path d="M12 14a4 4 0 0 0 4 4c2.2 0 3-1.8 1.5-3.5L14 12"/>
+                <path d="M10 12a4 4 0 0 0-4 4c0 2.2 1.8 3 3.5 1.5L12 14"/>
+              </svg>
+              <span class="ctrl-label">Havalandırma Fanı</span>
+            </div>
+            <button class="btn" type="button" data-device="fan" data-action="toggle">
+              <span id="fanState">KAPALI</span>
+            </button>
+          </div>
+
+          <!-- Su Motoru (Güvenlik Korumalı Çift Dokunuş) -->
+          <div class="ctrl-group">
+            <div class="ctrl-header">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
+                <path d="M8 14h2l2-3 2 5 2-2h2"/>
+              </svg>
+              <span class="ctrl-label">Su Pompası / Motor</span>
+            </div>
+            <button class="btn danger" type="button" data-device="pump" data-action="toggle">
+              <span id="pumpState">KAPALI</span>
+            </button>
+          </div>
+
+          <!-- Buzzer -->
+          <div class="ctrl-group">
+            <div class="ctrl-header">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+              <span class="ctrl-label">Sesli Alarm (Buzzer)</span>
+            </div>
+            <button class="btn" type="button" data-device="buzzer" data-action="toggle">
+              <span id="buzzerState">KAPALI</span>
+            </button>
+          </div>
+
+          <!-- Otomatik Müdahale -->
+          <div class="ctrl-group">
+            <div class="ctrl-header">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+              </svg>
+              <span class="ctrl-label">Otonom Mantık</span>
+            </div>
+            <button class="btn" type="button" data-device="auto" data-action="toggle">
+              <span id="autoState">AÇIK</span>
+            </button>
+          </div>
+
+          <!-- Pencere Servosu + Hassas Açı Kontrolü -->
+          <div class="ctrl-group span-2">
+            <div class="ctrl-header">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                <path d="M12 3v18M3 12h18"/>
+              </svg>
+              <span class="ctrl-label">Pencere Servosu (0°–180°)</span>
+            </div>
+            <div class="btn-row">
+              <button class="btn sm" type="button" data-device="window" data-action="open">Tam Aç (180°)</button>
+              <button class="btn sm" type="button" data-device="window" data-action="ajar">Aralık (90°)</button>
+              <button class="btn sm" type="button" data-device="window" data-action="shut">Kapat (0°)</button>
+              <button class="btn sm ghost" type="button" data-device="window" data-action="stop">Serbest Bırak</button>
+            </div>
+            <div class="servo-angle-box">
+              <div class="servo-angle-row">
+                <input type="range" min="0" max="180" value="180" class="servo-slider" id="windowSlider" aria-label="Pencere açısı">
+                <span class="servo-angle-val" id="windowAngleVal">180°</span>
+                <button class="btn sm primary" type="button" id="applyWindowBtn">Açıyı Uygula</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Panjur Servosu + Hassas Açı Kontrolü -->
+          <div class="ctrl-group span-2">
+            <div class="ctrl-header">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                <path d="M7 3v18M12 3v18M17 3v18"/>
+              </svg>
+              <span class="ctrl-label">Panjur Servosu (0°–180°)</span>
+            </div>
+            <div class="btn-row">
+              <button class="btn sm" type="button" data-device="blind" data-action="open">Aç (180°)</button>
+              <button class="btn sm" type="button" data-device="blind" data-action="shut">Kapat (0°)</button>
+              <button class="btn sm ghost" type="button" data-device="blind" data-action="stop">Serbest Bırak</button>
+            </div>
+            <div class="servo-angle-box">
+              <div class="servo-angle-row">
+                <input type="range" min="0" max="180" value="0" class="servo-slider" id="blindSlider" aria-label="Panjur açısı">
+                <span class="servo-angle-val" id="blindAngleVal">0°</span>
+                <button class="btn sm primary" type="button" id="applyBlindBtn">Açıyı Uygula</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Acil Durum Simülasyon Tatbikatı -->
+          <div class="ctrl-group span-2 simulation-drill-box">
+            <div class="ctrl-header">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+              <span class="ctrl-label">Donanım Güvenlik &amp; Tahliye Tatbikatı</span>
+            </div>
+            <button class="btn warn drill-btn" type="button" data-device="test" data-action="simulate_alarm">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+              5 Saniyelik Alarm &amp; Tahliye Simülasyonunu Başlat
+            </button>
+          </div>
         </div>
       </div>
     </section>
 
-    <section class="grid" aria-label="Sensörler">
-      <!-- Gaz / Duman Kartı -->
-      <article class="card tilt-card gauge-card" id="gasCard" data-state="unknown">
+    <!-- 4. ZAMAN SERİSİ & ANALİTİK RADAR -->
+    <section class="scrolly-section analytics-section" id="analytics" aria-label="Zaman Serisi ve Analitik Radar">
+      <div class="section-badge-header">
+        <span class="sec-tag">[03 // ANALİTİK &amp; ZAMAN SERİSİ]</span>
+        <h2 class="sec-title">Zaman Serisi &amp; Analitik Radar</h2>
+        <p class="sec-subtitle">24 saatlik telemetri geçmişi, eşik aşımı zaman bantları ve anomali filtreleri.</p>
+      </div>
+
+      <article class="card tilt-card analytics-card" id="historyCard">
         <div class="card-head">
           <div class="head-title">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M8.5 14.5A3.5 3.5 0 0 0 12 18a3.5 3.5 0 0 0 3.5-3.5c0-2-1.5-3-2-4.5-.5 1.5-1.5 2-1.5 2s-.5-1.5-1-2.5c-.8 1.5-2.5 3-2.5 5Z"/>
-              <path d="M12 2c1 3 4 5.5 5.5 8.5a7 7 0 1 1-13 3.5c0-4 3.5-7.5 5-10.5.5 2 2 3 2.5 3 .5-.5 1-2.5 0-4.5Z"/>
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
             </svg>
-            <h2>Gaz / Duman</h2>
+            <h3>Panoramik Geçmiş &amp; Sensör Eğrisi</h3>
           </div>
-          <span class="chip" id="gasChip" data-state="unknown">—</span>
+          <span class="chip" id="histChip" data-state="unknown">-</span>
         </div>
 
-        <p class="value"><span id="gasPpm">—</span><small>PPM</small></p>
-
-        <!-- Cyber Segmentli Gösterge & Enerji Çubuğu -->
-        <div class="cyber-gauge-wrap" role="img" aria-label="Gaz seviyesi göstergesi">
-          <div class="seg-meter" id="gasSegMeter">
-            <!-- 20 adet LED segmenti JS tarafından dinamik kontrol edilir -->
-            <span class="seg"></span><span class="seg"></span><span class="seg"></span><span class="seg"></span>
-            <span class="seg"></span><span class="seg"></span><span class="seg"></span><span class="seg"></span>
-            <span class="seg"></span><span class="seg"></span><span class="seg"></span><span class="seg"></span>
-            <span class="seg"></span><span class="seg"></span><span class="seg"></span><span class="seg"></span>
-            <span class="seg"></span><span class="seg"></span><span class="seg"></span><span class="seg"></span>
-          </div>
-          <div class="gauge">
-            <div class="gauge-fill" id="gasFill" style="width:0%"></div>
-            <div class="gauge-mark" id="markWarn" title="Uyarı Eşiği"></div>
-            <div class="gauge-mark danger" id="markDanger" title="Tehlike Eşiği"></div>
-          </div>
-          <div class="gauge-labels">
-            <span>0 PPM</span>
-            <span id="labelWarn">250 UYARI</span>
-            <span id="labelDanger">400 TEHLİKE</span>
-            <span>10K FS</span>
-          </div>
+        <div class="hist-range" role="group" aria-label="Zaman aralığı">
+          <button class="btn sm" type="button" data-span="60">1 Saat</button>
+          <button class="btn sm" type="button" data-span="180">3 Saat</button>
+          <button class="btn sm" type="button" data-span="720">12 Saat</button>
+          <button class="btn sm primary" type="button" data-span="1440">24 Saat</button>
+          <button class="btn sm ghost" type="button" id="histRefreshBtn" title="Cihazdan yeniden çek">Yenile</button>
         </div>
 
-        <!-- Canlı Telemetri Osiloskop / DSP Çizgisi -->
-        <div class="telemetry-bar" id="gasTelemetryBar" aria-hidden="true">
-          <div class="telemetry-head">
-            <span class="telemetry-title">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-              </svg>
-              DSP FİLTRE TELEMETRİSİ
-            </span>
-            <span class="telemetry-delta" id="gasDeltaBadge">Δ 0 PPM</span>
-          </div>
-          <div class="telemetry-scope">
-            <svg class="telemetry-svg" viewBox="0 0 320 40" preserveAspectRatio="none">
-              <line x1="0" y1="20" x2="320" y2="20" class="scope-grid-center" />
-              <path class="scope-path scope-raw" id="gasRawWave" d="M0,20 L320,20" />
-              <path class="scope-path scope-filt" id="gasFiltWave" d="M0,20 L320,20" />
-            </svg>
-            <div class="telemetry-legend">
-              <span class="tl-raw"><span class="tl-dot"></span>Ham</span>
-              <span class="tl-filt"><span class="tl-dot"></span>Filtreli</span>
-            </div>
-          </div>
+        <div class="hist-metrics">
+          <div class="hm"><span>Gaz — En Yüksek</span><strong id="histMaxPpm">—</strong></div>
+          <div class="hm"><span>Yağmur — En Yüksek</span><strong id="histMaxRain">—</strong></div>
+          <div class="hm"><span>Alarm Süresi</span><strong id="histAlarmTime">—</strong></div>
+          <div class="hm"><span>Örnek Sayısı</span><strong id="histCount">—</strong></div>
         </div>
 
-        <div class="card-foot">
-          <span id="gasRaw">ham: —</span>
-          <span id="gasBase">taban: —</span>
+        <div class="hist-canvas-wrap">
+          <canvas id="histCanvas" height="260" aria-label="Gaz ve yağmur geçmiş grafiği"></canvas>
+          <p class="hist-empty" id="histEmpty">Henüz örnek yok. Kart yaklaşık 60 saniyede bir örnek kaydeder; birkaç dakika sonra bu grafiği inceleyin.</p>
         </div>
+
+        <div class="hist-legend" aria-hidden="true">
+          <span class="lg lg-gaz">Gaz PPM</span>
+          <span class="lg lg-yagmur">Yağmur %</span>
+          <span class="lg lg-alarm">Alarm / Tehlike Eşiği</span>
+          <span class="lg lg-ariza">Sensör Arızası / Anomali</span>
+        </div>
+
+        <p class="card-foot">
+          <span id="histRange">aralık: —</span>
+          <span id="histSource">kaynak: —</span>
+        </p>
       </article>
+    </section>
 
-      <!-- Yağmur Sensörü Kartı -->
-      <article class="card tilt-card" id="rainCard">
-        <div class="card-head">
-          <div class="head-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/>
-              <path d="M16 14v6M8 14v6M12 16v6"/>
-            </svg>
-            <h2>Yağmur Durumu</h2>
-          </div>
-          <span class="chip" id="rainChip" data-state="unknown">—</span>
-        </div>
+    <!-- 5. SİSTEM TEŞHİSİ & BULUT AĞI -->
+    <section class="scrolly-section diagnostics-section" id="diagnostics" aria-label="Sistem Teşhisi ve Bulut Ağı">
+      <div class="section-badge-header">
+        <span class="sec-tag">[04 // TEŞHİS &amp; BULUT MİMARİSİ]</span>
+        <h2 class="sec-title">Sistem Teşhisi &amp; Bulut Ağı</h2>
+        <p class="sec-subtitle">ESP32 SoC donanım sağlığı, RF sinyal gücü, bellek dinamikleri ve MQTT taşıma metrikleri.</p>
+      </div>
 
-        <p class="value"><span id="rainValue">—</span></p>
-
-        <div class="card-foot">
-          <span id="rainRaw">ham: —</span>
-          <span id="rainMode">otomatik kapama: aktif</span>
-        </div>
-      </article>
-
-      <!-- Sistem Durumu & Metrikler -->
-      <article class="card tilt-card span-2">
+      <article class="card tilt-card span-2 diagnostics-card" id="diagnosticsCard">
         <div class="card-head">
           <div class="head-title">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -234,7 +595,7 @@
               <rect x="9" y="9" width="6" height="6"/>
               <path d="M15 2v2M9 2v2M20 15h2M20 9h2M9 20v2M15 20v2M2 9h2M2 15h2"/>
             </svg>
-            <h2>Sistem Teşhis & Metrikler</h2>
+            <h3>Sistem Teşhis &amp; SoC Metrikleri</h3>
           </div>
           <div style="display:flex; align-items:center; gap:0.5rem;">
             <span class="latency-badge" id="latencyBadge" title="Sunucu yanıt gecikmesi">
@@ -247,7 +608,7 @@
           </div>
         </div>
 
-        <dl class="kv">
+        <dl class="kv diagnostics-kv">
           <!-- Çalışma Süresi -->
           <div class="kv-item">
             <div class="kv-icon">
@@ -257,7 +618,7 @@
               </svg>
             </div>
             <div class="kv-data">
-              <dt>Çalışma Süresi</dt>
+              <dt>Çalışma Süresi (Uptime)</dt>
               <dd id="uptime">—</dd>
             </div>
           </div>
@@ -273,7 +634,7 @@
               </svg>
             </div>
             <div class="kv-data">
-              <dt>Sinyal Gücü</dt>
+              <dt>Wi-Fi Sinyal Gücü</dt>
               <dd id="rssi">—</dd>
             </div>
           </div>
@@ -284,11 +645,11 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <circle cx="12" cy="12" r="10"/>
                 <line x1="2" y1="12" x2="22" y2="12"/>
-                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1 4-10z"/>
               </svg>
             </div>
             <div class="kv-data">
-              <dt>Cihaz IP</dt>
+              <dt>Cihaz Yerel IP</dt>
               <dd id="ip">—</dd>
             </div>
           </div>
@@ -306,7 +667,7 @@
               </svg>
             </div>
             <div class="kv-data" style="width:100%;">
-              <dt>Boş Bellek (RAM)</dt>
+              <dt>Kullanılabilir Heap RAM</dt>
               <dd id="heap">—</dd>
               <div class="mini-bar-wrap">
                 <div class="mini-bar-fill" id="heapFill"></div>
@@ -323,7 +684,7 @@
               </svg>
             </div>
             <div class="kv-data">
-              <dt>Firmware</dt>
+              <dt>Firmware Derlemesi</dt>
               <dd id="fw">—</dd>
             </div>
           </div>
@@ -338,7 +699,7 @@
               </svg>
             </div>
             <div class="kv-data">
-              <dt>Depolama</dt>
+              <dt>Flash Depolama</dt>
               <dd id="fsState">—</dd>
             </div>
           </div>
@@ -351,192 +712,6 @@
       </article>
     </section>
 
-    <!-- Kontrol Konsolu -->
-    <section class="card tilt-card" aria-label="Cihaz kontrolü">
-      <div class="card-head">
-        <div class="head-title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <rect x="2" y="3" width="20" height="14" rx="2"/>
-            <line x1="8" y1="21" x2="16" y2="21"/>
-            <line x1="12" y1="17" x2="12" y2="21"/>
-          </svg>
-          <h2>Aktüatör & Güvenlik Kumandası</h2>
-        </div>
-        <span class="hint" id="controlHint"></span>
-      </div>
-
-      <div class="controls-grid controls">
-        <!-- Fan -->
-        <div class="ctrl-group">
-          <div class="ctrl-header">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <circle cx="12" cy="12" r="2"/>
-              <path d="M12 10a4 4 0 0 0-4-4c-2.2 0-3 1.8-1.5 3.5L10 12"/>
-              <path d="M14 12a4 4 0 0 0 4-4c0-2.2-1.8-3-3.5-1.5L12 10"/>
-              <path d="M12 14a4 4 0 0 0 4 4c2.2 0 3-1.8 1.5-3.5L14 12"/>
-              <path d="M10 12a4 4 0 0 0-4 4c0 2.2 1.8 3 3.5 1.5L12 14"/>
-            </svg>
-            <span class="ctrl-label">Havalandırma Fanı</span>
-          </div>
-          <button class="btn" type="button" data-device="fan" data-action="toggle">
-            <span id="fanState">KAPALI</span>
-          </button>
-        </div>
-
-        <!-- Su Motoru (Güvenlik Korumalı) -->
-        <div class="ctrl-group">
-          <div class="ctrl-header">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
-              <path d="M8 14h2l2-3 2 5 2-2h2"/>
-            </svg>
-            <span class="ctrl-label">Su Pompası / Motor</span>
-          </div>
-          <button class="btn danger" type="button" data-device="pump" data-action="toggle">
-            <span id="pumpState">KAPALI</span>
-          </button>
-        </div>
-
-        <!-- Buzzer -->
-        <div class="ctrl-group">
-          <div class="ctrl-header">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-              <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-            </svg>
-            <span class="ctrl-label">Sesli Alarm (Buzzer)</span>
-          </div>
-          <button class="btn" type="button" data-device="buzzer" data-action="toggle">
-            <span id="buzzerState">KAPALI</span>
-          </button>
-        </div>
-
-        <!-- Otomatik Müdahale -->
-        <div class="ctrl-group">
-          <div class="ctrl-header">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-            </svg>
-            <span class="ctrl-label">Otomasyon</span>
-          </div>
-          <button class="btn" type="button" data-device="auto" data-action="toggle">
-            <span id="autoState">AÇIK</span>
-          </button>
-        </div>
-
-        <!-- Pencere Servosu + Hassas Açı Kontrolü -->
-        <div class="ctrl-group span-2">
-          <div class="ctrl-header">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <rect x="3" y="3" width="18" height="18" rx="2"/>
-              <path d="M12 3v18M3 12h18"/>
-            </svg>
-            <span class="ctrl-label">Pencere Servosu (0°–180°)</span>
-          </div>
-          <div class="btn-row">
-            <button class="btn sm" type="button" data-device="window" data-action="open">Tam Aç (180°)</button>
-            <button class="btn sm" type="button" data-device="window" data-action="ajar">Aralık (90°)</button>
-            <button class="btn sm" type="button" data-device="window" data-action="shut">Kapat (0°)</button>
-            <button class="btn sm ghost" type="button" data-device="window" data-action="stop">Serbest Bırak</button>
-          </div>
-          <div class="servo-angle-box">
-            <div class="servo-angle-row">
-              <input type="range" min="0" max="180" value="180" class="servo-slider" id="windowSlider">
-              <span class="servo-angle-val" id="windowAngleVal">180°</span>
-              <button class="btn sm primary" type="button" id="applyWindowBtn">Açıyı Uygula</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Panjur Servosu + Hassas Açı Kontrolü -->
-        <div class="ctrl-group span-2">
-          <div class="ctrl-header">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <rect x="3" y="3" width="18" height="18" rx="2"/>
-              <path d="M7 3v18M12 3v18M17 3v18"/>
-            </svg>
-            <span class="ctrl-label">Panjur Servosu (0°–180°)</span>
-          </div>
-          <div class="btn-row">
-            <button class="btn sm" type="button" data-device="blind" data-action="open">Aç (180°)</button>
-            <button class="btn sm" type="button" data-device="blind" data-action="shut">Kapat (0°)</button>
-            <button class="btn sm ghost" type="button" data-device="blind" data-action="stop">Serbest Bırak</button>
-          </div>
-          <div class="servo-angle-box">
-            <div class="servo-angle-row">
-              <input type="range" min="0" max="180" value="0" class="servo-slider" id="blindSlider">
-              <span class="servo-angle-val" id="blindAngleVal">0°</span>
-              <button class="btn sm primary" type="button" id="applyBlindBtn">Açıyı Uygula</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Alarm Testi (5 Saniye Simülasyon) -->
-        <div class="ctrl-group span-2">
-          <div class="ctrl-header">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
-              <line x1="12" y1="9" x2="12" y2="13"/>
-              <line x1="12" y1="17" x2="12.01" y2="17"/>
-            </svg>
-            <span class="ctrl-label">Donanım Güvenlik Testi</span>
-          </div>
-          <button class="btn warn" type="button" data-device="test" data-action="simulate_alarm">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-            </svg>
-            5 Saniyelik Alarm & Tahliye Simülasyonunu Başlat
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <!-- Geçmiş & Grafikler -->
-    <section class="card tilt-card" aria-label="Geçmiş ve grafikler" id="historyCard">
-      <div class="card-head">
-        <div class="head-title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-          </svg>
-          <h2>Geçmiş &amp; Grafikler</h2>
-        </div>
-        <span class="chip" id="histChip" data-state="unknown">-</span>
-      </div>
-
-      <div class="hist-range" role="group" aria-label="Zaman aralığı">
-        <button class="btn sm" type="button" data-span="60">1 Saat</button>
-        <button class="btn sm" type="button" data-span="180">3 Saat</button>
-        <button class="btn sm" type="button" data-span="720">12 Saat</button>
-        <button class="btn sm primary" type="button" data-span="1440">24 Saat</button>
-        <button class="btn sm ghost" type="button" id="histRefreshBtn" title="Cihazdan yeniden çek">Yenile</button>
-      </div>
-
-      <div class="hist-metrics">
-        <div class="hm"><span>Gaz — en yüksek</span><strong id="histMaxPpm">—</strong></div>
-        <div class="hm"><span>Yağmur — en yüksek</span><strong id="histMaxRain">—</strong></div>
-        <div class="hm"><span>Alarm süresi</span><strong id="histAlarmTime">—</strong></div>
-        <div class="hm"><span>Örnek</span><strong id="histCount">—</strong></div>
-      </div>
-
-      <div class="hist-canvas-wrap">
-        <canvas id="histCanvas" height="220" aria-label="Gaz ve yağmur geçmiş grafiği"></canvas>
-        <p class="hist-empty" id="histEmpty">Henüz örnek yok. Kart yaklaşık 60 saniyede bir
-          örnek tutar; birkaç dakika sonra bu grafiğe bakın.</p>
-      </div>
-
-      <div class="hist-legend" aria-hidden="true">
-        <span class="lg lg-gaz">Gaz PPM</span>
-        <span class="lg lg-yagmur">Yağmur %</span>
-        <span class="lg lg-alarm">Alarm / tehlike</span>
-        <span class="lg lg-ariza">Sensör arızası</span>
-      </div>
-
-      <p class="card-foot">
-        <span id="histRange">aralık: —</span>
-        <span id="histSource">kaynak: —</span>
-      </p>
-    </section>
-
     <noscript>
       <div class="banner warn">
         <strong>JavaScript Gerekli</strong>
@@ -545,9 +720,45 @@
     </noscript>
   </main>
 
+  <!-- Bildirim & Toast Kutusu -->
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
-  <!-- Modern Alt Navigasyon (Saf Vektör) -->
+  <!-- Kurumsal SCADA Web Footer -->
+  <footer class="scada-footer">
+    <div class="footer-inner">
+      <div class="footer-col brand-col">
+        <div class="footer-brand">
+          <span class="f-pulse"></span>
+          <strong>DENEYAP EV KORUMA SİSTEMİ</strong>
+        </div>
+        <p class="f-desc">Otonom Siber Tehdit Algılama, Çevre Güvenliği ve IoT Görev Kontrol Konsolu.</p>
+        <span class="f-meta">Sürüm v2.5.0 // Platform: ESP32 + MQTT-WSS + Supabase</span>
+      </div>
+
+      <div class="footer-col links-col">
+        <span class="f-heading">Hızlı Erişim</span>
+        <a href="#hero">Genel Bakış</a>
+        <a href="#telemetry">Telemetri Vitrini</a>
+        <a href="#command-center">Savunma Konsolu</a>
+        <a href="#analytics">Zaman Serisi &amp; Radar</a>
+        <a href="#diagnostics">Sistem Teşhisi</a>
+      </div>
+
+      <div class="footer-col actions-col">
+        <span class="f-heading">Yapılandırma</span>
+        <a href="./settings.html" class="footer-settings-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+          Sistem Ayarları &amp; Parametreler →
+        </a>
+        <p class="f-copy">Tüm Hakları Saklıdır © 2026 Deneyap Teknoloji Atölyeleri</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Mobil Hızlı Alt Navigasyon Barı -->
   <nav class="bottom-nav" aria-label="Ana gezinme">
     <a href="./index.html" class="active" aria-current="page">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -567,13 +778,19 @@
     </a>
   </nav>
 
+  <!-- Komut ve Altyapı Betikleri -->
   <script src="./js/config.js"></script>
 
-  <!-- MQTT taşıması: ESP32'ye https üzerinden ulaşmayı sağlar.
-       Yüklemezse panel otomatik olarak HTTP moduna düşer, sorun çıkmaz. -->
+  <!-- GSAP & Lenis Kütüphaneleri -->
+  <script src="./js/vendor/gsap.min.js"></script>
+  <script src="./js/vendor/ScrollTrigger.min.js"></script>
+  <script src="./js/vendor/lenis.min.js"></script>
+
+  <!-- MQTT Taşıyıcısı -->
   <script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
 
   <script src="./js/tier.js"></script>
+  <script src="./js/parallax.js"></script>
   <script src="./js/api.js"></script>
   <script src="./js/mqtt.js"></script>
   <script src="./js/supabase.js"></script>

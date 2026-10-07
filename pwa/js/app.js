@@ -277,6 +277,9 @@
   /* Ambient Ekran Kenarı Darbesi & Sesli Uyarılar */
   function renderAmbientAlarm(state) {
     const glow = $('ambientGlow');
+    document.body.classList.toggle('state-danger', state === 'danger');
+    document.body.setAttribute('data-state', state);
+
     if (glow) {
       glow.className = '';
       if (state === 'danger') {
