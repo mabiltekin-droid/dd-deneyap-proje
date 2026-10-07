@@ -20,6 +20,8 @@
      <T>/cmd       panel → cihaz   {"id":7,"device":"fan","action":"on"}
      <T>/settings  panel → cihaz   {"gasWarn":250,...}
      <T>/online    cihaz → panel   "online" / LWT ile "offline"
+     <T>/histreq   panel → cihaz   {"id":9,"n":140,"last":1440}  geçmiş ister
+     <T>/hist      cihaz → panel   {"id":9,"recs":[[t,ppm,rain,st,fl],...]}
    ========================================================================== */
 
 (function () {
@@ -30,6 +32,11 @@
   const RECONNECT_MIN = 1000;
   const RECONNECT_MAX = 15000;
   const CMD_TIMEOUT   = 6000;   /* komutun cevap beklediği en fazla süre */
+  /* Ayarlar için ayrı eşik: cihaz durumu 3 sn'de bir yayımlar, üstelik
+     ayar yazımı NVS'ye kayıt da içerir. 6 sn = yalnızca 2 dönem bırakır;
+     yayıncıda tek bir kayıp pakette panel "iletilmedi" der ve kullanıcı
+     aslında kaydedilmiş bir ayarı tekrar tekrar dener. 9 sn = 3 dönem. */
+  const SAVE_TIMEOUT  = 9000;
 
   let client = null;
   let connected = false;
@@ -38,7 +45,12 @@
   let lastStatusAt = 0;
   let retryMs = RECONNECT_MIN;
   let reconnectTimer = null;   /* bekleyen tek yeniden bağlanma denemesi */
+  /* İstemci elde varken connect() çağırmak onu düşürür; hemen ardından
+     yapılan yayın "Yayıncıya bağlı değil" diye hata verir. Bu yüzden
+     "kuruluyor mu / kurulu mu" durumunu ayrıca izliyoruz. */
+  let connecting = false;
   const waiters = new Map();   /* cmdId -> {resolve, reject, timer} */
+  const histWaiters = new Map(); /* geçmiş isteği id -> {resolve, reject, timer} */
 
   /* mqtt.js CDN'den gelir. Panel çevrimdışıyken (kapalı AP'de) dosya
      yüklenemez; bu durumda sessizce HTTP moduna düşülür. */
@@ -60,6 +72,18 @@
         reject(e);
       }, CMD_TIMEOUT);
       waiters.set(id, { resolve: resolve, reject: reject, timer: timer });
+    });
+  }
+
+  function awaitHistory(id) {
+    return new Promise(function (resolve, reject) {
+      const timer = setTimeout(function () {
+        histWaiters.delete(id);
+        const e = new Error('Geçmiş verisi cihazdan gelmedi (cihaz çevrimdışı olabilir)');
+        e.timeout = true;
+        reject(e);
+      }, CMD_TIMEOUT * 2);
+      histWaiters.set(id, { resolve: resolve, reject: reject, timer: timer });
     });
   }
 
@@ -87,6 +111,15 @@
       App.api._setDeviceOnline(online, online ? 'Cihaz yayıncıya bağlı' : 'Cihaz Çevrimdışı');
       return;
     }
+    if (t === base + '/hist') {
+      let h;
+      try { h = JSON.parse(payload.toString()); }
+      catch (e) { console.warn('[mqtt] geçmiş JSON değil, yok sayıldı.'); return; }
+      const hid = Number(h.id);
+      const w = histWaiters.get(hid);
+      if (w) { histWaiters.delete(hid); clearTimeout(w.timer); w.resolve(h); }
+      return;
+    }
     if (t !== base + '/status') return;
 
     let data;
@@ -102,6 +135,14 @@
   function connect() {
     const M = lib();
     if (!M) { console.warn('[mqtt] mqtt.js yüklenemedi'); return; }
+    /* Kimlik koruması: elde zaten bağlanan ya da bağlı bir istemci varken
+       yeniden kurmak, canlı bağlantıyı düşürür ve hemen ardından yapılan
+       yayınların "Yayıncıya bağlı değil" diye geri dönmesine yol açar
+       (ayarlar sayfasında test/deneme düğmelerinde görüldü).
+       restart() önce dropClient() yaptığı için gerçek yeniden kurulum
+       yine çalışır; scheduleReconnect() de ancak kapandıktan sonra
+       çağrıldığı için engellenmez. */
+    if (client && (connected || connecting)) return;
     if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
     dropClient();
 
@@ -136,16 +177,19 @@
       return;
     }
     client = c;
+    connecting = true;
 
     /* Olay dinleyicileri "c" üzerinden bağlanır: biz yeni bir istemciye
        geçtiğimizde eskisinin olayları yeni zinciri tetiklemesin. */
     c.on('connect', function () {
       if (client !== c) return;
       connected = true;
+      connecting = false;
       retryMs = RECONNECT_MIN;
       const base = topicBase();
       c.subscribe(base + '/status', { qos: 0 });
       c.subscribe(base + '/online', { qos: 0 });
+      c.subscribe(base + '/hist',   { qos: 0 });
       App.api._setRelayOnline(true, 'yayıncıya bağlandı');
       console.log('[mqtt] bağlandı:', url, 'konu:', base);
     });
@@ -159,11 +203,12 @@
     c.on('close', function () {
       if (client !== c) return;      /* biz çoktan yenisine geçtik */
       connected = false;
+      connecting = false;
       App.api._setRelayOnline(false, 'yayıncı bağlantısı koptu');
       scheduleReconnect();
     });
 
-    c.on('offline', function () { if (client === c) connected = false; });
+    c.on('offline', function () { if (client === c) { connected = false; connecting = false; } });
     /* connect() zaten bağlantıyı kurar; ayrıca connect() çağırma.
        Gerçek mqtt.js'te ikinci çağrı "already connected" hatası verir. */
   }
@@ -175,6 +220,7 @@
   function dropClient() {
     const old = client;
     client = null;
+    connecting = false;
     if (old) { try { old.end(true); } catch (e) { /* yoksay */ } }
   }
 
@@ -244,18 +290,44 @@
       return awaitCmd(id);
     },
 
+    /* Geçmiş grafiği verisi.
+       opts.n    : döndürülecek nokta (en fazla 140)
+       opts.last : son kaç ham örneğin taranacağı (0 = hepsi, yani 24 saat) */
+    history: function (opts) {
+      const o = opts || {};
+      const id = nextCmdId++;
+      publish(topicBase() + '/histreq', JSON.stringify({
+        id: id,
+        n: Number(o.n) || 140,
+        last: Number(o.last) || 0
+      }));
+      return awaitHistory(id);
+    },
+
     saveSettings: function (payload) {
       publish(topicBase() + '/settings', JSON.stringify(payload));
       /* Ayar değişimi bir komut numarası taşımıyor; cihazın durumu
-         yeni değerleri yansıttığında iş tamamlanmış sayılır. */
+         yeni değerleri yansıttığında iş tamamlanmış sayılır. Cihaz
+         doğrulama reddederse bunu `cmdErr` alanı üzerinden geri yollar:
+         aksi halde panel "kaydedildi" derken kart ayarı uygulamamış olur. */
       const before = lastStatus ? Number(lastStatus.t) : -1;
+      const beforeErr = lastStatus ? String(lastStatus.cmdErr || '') : '';
       const started = Date.now();
       return new Promise(function (resolve, reject) {
         const iv = setInterval(function () {
           if (lastStatus && Number(lastStatus.t) > before) {
-            clearInterval(iv); resolve({ ok: true, via: 'mqtt' }); return;
+            clearInterval(iv);
+            const nowErr = String(lastStatus.cmdErr || '');
+            if (nowErr && nowErr !== beforeErr) {
+              const e = new Error(nowErr);
+              e.rejected = true;
+              reject(e);
+              return;
+            }
+            resolve({ ok: true, via: 'mqtt' });
+            return;
           }
-          if (Date.now() - started > CMD_TIMEOUT) {
+          if (Date.now() - started > SAVE_TIMEOUT) {
             clearInterval(iv);
             const e = new Error('Ayar cihaza iletilemedi');
             e.timeout = true;
@@ -266,7 +338,7 @@
     },
 
     /* Durum JSON'u zaten eşikleri ve ters/oto bayraklarını içerdiği için
-       ayrı bir GET'e gerek yok. */
+       ayrı bir GET'e gerek yok. Telegram alanları da duruma eklendi. */
     getSettings: function () {
       if (!lastStatus) return this.status();
       return Promise.resolve({
@@ -277,7 +349,13 @@
         rainWetPct: lastStatus.rainWetPct,
         rainFloodPct: lastStatus.rainFloodPct,
         rainInvert: lastStatus.rainInvert,
-        autoControl: lastStatus.auto
+        autoControl: lastStatus.auto,
+        tgEnabled: lastStatus.tgOn === true || lastStatus.tgOn === 'true',
+        tgTokenSet: lastStatus.tgTok === true || lastStatus.tgTok === 'true',
+        tgChatSet: lastStatus.tgChat === true || lastStatus.tgChat === 'true',
+        /* chat id'nin kendisi durumda taşınmaz (gizli değil ama gereksiz);
+           panel yalnızca "kayıtlı / keşfedilecek" bilgisini gösterir. */
+        tgChatId: ''
       });
     },
 

@@ -33,6 +33,16 @@
     $('rainInvert').checked = !!s.rainInvert;
     $('autoControl').checked = !!s.autoControl;
 
+    /* Telegram: token ASLA geri okunmaz ve yerelde saklanmaz — yalnızca
+       kullanıcı bilerek yazdığında cihaza gider. */
+    const tgEn = $('tgEnabled');
+    if (tgEn) tgEn.checked = !!s.tgEnabled;
+    const tgChat = $('tgChatId');
+    if (tgChat) tgChat.value = s.tgChatId || '';
+    const tgTok = $('tgToken');
+    if (tgTok) tgTok.value = '';
+    paintTgInfo(s);
+
     const soundEl = $('soundEnabled');
     if (soundEl) soundEl.checked = (s.soundEnabled !== false);
 
@@ -64,6 +74,8 @@
       gasDanger: Number($('gasDanger').value),
       rainInvert: $('rainInvert').checked,
       autoControl: $('autoControl').checked,
+      tgEnabled: $('tgEnabled') ? $('tgEnabled').checked : false,
+      tgChatId: $('tgChatId') ? $('tgChatId').value.trim() : '',
       soundEnabled: soundEl ? soundEl.checked : true,
       vibrateEnabled: vibEl ? vibEl.checked : true,
       theme: themeEl ? themeEl.value : 'dark'
@@ -92,6 +104,121 @@
     if (!el) return;
     el.textContent = text;
     el.className = 'result' + (kind ? ' ' + kind : '');
+  }
+
+  /* -------------------------------------------------- Telegram bilgi satırı */
+  /* Cihazın Telegram alanları panelde yalnızca "var/yok" olarak taşınır:
+     bot tokenı ne durum JSON'unda ne de localStorage'da bulunur. */
+  let tgInfo = { tgEnabled: false, tgTokenSet: false, tgChatSet: false };
+
+  function tgSummary() {
+    if (!tgInfo.tgEnabled) return { t: 'Telegram kapalı — bildirim gönderilmez.', k: '' };
+    if (!tgInfo.tgTokenSet) return { t: 'Bot token kayıtlı değil.', k: 'fail' };
+    if (!tgInfo.tgChatSet) {
+      return { t: 'Hazır, ancak sohbet kimliği henüz yok — bota /start yazıp test gönderin.', k: 'fail' };
+    }
+    return { t: 'Hazır — bildirimler etkin.', k: 'ok' };
+  }
+
+  function paintTgInfo(s) {
+    if (s) {
+      if (s.tgEnabled !== undefined) tgInfo.tgEnabled = !!s.tgEnabled;
+      if (s.tgTokenSet !== undefined) tgInfo.tgTokenSet = !!s.tgTokenSet;
+      if (s.tgChatSet !== undefined) tgInfo.tgChatSet = !!s.tgChatSet;
+    }
+    const sum = tgSummary();
+    setResult($('tgResult'), sum.t, sum.k);
+    const en = $('tgEnabled');
+    if (en && s && s.tgEnabled !== undefined) en.checked = tgInfo.tgEnabled;
+  }
+
+  /* Cihazdan alınan canlı durumla bölümü tazele. */
+  async function refreshTgInfo() {
+    try {
+      App.api.startMqtt();
+      const s = await App.api.status();
+      paintTgInfo({
+        tgEnabled: s.tgOn,
+        tgTokenSet: s.tgTok,
+        tgChatSet: s.tgChat
+      });
+      return s;
+    } catch (e) { return null; }
+  }
+
+  /* Tokenı sil: testten sonra ya da yetki geri çekilirken kullanılır.
+     Cihazdaki NVS kaydı ve sohbet kimliği de temizlenir. */
+  async function tgForget() {
+    const btn = $('tgForgetBtn');
+    const out = $('tgResult');
+    if (btn) btn.disabled = true;
+    setResult(out, 'Cihaza iletiliyor…');
+    try {
+      await App.api.saveSettings({ tgForgetToken: true });
+      tgInfo.tgTokenSet = false;
+      tgInfo.tgChatSet = false;
+      const t = $('tgToken'); if (t) t.value = '';
+      paintTgInfo(tgInfo);
+      setResult(out, 'Bot token ve sohbet kimliği cihazdan silindi.', 'ok');
+      App.sound.chime();
+    } catch (err) {
+      setResult(out, 'Silinemedi: ' + err.message, 'fail');
+      App.sound.click();
+    } finally { if (btn) btn.disabled = false; }
+  }
+
+  /* Test bildirimi: firmware bunu ayrı kuyruğa alır ve ~20 sn içinde
+     Telegram'a gönderir. Aynı istek sohbet kimliği yoksa otomatik keşfi de
+     tetikler. */
+  async function tgTest(forceForgetChat) {
+    const btn = forceForgetChat ? $('tgDiscoverBtn') : $('tgTestBtn');
+    const out = $('tgResult');
+    if (btn) btn.disabled = true;
+    setResult(out, 'Cihaza iletiliyor…');
+
+    try {
+      /* Canlı bilgiyi AYARLARDAN oku: getSettings() hem HTTP'de hem
+         MQTT'de hiçbir şey yayımlamadan yanıt verir. (Eski kod burada
+         startMqtt() + status() çağırıyordu; startMqtt canlı istemciyi
+         düşürdüğü için hemen ardından yapılan yayın kayboluyordu —
+         mqtt.js'teki connect() korumasıyla birlikte bu yol bırakıldı.) */
+      let live = null;
+      try { live = await App.api.getSettings(); } catch (e) { live = null; }
+      const typedToken = ($('tgToken') ? $('tgToken').value.trim() : '');
+      const typedChat = ($('tgChatId') ? $('tgChatId').value.trim() : '');
+
+      if (!live) throw new Error('Cihaza ulaşılamadı — bağlantı rozetini kontrol edin.');
+      const acik = (live.tgEnabled === true || live.tgEnabled === 'true');
+      const tokenVar = (live.tgTokenSet === true || live.tgTokenSet === 'true');
+      const chatVar = (live.tgChatSet === true || live.tgChatSet === 'true');
+
+      if (!acik)
+        throw new Error('Telegram kapalı — önce yukarıdaki anahtarı açıp Kaydet\'e basın.');
+      if (!tokenVar && !typedToken)
+        throw new Error('Bot token kayıtlı değil — yukarıya yapıştırın.');
+
+      const payload = { tgEnabled: true, tgTest: true };
+      if (typedToken) payload.tgToken = typedToken;
+      if (typedChat) payload.tgChatId = typedChat;
+      if (forceForgetChat) payload.tgForgetChat = true;
+
+      await App.api.saveSettings(payload);
+      App.sound.chime();
+
+      const bekliyor = !chatVar && !typedChat;
+      setResult(out, (forceForgetChat ? 'Kimlik silindi, ' : 'Test kuyruğa alındı — ')
+        + 'Telegram uygulamanıza bakın (en fazla 20 sn).'
+        + (bekliyor ? ' Sohbet kimliği bilinmiyor; bota henüz /start yazmadıysanız şimdi yazın — kart ilk mesajdan kimliği bulup kaydeder.'
+                    : ''), 'ok');
+      tgInfo.tgEnabled = true;
+      tgInfo.tgTokenSet = tokenVar || !!typedToken;
+      tgInfo.tgChatSet = chatVar || !!typedChat;
+    } catch (err) {
+      setResult(out, err.message || 'Test gönderilemedi.', 'fail');
+      App.sound.click();
+    } finally {
+      if (btn) btn.disabled = false;
+    }
   }
 
   /* ------------------------------------------------------------------- Kayıt */
@@ -137,6 +264,19 @@
       return;
     }
 
+    const typedTgToken = ($('tgToken') ? $('tgToken').value.trim() : '');
+    if (v.tgEnabled && !tgInfo.tgTokenSet && !typedTgToken) {
+      setResult($('tgResult'), 'Telegram açık ama bot token yok — @BotFather\'dan alıp yapıştırın.', 'fail');
+      App.sound.alarm();
+      return;
+    }
+    if (typedTgToken && typedTgToken.indexOf(':') < 0) {
+      setResult($('tgResult'), 'Bot token biçimi hatalı — 123456789:AA... şeklinde olmalı.', 'fail');
+      $('tgToken').focus();
+      App.sound.alarm();
+      return;
+    }
+
     App.saveSettings(v);
     App.applyTheme(v.theme);
 
@@ -145,12 +285,30 @@
     setResult($('testResult'), 'Ayarlar cihaza gönderiliyor ve flash hafızaya yazılıyor…');
 
     try {
-      await App.api.saveSettings({
+      const hw = {
         gasWarn: v.gasWarn,
         gasDanger: v.gasDanger,
         rainInvert: v.rainInvert,
-        autoControl: v.autoControl
-      });
+        autoControl: v.autoControl,
+        tgEnabled: v.tgEnabled,
+        tgChatId: v.tgChatId
+      };
+      /* Token yalnızca kullanıcı bir şey yazdıysa gider; boş alanı
+         göndermek cihazdaki kayıtlı tokenı silmez (firmware da
+         uzunluğu 0 ise değiştirmiyor). */
+      if (typedTgToken) hw.tgToken = typedTgToken;
+
+      const resp = await App.api.saveSettings(hw);
+
+      /* HTTP'de yanıt doğrudan cihazın ayar JSON'u; MQTT'de ise durum
+         paketinden çıkardığımız özet. İkisi de `tgResult`ı güncelleyebilir. */
+      tgInfo.tgEnabled = v.tgEnabled;
+      tgInfo.tgTokenSet = tgInfo.tgTokenSet || !!typedTgToken;
+      tgInfo.tgChatSet = tgInfo.tgChatSet || !!v.tgChatId;
+      paintTgInfo(resp && resp.tgTokenSet !== undefined
+        ? { tgEnabled: resp.tgEnabled, tgTokenSet: resp.tgTokenSet, tgChatSet: resp.tgChatSet }
+        : tgInfo);
+
       App.sound.chime();
       App.haptic(30);
       App.toast('Ayarlar ESP32 flash hafızasına ve panele kaydedildi', { kind: 'ok' });
@@ -204,6 +362,15 @@
             rainInvert: $('rainInvert').checked,
             autoControl: $('autoControl').checked
           });
+        }
+
+        /* Telegram özetini canlı durumla tazele; kullanıcı o alanı
+           düzenliyorsa üzerine yazma. */
+        const editingTg = document.activeElement === $('tgToken') ||
+                          document.activeElement === $('tgChatId') ||
+                          document.activeElement === $('tgEnabled');
+        if (!editingTg) {
+          paintTgInfo({ tgEnabled: s.tgOn, tgTokenSet: s.tgTok, tgChatSet: s.tgChat });
         }
       }
 
@@ -393,6 +560,14 @@
     $('settingsForm').addEventListener('submit', save);
     $('testBtn').addEventListener('click', testConnection);
     $('transport').addEventListener('change', applyTransportVisibility);
+
+    const tgT = $('tgTestBtn');
+    if (tgT) tgT.addEventListener('click', function () { tgTest(false); });
+    const tgD = $('tgDiscoverBtn');
+    if (tgD) tgD.addEventListener('click', function () { tgTest(true); });
+    const tgF = $('tgForgetBtn');
+    if (tgF) tgF.addEventListener('click', tgForget);
+
     /* Yöntem ya da yayıncı bilgisi değişince bağlantıyı tazele:
        eski yayıncıya bağlı kalmış bir istemci kalmasın. */
     ['mqttUrl', 'mqttTopic', 'mqttUser', 'mqttPass'].forEach(function (id) {
@@ -453,7 +628,9 @@
     };
     App.registerServiceWorker().then(function (r) { reg = r; });
     App.setupPwaInstall();
-    refreshDeviceInfo().catch(function () {});
+    refreshDeviceInfo().then(refreshTgInfo).catch(function () {
+      refreshTgInfo().catch(function () {});
+    });
   }
 
   if (document.readyState === 'loading') {

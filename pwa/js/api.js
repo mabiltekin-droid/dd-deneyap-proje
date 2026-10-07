@@ -124,6 +124,17 @@
       });
     },
 
+    /* Geçmiş grafiği: her iki taşıma da aynı JSON gövdesini döndürür.
+       opts.n    : döndürülecek nokta (en fazla 140)
+       opts.last : son kaç ham örneğin taranacağı (0 = tümü ≈ 24 saat) */
+    history: function (opts) {
+      const o = opts || {};
+      const n = Number(o.n) || 140;
+      const last = Number(o.last) || 0;
+      if (usingMqtt()) return App.mqtt.history({ n: n, last: last });
+      return httpRequest('/api/history?n=' + n + '&last=' + last, { timeout: 10000 });
+    },
+
     getSettings: function () {
       if (usingMqtt()) return App.mqtt.getSettings();
       return httpRequest('/api/settings');

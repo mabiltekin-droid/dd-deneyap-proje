@@ -120,10 +120,13 @@
   }
 
   function renderRain(data) {
-    const s = App.settings();
-    const wet = (data && data.rainInvert !== undefined)
-      ? !!data.rain
-      : (s.rainInvert ? !data.rain : !!data.rain);
+    /* Firmware yağmur terslemesini zaten kendisi uygulayıp "rain" alanını
+       son hâliyle gönderiyor (main.ino: rainWet = rainInvert ? ... : ...),
+       status JSON'u da her zaman "rainInvert" içeriyor. Eski koddaki
+       "rainInvert gelmemişse yerel ayarla tersle" dalı hiçbir firmware
+       sürümünde erişilemiyordu; "s" değişkeni de yalnızca onun için
+       tanımlanmıştı. */
+    const wet = !!(data && data.rain);
 
     setText('rainValue', wet ? 'ISLAK' : 'KURU');
     const rainTxt = 'ham: ' + (Number(data.rainRaw) || 0) + (data.rainFiltered !== undefined ? ' · filtre: ' + data.rainFiltered : '');
@@ -246,9 +249,15 @@
 
   /* Kumandalar yalnızca cihaz gerçekten yanıt verebiliyorsa açık olsun:
      saklanmış durum mesajı gelse bile LWT "çevrimdışı" diyorsa tuşlar
-     kapalı kalmalıdır. */
+     kapalı kalmalıdır.
+     Ek koşul (münhasırlık): cihaz bir hesaba bağlanmışsa yalnız sahibi
+     veya admin kumanda gönderebilir; başkası görünüm alır ama kilitlidir. */
   function controlsAllowed() {
-    return !(App.api.transport() && App.deviceOnline === false);
+    if (App.api.transport() && App.deviceOnline === false) return false;
+    if (App.Auth && App.Auth.bindingOf && lastData && lastData.dev) {
+      if (!App.Auth.canControl(lastData.dev)) return false;
+    }
+    return true;
   }
 
   function render(data) {
@@ -261,7 +270,71 @@
     renderOutlets(data);
     renderAmbientAlarm(state);
     renderBanner(state);
+    renderWidget(data, state);
+    renderLockHint();
     setControlsEnabled(controlsAllowed());
+  }
+
+  /* Cihaz başka hesaba bağlıysa kumanda bölgesinde açıklayıcı not. */
+  function renderLockHint() {
+    const hint = document.getElementById('controlHint');
+    if (!hint) return;
+    const locked = lastData && lastData.dev &&
+                   App.Auth && App.Auth.bindingOf &&
+                   !App.Auth.canControl(lastData.dev);
+    hint.textContent = locked
+      ? 'Bu cihaz başka bir hesaba bağlı — kumanda kilitli (Ayarlar → Hesap).'
+      : '';
+  }
+
+  /* ------------------------------------------- Ana ekran özeti (widget) -- */
+  /* Sayfanın en başında duran kompakt şerit: telefonda ana ekrana eklenen
+     PWA'da ilk görülan yer burasıdır. Karmaşık grafikler yerine yalnızca
+     dört değer ve tek satırlık durum gösterir. */
+  const W_STATE = {
+    unknown: 'Bağlanıyor',
+    offline: 'Cihaz çevrimdışı',
+    danger: 'GAZ TEHLİKESİ',
+    warning: 'Gaz uyarısı',
+    normal: 'Güvende'
+  };
+
+  function renderWidget(data, state) {
+    const el = document.getElementById('homeWidget');
+    if (!el) return;
+
+    let st = 'unknown';
+    if (App.api.transport() && App.deviceOnline === false) st = 'offline';
+    else if (state === 'danger') st = 'danger';
+    else if (state === 'warning') st = 'warning';
+    else if (state === 'normal') st = 'normal';
+
+    let label = W_STATE[st];
+
+    /* Sel, gazdan bağımsız ve daha acildir. */
+    if (data && data.flood && st !== 'offline') {
+      st = 'danger';
+      label = 'SEL TEHLİKESİ';
+    } else if (data && data.gasFault && st !== 'offline') {
+      /* ppm okunamıyor; "0 = temiz" dememek için ayrıca söylenir. */
+      st = 'warning';
+      label = 'Gaz sensörü arızalı';
+    }
+
+    el.dataset.state = st;
+    setText('wState', label);
+    setText('wSince', (data && data.dev) ? String(data.dev) : '');
+
+    const ppm = Number(data && data.gasPpm) || 0;
+    setText('wGas', data && data.gasFault ? 'okunamıyor'
+      : ppm.toLocaleString('tr-TR') + ' ppm');
+    setText('wRain', '%' + (Number(data && data.rainPct) || 0));
+
+    const wp = Number(data && data.window);
+    setText('wWindow', isNaN(wp) ? '—'
+      : (wp > 150 ? 'Açık' : (wp > 30 ? 'Ayar' : 'Kapalı')));
+
+    if (lastUpdateTs) setText('wAge', App.fmtAgo(lastUpdateTs));
   }
 
   function setControlsEnabled(enabled) {
@@ -542,12 +615,43 @@
     tickTimer = setInterval(function () {
       if (lastUpdateTs) {
         setText('lastUpdate', 'son veri: ' + App.fmtAgo(lastUpdateTs));
+        setText('wAge', App.fmtAgo(lastUpdateTs));
       }
       if (baseUptimeMs > 0 && online) {
         const liveUptime = baseUptimeMs + (Date.now() - baseUptimeStamp);
         setText('uptime', App.fmtDuration(liveUptime));
       }
     }, 1000);
+  }
+
+  /* ------------------------------------------------------------- Hesap */
+
+  /* Başlıktaki "Hesap" rozeti + cihaz mülkiyeti bilgisi. */
+  function setupAccountPill() {
+    const btn = document.getElementById('accountBtn');
+    const txt = document.getElementById('accountBtnText');
+    if (!App.Auth) return;
+
+    function paint(snap) {
+      if (!btn || !txt) return;
+      if (snap.setupRequired) { btn.dataset.state = ''; txt.textContent = 'Kurulum'; return; }
+      if (snap.isAdmin) { btn.dataset.state = 'admin'; txt.textContent = 'Admin'; return; }
+      if (snap.signedIn) {
+        btn.dataset.state = 'user';
+        txt.textContent = ((snap.user && snap.user.email) || 'Hesap').split('@')[0];
+        return;
+      }
+      btn.dataset.state = '';
+      txt.textContent = 'Hesap';
+    }
+
+    App.Auth.onChange(paint);
+    App.Auth.init().then(async function (snap) {
+      paint(snap);
+      try { await App.Auth.listBindings(); } catch (e) { /* şema yoksa sessiz */ }
+      paint(App.Auth.snapshot());
+      if (lastData) render(lastData);
+    }).catch(function () { paint(App.Auth.snapshot()); });
   }
 
   /* ------------------------------------------------------------- Başlatma */
@@ -557,6 +661,7 @@
     setupServiceWorker();
     App.setupPwaInstall();
     setupServoSliders();
+    setupAccountPill();
     startTicker();
 
     App.init3DTilt();

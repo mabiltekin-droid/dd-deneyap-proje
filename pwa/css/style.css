@@ -813,6 +813,19 @@ main {
   color: var(--text-dim);
 }
 
+/* Kart başlığındaki kısa durum ipucu (#controlHint):
+   "cihaz aranıyor…", "bağlantı bekleniyor — kumandalar kilitli" vb.
+   Bu sınıf HTML'de kullanılıyordu ama hiçbir CSS kuralı yoktu. */
+.hint {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .card-foot {
   display: flex;
   justify-content: space-between;
@@ -1379,6 +1392,111 @@ main {
   font-size: 0.98rem;
 }
 
+/* ------------------------------------------------- Ana Ekran Özeti Widget */
+.widget {
+  border-radius: var(--radius);
+  padding: 0.85rem 1rem 0.95rem;
+  margin-bottom: 1.25rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  animation: cardFadeIn 0.3s ease;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.widget[data-state='normal'] {
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+.widget[data-state='warning'] {
+  border-color: color-mix(in srgb, var(--warn) 50%, transparent);
+  box-shadow: 0 0 15px var(--warn-glow);
+}
+
+.widget[data-state='danger'] {
+  border-color: color-mix(in srgb, var(--danger) 60%, transparent);
+  background: color-mix(in srgb, var(--danger) 9%, var(--surface));
+  box-shadow: 0 0 24px var(--danger-glow);
+  animation: chipPulse 1s infinite alternate;
+}
+
+.widget[data-state='offline'] {
+  border-color: color-mix(in srgb, var(--danger) 30%, transparent);
+  opacity: 0.88;
+}
+
+.w-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.7rem;
+}
+
+.w-dot {
+  width: 9px;
+  height: 9px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--text-muted);
+  box-shadow: 0 0 7px currentColor;
+}
+
+.widget[data-state='normal'] .w-dot  { background: var(--accent); color: var(--accent); }
+.widget[data-state='warning'] .w-dot { background: var(--warn);   color: var(--warn); }
+.widget[data-state='danger'] .w-dot  { background: var(--danger); color: var(--danger); }
+.widget[data-state='offline'] .w-dot { background: var(--danger); color: var(--danger); }
+
+.w-state {
+  font-weight: 700;
+  font-size: 0.9rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.w-since {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.w-items {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.w-item {
+  background: var(--surface-alt);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 0.45rem 0.55rem;
+  min-width: 0;
+}
+
+.w-lbl {
+  display: block;
+  font-size: 0.63rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+}
+
+.w-item strong {
+  display: block;
+  margin-top: 0.12rem;
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 540px) {
+  .w-items { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 /* ------------------------------------------------------------- Form Öğeleri */
 .field {
   display: flex;
@@ -1655,6 +1773,15 @@ main {
   color: var(--primary);
 }
 
+/* Toast metin span'i: uzun mesajlarda (kısa bağlantı hatası açıklamaları
+   gibi) düzgün kırılıp taşma yapması için. Bu sınıf config.js'te
+   oluşturuluyordu ama CSS kuralı yoktu. */
+.toast-msg {
+  min-width: 0;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
 .toast.danger {
   border-color: var(--danger);
   box-shadow: var(--shadow-lg), 0 0 25px var(--danger-glow);
@@ -1742,6 +1869,195 @@ main {
   background: var(--primary);
   border-radius: 999px;
   box-shadow: 0 0 10px var(--primary);
+}
+
+/* --------------------------------------------------------- Hesap & Roller */
+.acct-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.42rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--surface-glass);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  transition: border-color 0.18s, background 0.18s, color 0.18s;
+}
+
+.acct-pill:hover { border-color: var(--border-bright); background: var(--surface-hover); }
+.acct-pill svg { width: 15px; height: 15px; }
+
+.acct-pill[data-state="admin"] {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  box-shadow: 0 0 10px var(--accent-glow);
+}
+
+.acct-pill[data-state="user"] {
+  color: var(--primary);
+  border-color: color-mix(in srgb, var(--primary) 40%, transparent);
+}
+
+.admin-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 1.5rem 0 0.7rem;
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.user-table-wrap {
+  overflow-x: auto;
+  margin-bottom: 1.2rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+.user-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.user-table th,
+.user-table td {
+  padding: 0.55rem 0.5rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: middle;
+}
+
+.user-table th {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.user-table .u-mail { word-break: break-word; }
+.user-table .u-mail em { font-style: normal; opacity: 0.55; font-size: 0.8em; }
+.user-table .u-date { white-space: nowrap; color: var(--text-dim); font-size: 0.82rem; }
+.user-table .u-act { text-align: right; white-space: nowrap; }
+
+.user-table select {
+  background: var(--surface-alt);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  padding: 0.32rem 0.45rem;
+  font: inherit;
+  font-size: 0.84rem;
+}
+
+.user-table select:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.admin-create {
+  border-top: 1px dashed var(--border);
+  padding-top: 1.1rem;
+}
+
+#accountCard .kv { margin-bottom: 0.9rem; }
+#authSetupBanner { margin-bottom: 1rem; }
+
+/* --------------------------------------------------------- Geçmiş grafiği */
+.hist-range {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-bottom: 1rem;
+}
+
+.hist-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.hist-metrics .hm {
+  background: var(--surface-alt);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 0.55rem 0.6rem;
+  min-width: 0;
+}
+
+.hist-metrics .hm span {
+  display: block;
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 0.25rem;
+}
+
+.hist-metrics .hm strong {
+  display: block;
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hist-canvas-wrap {
+  position: relative;
+  background: var(--surface-alt);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem;
+  overflow: hidden;
+}
+
+.hist-canvas-wrap canvas {
+  display: block;
+  width: 100%;
+  height: 220px;
+}
+
+.hist-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 1rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.hist-empty[hidden] { display: none; }
+
+.hist-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  margin-top: 0.7rem;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.hist-legend .lg { display: inline-flex; align-items: center; gap: 0.35rem; }
+.hist-legend .lg::before {
+  content: '';
+  width: 10px; height: 10px;
+  border-radius: 3px;
+  background: currentColor;
+}
+.lg-gaz    { color: var(--primary); }
+.lg-yagmur { color: var(--accent); }
+.lg-alarm  { color: var(--danger); }
+.lg-ariza  { color: var(--warn); }
+
+@media (max-width: 520px) {
+  .hist-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 /* --------------------------------------------------------------- Responsive */

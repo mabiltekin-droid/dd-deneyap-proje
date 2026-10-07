@@ -96,6 +96,151 @@
   </header>
 
   <main id="main">
+
+    <!-- ==================== HESAP & ROLLER ==================== -->
+    <section class="card tilt-card" aria-labelledby="h-acc" id="accountCard">
+      <div class="card-head">
+        <div class="head-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+          </svg>
+          <h2 id="h-acc">Hesap &amp; Roller</h2>
+        </div>
+        <span class="chip" id="authChip" data-state="unknown">-</span>
+      </div>
+
+      <div class="banner" id="authSetupBanner" hidden>
+        <strong>Veritabanı şeması henüz yüklenmedi.</strong><br>
+        <code>dd-deneyap-proje/supabase/schema.sql</code> dosyasını Supabase Dashboard →
+        SQL Editor'a yapıştırıp çalıştırın; bu bölüm kendiliğinden etkinleşir.
+      </div>
+
+      <!-- ---- Giriş yapılmadı ---- -->
+      <div id="authSignedOut">
+        <div class="field">
+          <label for="authEmail">E-posta</label>
+          <input type="email" id="authEmail" autocomplete="username"
+                 inputmode="email" spellcheck="false" placeholder="ornek@eposta.com">
+        </div>
+        <div class="field">
+          <label for="authPass">Şifre</label>
+          <input type="password" id="authPass" autocomplete="current-password"
+                 placeholder="••••••••">
+        </div>
+        <div class="btn-row">
+          <button class="btn primary" type="button" id="authSignInBtn">Giriş Yap</button>
+          <button class="btn" type="button" id="authSignUpBtn">Yeni Hesap Aç</button>
+        </div>
+        <p class="help">
+          <strong>İlk açılan hesap otomatik ADMIN olur</strong> ve kendi menüsünden
+          yeni (admin dahil) hesap açabilir. Cihaz bir hesaba bağlandığında yalnızca
+          sahibi veya admin kumanda gönderebilir.
+        </p>
+      </div>
+
+      <!-- ---- Giriş yapıldı ---- -->
+      <div id="authSignedIn" hidden>
+        <div class="kv">
+          <div class="kv-item">
+            <span class="kv-icon">E-posta</span>
+            <span class="kv-data" id="authUserEmail">—</span>
+          </div>
+          <div class="kv-item">
+            <span class="kv-icon">Rol</span>
+            <span class="kv-data" id="authUserRole">—</span>
+          </div>
+          <div class="kv-item">
+            <span class="kv-icon">Kayıt</span>
+            <span class="kv-data" id="authUserSince">—</span>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn ghost" type="button" id="authSignOutBtn">Çıkış Yap</button>
+        </div>
+      </div>
+
+      <p class="result" id="authResult" role="status" aria-live="polite"></p>
+
+      <!-- ---- Admin menüsü ---- -->
+      <div id="adminPanel" hidden>
+        <div class="admin-head">
+          <span class="chip" data-state="normal">ADMIN</span>
+          <span>Kayıtlı hesaplar</span>
+        </div>
+
+        <div class="user-table-wrap">
+          <table class="user-table" id="userTable">
+            <thead>
+              <tr><th>E-posta</th><th>Rol</th><th>Kayıt</th><th></th></tr>
+            </thead>
+            <tbody id="userTableBody">
+              <tr><td colspan="4">Yükleniyor…</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="admin-create">
+          <div class="field">
+            <label for="newUserEmail">Yeni hesap — e-posta</label>
+            <input type="email" id="newUserEmail" autocomplete="off"
+                   inputmode="email" spellcheck="false" placeholder="ornek@eposta.com">
+          </div>
+          <div class="field">
+            <label for="newUserPass">Yeni hesap — şifre</label>
+            <input type="password" id="newUserPass" autocomplete="new-password"
+                   placeholder="en az 6 karakter">
+          </div>
+          <div class="field">
+            <label for="newUserRole">Rol</label>
+            <select id="newUserRole">
+              <option value="user">Kullanıcı — yalnız kendi cihazları</option>
+              <option value="admin">Admin — tüm cihazlar + hesap yönetimi</option>
+            </select>
+          </div>
+          <div class="btn-row">
+            <button class="btn primary" type="button" id="createUserBtn">Hesabı Oluştur</button>
+          </div>
+          <p class="help">
+            Supabase'de e-posta doğrulaması açıksa kullanıcı, kendisine gelen
+            bağlantıya tıklamadan giriş yapamaz. Hesap açmak <em>kayıt</em>
+            (signup) ile yapılır; admin'in başkasının şifresini görme/değiştirme
+            yetkisi yoktur.
+          </p>
+        </div>
+      </div>
+
+      <!-- ---- Cihaz Mülkiyeti ---- -->
+      <div id="deviceOwnership" hidden>
+        <div class="admin-head">
+          <span class="chip" data-state="normal">CİHAZ</span>
+          <span>Mülkiyet &amp; Erişim</span>
+        </div>
+        <div class="kv">
+          <div class="kv-item">
+            <span class="kv-icon">Kimlik</span>
+            <span class="kv-data" id="ownDevId">—</span>
+          </div>
+          <div class="kv-item">
+            <span class="kv-icon">Sahibi</span>
+            <span class="kv-data" id="ownOwner">—</span>
+          </div>
+          <div class="kv-item">
+            <span class="kv-icon">Kumanda</span>
+            <span class="kv-data" id="ownState">—</span>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn primary" type="button" id="claimBtn">Cihazı Hesabıma Bağla</button>
+          <button class="btn ghost" type="button" id="releaseBtn">Bağlantıyı Kaldır</button>
+        </div>
+        <p class="help">
+          Cihaz kimliği kartın efuse MAC'inden üretilir ve açılıştan açılışa
+          değişmez. Bir kez bağlandığında <strong>yalnızca sahibi veya admin</strong>
+          kumanda gönderebilir; bağlanmamış bir cihazı ilk bağlayan kişi sahibi olur.
+        </p>
+      </div>
+    </section>
+
     <form id="settingsForm" novalidate>
 
       <!-- Cihaz Bağlantısı -->
@@ -317,6 +462,78 @@
         </label>
       </section>
 
+      <!-- Telegram Bildirimleri -->
+      <section class="card tilt-card" aria-labelledby="h-tg">
+        <div class="card-head">
+          <div class="head-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21.5 2.5 11 13"/><path d="M21.5 2.5 15 21.5l-4-8.5-8.5-4z"/>
+            </svg>
+            <h2 id="h-tg">Telegram Bildirimleri</h2>
+          </div>
+        </div>
+
+        <p class="help">
+          <strong>Bu bölüm alarmın kendisi değildir.</strong> Kart; gaz ve su baskını
+          alarmını internet, telefon veya Telegram <em>olmadan da</em> yerelde çalıştırır
+          (buzzer + fan + pompa). Telegram yalnızca olayları telefonunuza düşürür —
+          kapalıysa, token yanlışsa ya da internet kopuksa koruma aynen devam eder.
+        </p>
+
+        <label class="switch">
+          <input type="checkbox" id="tgEnabled" name="tgEnabled">
+          <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+          <span class="switch-body">
+            <strong>Telegram bildirimlerini aç</strong>
+            <small>Gaz alarmı, gaz uyarısı, su baskını, sensör arızası, açılış ve WiFi dönüşü bildirilir.</small>
+          </span>
+        </label>
+
+        <div class="field">
+          <label for="tgToken">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 2 2 9l7 3 3 7z"/><circle cx="17.5" cy="6.5" r="1.5"/>
+            </svg>
+            Bot Token
+          </label>
+          <input type="password" id="tgToken" name="tgToken" autocomplete="off"
+                 spellcheck="false" placeholder="123456789:AA...">
+          <p class="help">
+            Telegram'da <code>@BotFather</code>'a <code>/newbot</code> yazın; size verdiği
+            <code>123456789:AA...</code> biçimindeki metni buraya yapıştırın.
+            Token zaten kayıtlıysa <strong>boş bırakın</strong> — değişmez.
+          </p>
+        </div>
+
+        <div class="field">
+          <label for="tgChatId">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+            Sohbet Kimliği <span class="opt">opsiyonel</span>
+          </label>
+          <input type="text" id="tgChatId" name="tgChatId" inputmode="numeric"
+                 autocomplete="off" spellcheck="false" placeholder="boş bırakılabilir">
+          <p class="help">
+            Boş bırakırsanız kart, bota gönderdiğiniz ilk <code>/start</code> mesajından
+            kimliği <strong>otomatik keşfeder</strong> ve NVS'ye yazar. Grup sohbeti için
+            grubun kimliğini girin.
+          </p>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn" type="button" id="tgTestBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/>
+            </svg>
+            Test bildirimi gönder
+          </button>
+          <button class="btn ghost" type="button" id="tgDiscoverBtn">Kimliği yeniden keşfet</button>
+          <button class="btn ghost" type="button" id="tgForgetBtn">Tokenı sil</button>
+        </div>
+        <p class="result" id="tgResult" role="status" aria-live="polite"></p>
+      </section>
+
       <!-- Görsel Tema Seçici (Palette Kartları) -->
       <section class="card tilt-card" aria-labelledby="h-theme">
         <div class="card-head">
@@ -484,6 +701,9 @@
 
   <script src="./js/api.js"></script>
   <script src="./js/mqtt.js"></script>
+  <script src="./js/supabase.js"></script>
+  <script src="./js/auth.js"></script>
   <script src="./js/settings.js"></script>
+  <script src="./js/account.js"></script>
 </body>
 </html>

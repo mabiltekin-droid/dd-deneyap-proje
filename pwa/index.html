@@ -59,6 +59,14 @@
       </div>
     </div>
     <div class="header-actions">
+      <button id="accountBtn" class="acct-pill" type="button"
+              aria-label="Hesap" title="Hesap & Roller"
+              onclick="location.href='./settings.html#accountCard'">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+        </svg>
+        <span id="accountBtnText">Hesap</span>
+      </button>
       <button id="pwaInstallBtn" class="pwa-install-btn" type="button" aria-label="Uygulamayı İndir" title="Ev Koruma Uygulamasını Cihazınıza İndirin">
         <svg class="install-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -98,6 +106,34 @@
 
   <main id="main">
     <div id="banner" class="banner" role="status" hidden></div>
+
+    <!-- Ana ekran özeti (widget) — tek bakışta durum.
+         Telefonda uygulama ana ekranına eklendiğinde ilk görülen şerittir. -->
+    <section class="widget" id="homeWidget" aria-label="Ana ekran özeti" data-state="unknown">
+      <div class="w-head">
+        <span class="w-dot" aria-hidden="true"></span>
+        <span class="w-state" id="wState">Bağlanıyor…</span>
+        <span class="w-since" id="wSince"></span>
+      </div>
+      <div class="w-items">
+        <div class="w-item">
+          <span class="w-lbl">Gaz</span>
+          <strong id="wGas">—</strong>
+        </div>
+        <div class="w-item">
+          <span class="w-lbl">Yağmur</span>
+          <strong id="wRain">—</strong>
+        </div>
+        <div class="w-item">
+          <span class="w-lbl">Pencere</span>
+          <strong id="wWindow">—</strong>
+        </div>
+        <div class="w-item">
+          <span class="w-lbl">Son veri</span>
+          <strong id="wAge">—</strong>
+        </div>
+      </div>
+    </section>
 
     <section class="grid" aria-label="Sensörler">
       <!-- Gaz / Duman Kartı -->
@@ -431,6 +467,52 @@
       </div>
     </section>
 
+    <!-- Geçmiş & Grafikler -->
+    <section class="card tilt-card" aria-label="Geçmiş ve grafikler" id="historyCard">
+      <div class="card-head">
+        <div class="head-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+          </svg>
+          <h2>Geçmiş &amp; Grafikler</h2>
+        </div>
+        <span class="chip" id="histChip" data-state="unknown">-</span>
+      </div>
+
+      <div class="hist-range" role="group" aria-label="Zaman aralığı">
+        <button class="btn sm" type="button" data-span="60">1 Saat</button>
+        <button class="btn sm" type="button" data-span="180">3 Saat</button>
+        <button class="btn sm" type="button" data-span="720">12 Saat</button>
+        <button class="btn sm primary" type="button" data-span="1440">24 Saat</button>
+        <button class="btn sm ghost" type="button" id="histRefreshBtn" title="Cihazdan yeniden çek">Yenile</button>
+      </div>
+
+      <div class="hist-metrics">
+        <div class="hm"><span>Gaz — en yüksek</span><strong id="histMaxPpm">—</strong></div>
+        <div class="hm"><span>Yağmur — en yüksek</span><strong id="histMaxRain">—</strong></div>
+        <div class="hm"><span>Alarm süresi</span><strong id="histAlarmTime">—</strong></div>
+        <div class="hm"><span>Örnek</span><strong id="histCount">—</strong></div>
+      </div>
+
+      <div class="hist-canvas-wrap">
+        <canvas id="histCanvas" height="220" aria-label="Gaz ve yağmur geçmiş grafiği"></canvas>
+        <p class="hist-empty" id="histEmpty">Henüz örnek yok. Kart yaklaşık 60 saniyede bir
+          örnek tutar; birkaç dakika sonra bu grafiğe bakın.</p>
+      </div>
+
+      <div class="hist-legend" aria-hidden="true">
+        <span class="lg lg-gaz">Gaz PPM</span>
+        <span class="lg lg-yagmur">Yağmur %</span>
+        <span class="lg lg-alarm">Alarm / tehlike</span>
+        <span class="lg lg-ariza">Sensör arızası</span>
+      </div>
+
+      <p class="card-foot">
+        <span id="histRange">aralık: —</span>
+        <span id="histSource">kaynak: —</span>
+      </p>
+    </section>
+
     <noscript>
       <div class="banner warn">
         <strong>JavaScript Gerekli</strong>
@@ -469,6 +551,9 @@
 
   <script src="./js/api.js"></script>
   <script src="./js/mqtt.js"></script>
+  <script src="./js/supabase.js"></script>
+  <script src="./js/auth.js"></script>
+  <script src="./js/history.js"></script>
   <script src="./js/app.js"></script>
 </body>
 </html>

@@ -72,6 +72,7 @@ uint32_t     servoMovingMs  = 0;
 
 bool         rainWet        = false;
 uint8_t      lastClients    = 0xFF;
+uint32_t     lastClientZeroMs = 0;   /* istemcilerin ilk "0"a düştüğü an */
 
 /* ----------------------------------------------------------- NVS ayarları */
 
@@ -219,7 +220,9 @@ static void setBuzzer(bool on) {
 static void servoRelease(Servo &s, int pin) {
   s.detach();
   pinMode(pin, INPUT);
-  servoMovingMs = millis() + SERVO_MOVE_MS;
+  /* Artık hareket yok: moving bayrağını da sıfırla, aksi hâlde status'te
+     800 ms daha "true" görünür ve döngü gereksiz yere yeniden detach ederdi. */
+  servoMovingMs = 0;
 }
 
 static void setWindow(int angle) {
@@ -264,7 +267,9 @@ static void calibrateGasBaseline() {
   Serial.print(gasBaseRaw);
   Serial.print(F(" (geçerli ölçüm "));
   Serial.print(n);
-  Serial.println(F("/20)"));
+  Serial.print(F("/"));
+  Serial.print(GAS_CLEAN_SAMPLES);
+  Serial.println(F(")"));
 }
 
 static void readSensors() {
@@ -750,7 +755,16 @@ void setup() {
   allOutputsSafe("acilis");
 
   /* 3) Web arayüzünü depodan yükle (yoksa API-only modu) */
-  if (LittleFS.begin(true)) {
+  /* formatOnFail KAPALI: önce gerçek mount denenir, başarısız olursa
+     açıkça biçimlendirilir. Eski kod LittleFS.begin(true) idi ve bağlantı
+     hatasında sessizce LittleFS'teki TÜM PWA dosyalarını siliyordu;
+     bunu artık bir uyarı ile duyuruyoruz. */
+  bool fsOk = LittleFS.begin(false);
+  if (!fsOk) {
+    Serial.println(F("[fs] mount basarisiz - LittleFS bicimlendirilecek, PWA dosyalari silinecek"));
+    fsOk = LittleFS.format() && LittleFS.begin(false);
+  }
+  if (fsOk) {
     fsReady = true;
     fsTotal = LittleFS.totalBytes();
     fsUsed  = LittleFS.usedBytes();
@@ -775,6 +789,7 @@ void setup() {
   servoBlind.detach();
   pinMode(PIN_SERVO_WINDOW, INPUT);
   pinMode(PIN_SERVO_BLIND, INPUT);
+  servoMovingMs = 0;                   /* açılış hareketi bitti */
   Serial.println(F("[servo] baslangic konumlari ayarlandi, motorlar serbest"));
 
   /* 6) Access Point (kullanıcı kararı: sadece AP modu) */
@@ -805,7 +820,10 @@ void setup() {
   server.on("/api/control",  HTTP_OPTIONS, handleOptions);
   server.on("/api/status",   HTTP_OPTIONS, handleOptions);
   server.onNotFound(serveStatic);          // /, /css/*, /js/*, /sw.js, /icons/*
-  server.setTimeout(HTTP_TIMEOUT_MS);
+  /* NOT: WebServer sınıfında setTimeout() YOKTUR (sadece NetworkClient'ta
+     vardır); eski koddaki server.setTimeout() çağrısı derleme hatasıydı.
+     HTTP istek zaman aşımını çekirdek sabitleri belirler:
+     HTTP_MAX_DATA_WAIT / HTTP_MAX_POST_WAIT / HTTP_MAX_SEND_WAIT. */
 
   server.begin();
   Serial.println(F("[http] sunucu hazir"));
@@ -829,13 +847,38 @@ void loop() {
     setPump(false);
   }
 
+  /* Hareket penceresi bitince servoları serbest bırak.
+     Eski kodda servoRelease() yalnızca manuel "Serbest Bırak" komutunda
+     çağrılıyordu; otomatik aç/kapat komutlarından sonra aktüatör attach
+     edili kalıyor ve sürekli dönen motorlarda ısınmaya yol açıyordu. */
+  if (servoMovingMs != 0 && (int32_t)(now - servoMovingMs) >= 0) {
+    servoMovingMs = 0;
+    servoWindow.detach();
+    servoBlind.detach();
+    pinMode(PIN_SERVO_WINDOW, INPUT);
+    pinMode(PIN_SERVO_BLIND, INPUT);
+    Serial.println(F("[servo] hareket tamam, motorlar serbest"));
+  }
+
   /* Ağa bağlı istemci kalmayınca röleleri güvenli duruma al.
      (WiFi event enum'ları ESP32 çekirdek sürümleri arasında değiştiği için
-      sayaç üzerinden takip etmek daha taşınabilir bir yöntem.) */
+      sayaç üzerinden takip etmek daha taşınabilir bir yöntem.)
+
+     İki düzeltme:
+       • Grace süresi: telefon ekranı kapanıp AP istemci sayısı kısa süreliğine
+         0'a düşerse rölelerin açılıp kapanması (flicker) engellenir.
+       • Gaz tehlikesi sırasında bu kural UYGULANMAZ: fan ve buzzer tehlikenin
+         bir parçasıdır; bağlantının kopması onları susturmalı değildir. */
   uint8_t clients = WiFi.softAPClientCount();
   if (clients != lastClients) {
-    if (clients == 0) allOutputsSafe("bagli istemci yok");
     lastClients = clients;
+    lastClientZeroMs = (clients == 0) ? now : 0;
+  }
+  if (clients == 0 && lastClientZeroMs != 0 &&
+      timeReached(now, lastClientZeroMs, CLIENT_DROP_MS) &&
+      gasState != GAS_DANGER) {
+    allOutputsSafe("bagli istemci yok");
+    lastClientZeroMs = 0;              /* yalnızca bir kez uygula */
   }
 
   /* Seri monitör raporu */
