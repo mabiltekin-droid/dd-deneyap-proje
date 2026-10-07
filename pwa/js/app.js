@@ -722,6 +722,7 @@
   /* ------------------------------------------------------------- Başlatma */
 
   function init() {
+    if (!$('homeWidget')) return;
     setupTheme();
     setupServiceWorker();
     App.setupPwaInstall();
@@ -763,9 +764,13 @@
       'color:#38bdf8;font-weight:bold;font-size:12px');
   }
 
+  window.App.initDashboard = init;
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('DOMContentLoaded', function () {
+      if ($('homeWidget')) init();
+    });
   } else {
-    init();
+    if ($('homeWidget')) init();
   }
 })();

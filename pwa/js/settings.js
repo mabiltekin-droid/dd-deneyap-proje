@@ -550,6 +550,7 @@
   /* ------------------------------------------------------------- Başlatma */
 
   function init() {
+    if (!$('settingsForm')) return;
     fillForm();
     App.applyTheme();
 
@@ -633,9 +634,13 @@
     });
   }
 
+  window.App.initSettings = init;
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('DOMContentLoaded', function () {
+      if ($('settingsForm')) init();
+    });
   } else {
-    init();
+    if ($('settingsForm')) init();
   }
 })();
