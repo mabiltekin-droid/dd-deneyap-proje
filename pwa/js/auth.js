@@ -89,7 +89,15 @@
       };
     },
 
-    onChange: function (fn) { if (typeof fn === 'function') listeners.push(fn); },
+    onChange: function (fn) {
+      if (typeof fn === 'function' && listeners.indexOf(fn) === -1) {
+        listeners.push(fn);
+      }
+      return function () {
+        const idx = listeners.indexOf(fn);
+        if (idx !== -1) listeners.splice(idx, 1);
+      };
+    },
 
     init: init,
 

@@ -95,6 +95,9 @@
 
   /* ------------------------------------------- Buton & Bağlantı ScrollTo Motoru */
 
+  var currentScrollTween = null;
+  var currentRafScrollId = null;
+
   function smoothScrollTo(targetPos, duration, onComplete) {
     if (typeof targetPos !== 'number' || isNaN(targetPos)) {
       targetPos = 0;
@@ -103,55 +106,58 @@
 
     if (isReducedMotion()) {
       window.scrollTo(0, targetPos);
-      if (lenisInstance && typeof lenisInstance.scrollTo === 'function') {
-        try { lenisInstance.scrollTo(targetPos, { immediate: true }); } catch (e) {}
-      }
       if (typeof onComplete === 'function') onComplete();
       return;
     }
 
-    var dur = typeof duration === 'number' ? duration : 0.95;
+    var start = window.pageYOffset || window.scrollY || document.documentElement.scrollTop || 0;
+    var dist = Math.abs(targetPos - start);
 
-    if (lenisInstance && typeof lenisInstance.scrollTo === 'function') {
-      try {
-        var completed = false;
-        var done = function () {
-          if (completed) return;
-          completed = true;
+    if (dist < 2) {
+      window.scrollTo(0, targetPos);
+      if (typeof onComplete === 'function') onComplete();
+      return;
+    }
+
+    if (currentScrollTween) {
+      try { currentScrollTween.kill(); } catch (e) {}
+      currentScrollTween = null;
+    }
+    if (currentRafScrollId) {
+      cancelAnimationFrame(currentRafScrollId);
+      currentRafScrollId = null;
+    }
+
+    var dur = typeof duration === 'number' ? duration : Math.min(0.85, Math.max(0.4, dist / 2000));
+
+    if (window.gsap && window.gsap.to) {
+      var scrollObj = { y: start };
+      currentScrollTween = window.gsap.to(scrollObj, {
+        y: targetPos,
+        duration: dur,
+        ease: 'power3.out',
+        overwrite: 'auto',
+        onUpdate: function () {
+          window.scrollTo(0, Math.round(scrollObj.y));
+        },
+        onComplete: function () {
+          currentScrollTween = null;
+          window.scrollTo(0, targetPos);
           if (typeof onComplete === 'function') onComplete();
-        };
-
-        lenisInstance.scrollTo(targetPos, {
-          duration: dur,
-          easing: function (t) {
-            return t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
-          },
-          immediate: false,
-          onComplete: done
-        });
-
-        // Güvenlik zaman aşımı (Lenis nadir durumlarda tamamlanamazsa garanti fallback)
-        setTimeout(function () {
-          if (!completed) {
-            var curr = window.pageYOffset || window.scrollY || document.documentElement.scrollTop || 0;
-            if (Math.abs(curr - targetPos) > 30) {
-              fallbackRafScroll(targetPos, 0.35, done);
-            } else {
-              done();
-            }
-          }
-        }, (dur * 1000) + 120);
-
-        return;
-      } catch (e) {
-        console.warn('[parallax] Lenis scrollTo hatası, dahili RAF kaydırma devreye giriyor:', e);
-      }
+        }
+      });
+      return;
     }
 
     fallbackRafScroll(targetPos, dur, onComplete);
   }
 
   function fallbackRafScroll(targetPos, duration, onComplete) {
+    if (currentRafScrollId) {
+      cancelAnimationFrame(currentRafScrollId);
+      currentRafScrollId = null;
+    }
+
     var start = window.pageYOffset || window.scrollY || document.documentElement.scrollTop || 0;
     var change = targetPos - start;
     if (Math.abs(change) < 2) {
@@ -160,23 +166,25 @@
       return;
     }
 
-    var durMs = (duration || 0.85) * 1000;
+    var durMs = (duration || 0.75) * 1000;
     var startTime = null;
 
     function anim(currentTime) {
       if (!startTime) startTime = currentTime;
       var elapsed = currentTime - startTime;
       var progress = Math.min(1, elapsed / durMs);
-      var ease = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
+      var ease = 1 - Math.pow(1 - progress, 3);
       window.scrollTo(0, Math.round(start + change * ease));
+
       if (progress < 1) {
-        requestAnimationFrame(anim);
+        currentRafScrollId = requestAnimationFrame(anim);
       } else {
+        currentRafScrollId = null;
         window.scrollTo(0, targetPos);
         if (typeof onComplete === 'function') onComplete();
       }
     }
-    requestAnimationFrame(anim);
+    currentRafScrollId = requestAnimationFrame(anim);
   }
 
   function scrollToElement(target, hash, options) {
@@ -187,7 +195,8 @@
     var headerHeight = (header ? header.offsetHeight : 72) + 16;
     var targetPos = 0;
 
-    if (target !== document.body && target.id !== 'hero') {
+    // Hem #hero hem de settings'teki en üst panel #accountCard için doğrudan en tepeye (0) git
+    if (target !== document.body && target.id !== 'hero' && target.id !== 'accountCard') {
       var rect = target.getBoundingClientRect();
       var currentScroll = window.pageYOffset || window.scrollY || document.documentElement.scrollTop || 0;
       targetPos = Math.max(0, Math.round(rect.top + currentScroll - headerHeight));
@@ -203,7 +212,7 @@
     clearTimeout(programmaticScrollTimer);
     updateActiveNavLink(hash);
 
-    var dur = options.duration || 0.95;
+    var dur = options.duration;
     smoothScrollTo(targetPos, dur, function () {
       isProgrammaticScroll = false;
       updateActiveNavLink(hash);
@@ -212,7 +221,7 @@
 
     programmaticScrollTimer = setTimeout(function () {
       isProgrammaticScroll = false;
-    }, (dur * 1000) + 150);
+    }, 1100);
   }
 
   function updateActiveNavLink(targetId) {
@@ -339,8 +348,8 @@
       if (hash === '#' || hash.length < 2) return;
 
       var pathname = rawHref.substring(0, hashIdx);
-      var currentPath = (window.location.pathname.replace(/^.*\//, '') || 'index.html').toLowerCase();
-      var targetPath = pathname.replace(/^.*\//, '').replace(/^\.\//, '').toLowerCase();
+      var currentPath = (window.location.pathname.replace(/^.*[/\\]/, '') || 'index.html').toLowerCase();
+      var targetPath = pathname.replace(/^.*[/\\]/, '').replace(/^\.\//, '').toLowerCase();
 
       // Eğer bağlantı başka sayfaya aitse SPA geçiş motoru ele alsın
       if (targetPath && targetPath !== currentPath) return;
@@ -609,8 +618,8 @@
     var cleanTarget = targetUrl.split('#')[0].split('?')[0];
     var hash = targetUrl.indexOf('#') !== -1 ? targetUrl.substring(targetUrl.indexOf('#')) : '';
 
-    var currentClean = (window.location.pathname.replace(/^.*\//, '') || 'index.html').toLowerCase();
-    var targetFile = (cleanTarget.replace(/^.*\//, '').replace(/^\.\//, '') || 'index.html').toLowerCase();
+    var currentClean = (window.location.pathname.replace(/^.*[/\\]/, '') || 'index.html').toLowerCase();
+    var targetFile = (cleanTarget.replace(/^.*[/\\]/, '').replace(/^\.\//, '') || 'index.html').toLowerCase();
 
     if (currentClean === targetFile) {
       if (hash) {
@@ -744,7 +753,7 @@
   }
 
   function setupInstantPageTransitions() {
-    var currentFile = (window.location.pathname.replace(/^.*\//, '') || 'index.html').toLowerCase();
+    var currentFile = (window.location.pathname.replace(/^.*[/\\]/, '') || 'index.html').toLowerCase();
     if (currentFile.indexOf('settings') !== -1) {
       preloadPage('./index.html');
       preloadPage('index.html');
@@ -754,6 +763,9 @@
     }
 
     document.querySelectorAll('a[href*="index.html"], a[href*="settings.html"], .bottom-nav a, .nav-back-pill, .acct-pill').forEach(function (el) {
+      if (el._transitionBound) return;
+      el._transitionBound = true;
+
       var href = el.getAttribute('href');
       if (!href && el.getAttribute('onclick')) {
         var m = el.getAttribute('onclick').match(/location\.href=['"]([^'"]+)['"]/);

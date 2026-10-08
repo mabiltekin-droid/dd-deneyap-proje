@@ -105,17 +105,17 @@
 html {
   -webkit-text-size-adjust: 100%;
   color-scheme: light dark;
-  scroll-behavior: smooth;
+  scroll-behavior: auto !important;
   scroll-padding-top: calc(var(--nav-h) + 24px);
 }
 
 @media (prefers-reduced-motion: reduce) {
   html {
-    scroll-behavior: auto;
+    scroll-behavior: auto !important;
   }
 }
 
-/* Lenis Yumuşak Kaydırma Entegrasyonu */
+/* Lenis & JS Yumuşak Kaydırma Entegrasyonu */
 html.lenis,
 html.lenis body {
   height: auto;
@@ -159,6 +159,7 @@ body {
   transition: background 0.3s ease, color 0.3s ease;
   overflow-x: hidden;
   position: relative;
+  scroll-behavior: auto !important;
 }
 
 h1, h2, h3, p, dl, dd, dt {

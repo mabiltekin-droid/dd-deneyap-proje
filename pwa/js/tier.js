@@ -177,15 +177,19 @@
   function initTierEngine() {
     checkBattery();
 
-    runMicroBenchmark(function (fps) {
-      console.info('[tier] Mikro rAF Testi: ~' + Math.round(fps) + ' FPS, ilk donanım kademesi:', currentTier);
-      if (fps < 33) {
-        setTier('low');
-      } else if (fps < 50 && currentTier === 'ultra') {
-        setTier('mid');
-      }
-      startFpsMonitor();
-    });
+    // İlk açılışta komut dosyaları ve ağ bağlantıları kurulurken FPS geçici düşebilir.
+    // Gerçek boşta render performansını ölçmek için 1.2s beklenir.
+    setTimeout(function () {
+      runMicroBenchmark(function (fps) {
+        console.info('[tier] Boşta rAF Testi: ~' + Math.round(fps) + ' FPS, ilk donanım kademesi:', currentTier);
+        if (fps < 20) {
+          setTier('low');
+        } else if (fps < 42 && currentTier === 'ultra') {
+          setTier('mid');
+        }
+        startFpsMonitor();
+      });
+    }, 1200);
 
     document.addEventListener('visibilitychange', function () {
       if (document.hidden) {
