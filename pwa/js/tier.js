@@ -3,7 +3,7 @@
    - Cihaz donanım gücüne dinamik adaptasyon (low | mid | ultra)
    - Metrikler: concurrency, deviceMemory, getBattery, prefers-reduced-motion,
      15-kare mikro rAF (FPS) testi
-   - Dinamik Düşürme (Dynamic Throttle): 3 sn boyunca FPS < 35 ise kademe düşür
+   - Dinamik Düşürme & Histerezis Toparlanma (Dynamic Throttle & StepUp)
    ========================================================================== */
 
 (function () {
@@ -16,6 +16,7 @@
   var listeners = [];
   var fpsMonitorActive = false;
   var lowFpsConsecutiveMs = 0;
+  var highFpsConsecutiveMs = 0;
   var lastFrameTime = 0;
   var monitorRafId = null;
 
@@ -37,7 +38,8 @@
     currentTier = newTier;
     notify(currentTier);
 
-    if (currentTier === 'low') {
+    var baseline = detectInitialTier();
+    if (currentTier === 'low' && baseline === 'low') {
       stopFpsMonitor();
     }
   }
@@ -50,6 +52,15 @@
     }
   }
 
+  function stepUp() {
+    var baseline = detectInitialTier();
+    if (currentTier === 'low' && (baseline === 'mid' || baseline === 'ultra')) {
+      setTier('mid');
+    } else if (currentTier === 'mid' && baseline === 'ultra') {
+      setTier('ultra');
+    }
+  }
+
   /* 1. Başlangıç Donanım Metrikleri */
   function detectInitialTier() {
     var reducedMotion = window.matchMedia &&
@@ -57,7 +68,7 @@
     if (reducedMotion) return 'low';
 
     var cores = navigator.hardwareConcurrency || 4;
-    var mem = navigator.deviceMemory || 4;
+    var mem = navigator.deviceMemory || (cores >= 8 ? 8 : 4);
 
     /* Düşük donanım / eski mobil */
     if (cores <= 2 || mem <= 2) {
@@ -75,7 +86,7 @@
     return 'mid';
   }
 
-  /* 2. Pil Seviyesi / Güç Tasarrufu */
+  /* 2. Pil Seviyesi / Güç Tasarrufu & Şarj Değişimi */
   function checkBattery() {
     if (typeof navigator.getBattery === 'function') {
       navigator.getBattery().then(function (battery) {
@@ -83,6 +94,13 @@
           if (!battery.charging && battery.level <= 0.20) {
             console.warn('[tier] Düşük pil modu (%' + Math.round(battery.level * 100) + '), profil düşürülüyor.');
             setTier('low');
+          } else if (battery.charging) {
+            var baseline = detectInitialTier();
+            if (TIERS.indexOf(currentTier) < TIERS.indexOf(baseline)) {
+              console.info('[tier] Cihaz şarja takıldı, donanım profili yeniden değerlendiriliyor:', baseline);
+              setTier(baseline);
+              startFpsMonitor();
+            }
           }
         }
         evalBattery();
@@ -122,11 +140,13 @@
     requestAnimationFrame(sample);
   }
 
-  /* 4. Dinamik rAF FPS Monitörü (3 saniye < 35 FPS ise profil düşür) */
+  /* 4. Dinamik rAF FPS Monitörü (Düşürme & 5 sn >= 55 FPS ile Toparlanma) */
   function startFpsMonitor() {
-    if (fpsMonitorActive || currentTier === 'low') return;
+    var baseline = detectInitialTier();
+    if (fpsMonitorActive || (currentTier === 'low' && baseline === 'low')) return;
     fpsMonitorActive = true;
     lowFpsConsecutiveMs = 0;
+    highFpsConsecutiveMs = 0;
     lastFrameTime = performance.now();
 
     function monitor(now) {
@@ -140,6 +160,7 @@
         var currentFps = 1000 / delta;
         if (currentFps < 35) {
           lowFpsConsecutiveMs += delta;
+          highFpsConsecutiveMs = 0;
           if (lowFpsConsecutiveMs >= 3000) {
             console.warn('[tier] FPS 3 saniye boyunca < 35 (' + Math.round(currentFps) + ' fps), otomatik düşürülüyor.');
             stepDown();
@@ -147,10 +168,24 @@
           }
         } else {
           lowFpsConsecutiveMs = Math.max(0, lowFpsConsecutiveMs - delta * 0.5);
+          if (currentFps >= 55) {
+            highFpsConsecutiveMs += delta;
+            var baselineHw = detectInitialTier();
+            if (highFpsConsecutiveMs >= 5000) {
+              if (TIERS.indexOf(currentTier) < TIERS.indexOf(baselineHw)) {
+                console.info('[tier] FPS 5 saniye boyunca >= 55 (' + Math.round(currentFps) + ' fps), profil yükseltiliyor.');
+                stepUp();
+              }
+              highFpsConsecutiveMs = 0;
+            }
+          } else {
+            highFpsConsecutiveMs = Math.max(0, highFpsConsecutiveMs - delta * 0.5);
+          }
         }
       }
 
-      if (currentTier !== 'low') {
+      var currentBaseline = detectInitialTier();
+      if (currentTier !== 'low' || currentBaseline !== 'low') {
         monitorRafId = requestAnimationFrame(monitor);
       } else {
         fpsMonitorActive = false;
@@ -173,12 +208,8 @@
   currentTier = initial;
   document.documentElement.setAttribute('data-tier', currentTier);
 
-  /* Sayfa Yüklendiğinde Doğrulama ve Dinamik İzleme */
-  function initTierEngine() {
-    checkBattery();
-
-    // İlk açılışta komut dosyaları ve ağ bağlantıları kurulurken FPS geçici düşebilir.
-    // Gerçek boşta render performansını ölçmek için 1.2s beklenir.
+  /* LCP Sonrası Gecikmeli Benchmark & Dinamik İzleme */
+  function scheduleMicroBenchmark() {
     setTimeout(function () {
       runMicroBenchmark(function (fps) {
         console.info('[tier] Boşta rAF Testi: ~' + Math.round(fps) + ' FPS, ilk donanım kademesi:', currentTier);
@@ -189,12 +220,22 @@
         }
         startFpsMonitor();
       });
-    }, 1200);
+    }, 400);
+  }
+
+  function initTierEngine() {
+    checkBattery();
+
+    if (document.readyState === 'complete') {
+      scheduleMicroBenchmark();
+    } else {
+      window.addEventListener('load', scheduleMicroBenchmark, { once: true });
+    }
 
     document.addEventListener('visibilitychange', function () {
       if (document.hidden) {
         stopFpsMonitor();
-      } else if (currentTier !== 'low') {
+      } else if (currentTier !== 'low' || detectInitialTier() !== 'low') {
         startFpsMonitor();
       }
     });
@@ -216,6 +257,7 @@
       if (typeof fn === 'function') listeners.push(fn);
     },
     stepDown: stepDown,
+    stepUp: stepUp,
     startFpsMonitor: startFpsMonitor,
     stopFpsMonitor: stopFpsMonitor
   };

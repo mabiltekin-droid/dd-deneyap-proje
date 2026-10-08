@@ -141,12 +141,11 @@
     if (!cv) return;
     const ctx = cv.getContext('2d');
     const dpr = window.devicePixelRatio || 1;
-    const w = Math.max(240, cv.clientWidth || cv.parentNode.clientWidth || 320);
-    const h = 220;
+    const w = Math.max(240, cv.clientWidth || (cv.parentNode && cv.parentNode.clientWidth) || 320);
+    const h = cv.clientHeight || 240;
 
     cv.width = Math.round(w * dpr);
     cv.height = Math.round(h * dpr);
-    cv.style.height = h + 'px';
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
 

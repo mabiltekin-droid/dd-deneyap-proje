@@ -509,7 +509,7 @@
       }
       App.resetSettings();
       setResult(out, 'Temizlendi, konsol yeniden yükleniyor…', 'ok');
-      setTimeout(function () { location.reload(); }, 600);
+      addTimer(setTimeout(function () { location.reload(); }, 600));
     } catch (err) {
       setResult(out, 'Temizlenemedi: ' + err.message, 'fail');
     }
@@ -550,6 +550,25 @@
   /* ------------------------------------------------------------- Başlatma */
 
   let boundForm = null;   /* hangi #settingsForm düğümüne bağlandık */
+  let pendingTimers = [];
+
+  function addTimer(id) {
+    if (id) pendingTimers.push(id);
+    return id;
+  }
+
+  function clearPendingTimers() {
+    pendingTimers.forEach(function (t) {
+      clearTimeout(t);
+      clearInterval(t);
+    });
+    pendingTimers = [];
+  }
+
+  function destroy() {
+    clearPendingTimers();
+    boundForm = null;
+  }
 
   function init() {
     const form = $('settingsForm');
@@ -557,13 +576,14 @@
     /* Aynı DOM'a iki kez bağlanmayı engelle: hem doğrudan settings.html
        açılışında hem de SPA geçişinde çağrılabilir. */
     if (boundForm === form) return;
+    destroy();
     boundForm = form;
     fillForm();
     App.applyTheme();
 
-    App.init3DTilt();
-    App.initParallax();
-    App.initRipple();
+    if (App.init3DTilt) App.init3DTilt();
+    /* Eski App.initParallax() kaldırıldı; tüm scroll/lerp yönetimi parallax.js motorunda */
+    if (App.initRipple) App.initRipple();
 
     $('settingsForm').addEventListener('submit', save);
     $('testBtn').addEventListener('click', testConnection);
@@ -642,10 +662,6 @@
     refreshDeviceInfo().then(refreshTgInfo).catch(function () {
       refreshTgInfo().catch(function () {});
     });
-  }
-
-  function destroy() {
-    // Cleanup
   }
 
   window.App.initSettings = init;

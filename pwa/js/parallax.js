@@ -83,6 +83,15 @@
         lenisInstance.on('scroll', window.ScrollTrigger.update);
       }
 
+      lenisInstance.on('scroll', function (e) {
+        var y = (e && typeof e.scroll === 'number') ? e.scroll : (window.pageYOffset || 0);
+        var offsetVal = y.toFixed(1) + 'px';
+        var lerpVal = (y * 0.45).toFixed(1) + 'px';
+        document.documentElement.style.setProperty('--scroll-offset', offsetVal);
+        document.documentElement.style.setProperty('--scroll-lerp', lerpVal);
+        document.documentElement.style.setProperty('--scroll-y', offsetVal);
+      });
+
       /* Lenis bağımsız ve kesintisiz rAF döngüsü ile çalışır */
       startLenisLoop();
 
@@ -273,16 +282,31 @@
           return;
         }
 
+        var isTouchOrMobile = (window.matchMedia && window.matchMedia('(max-width: 980px)').matches) ||
+                              ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+
         bubble.style.opacity = '1';
-        window.gsap.to(bubble, {
-          x: left,
-          y: top,
-          width: width,
-          height: height,
-          duration: 0.5,
-          ease: 'elastic.out(1, 0.75)',
-          overwrite: 'auto'
-        });
+        if (isTouchOrMobile) {
+          window.gsap.to(bubble, {
+            x: left,
+            y: top,
+            width: width,
+            height: height,
+            duration: 0.2,
+            ease: 'power2.out',
+            overwrite: 'auto'
+          });
+        } else {
+          window.gsap.to(bubble, {
+            x: left,
+            y: top,
+            width: width,
+            height: height,
+            duration: 0.5,
+            ease: 'elastic.out(1, 0.75)',
+            overwrite: 'auto'
+          });
+        }
       }
 
       function syncToActive(animate) {
@@ -379,6 +403,10 @@
       });
       scrollTriggers = [];
     }
+
+    document.documentElement.style.removeProperty('--scroll-offset');
+    document.documentElement.style.removeProperty('--scroll-lerp');
+    document.documentElement.style.removeProperty('--scroll-y');
 
     var hero = document.getElementById('hero');
     if (hero) {
@@ -649,6 +677,23 @@
         return;
       }
 
+      /* 1. DOM'a yeni içerik basılmadan HEMEN ÖNCE eski sayfanın yaşam döngüsünü temizle */
+      if (currentClean.indexOf('settings') !== -1) {
+        if (window.App && typeof window.App.destroySettings === 'function') {
+          window.App.destroySettings();
+        }
+      } else {
+        if (window.App && typeof window.App.destroyDashboard === 'function') {
+          window.App.destroyDashboard();
+        }
+      }
+
+      /* Sayfa değiştiğinde Lenis kaydırmasını kesin olarak sıfırla */
+      if (lenisInstance) {
+        lenisInstance.scrollTo(0, { immediate: true });
+      }
+      window.scrollTo({ top: 0, behavior: 'instant' });
+
       /* Temizle: Eski DOM'da main dışında kalmış olabilecek fazlalıklar */
       var strayHero = document.querySelector('body > #hero, body > .hero-section');
       if (strayHero) strayHero.remove();
@@ -703,9 +748,6 @@
       }
 
       if (targetFile.indexOf('settings') !== -1) {
-        if (window.App && typeof window.App.destroyDashboard === 'function') {
-          window.App.destroyDashboard();
-        }
         if (window.App && typeof window.App.initSettings === 'function') {
           window.App.initSettings();
         }
@@ -713,9 +755,6 @@
           window.App.initAccount();
         }
       } else {
-        if (window.App && typeof window.App.destroySettings === 'function') {
-          window.App.destroySettings();
-        }
         if (window.App && typeof window.App.initDashboard === 'function') {
           window.App.initDashboard();
         }

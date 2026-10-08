@@ -367,82 +367,17 @@
     }
   };
 
+  /* Parallax ve scroll yönetimi tek motor olarak parallax.js'e devredilmiştir */
   App.initParallax = function () {
-    const reducedMotion = window.matchMedia &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    let targetY = 0;
-    let currentY = 0;
-    let rafId = null;
-    let scrollAttached = false;
-
-    function lerpLoop() {
-      const diff = targetY - currentY;
-      const tier = (App.Tier && App.Tier.get()) || 'mid';
-      const lerpFactor = tier === 'ultra' ? 0.09 : 0.16;
-
-      if (Math.abs(diff) < 0.25) {
-        currentY = targetY;
-        rafId = null; /* rAF döngüsünü uyut — hareketsizken CPU yükü sıfır */
-      } else {
-        currentY += diff * lerpFactor;
-        rafId = requestAnimationFrame(lerpLoop);
-      }
-
-      const offsetVal = currentY.toFixed(1) + 'px';
-      const lerpVal = (currentY * 0.45).toFixed(1) + 'px';
-
-      document.documentElement.style.setProperty('--scroll-offset', offsetVal);
-      document.documentElement.style.setProperty('--scroll-lerp', lerpVal);
-      document.documentElement.style.setProperty('--scroll-y', offsetVal);
-    }
-
-    function onScroll() {
-      targetY = window.scrollY || window.pageYOffset || 0;
-      if (!rafId) {
-        rafId = requestAnimationFrame(lerpLoop);
-      }
-    }
-
-    function attach() {
-      if (scrollAttached) return;
-      window.addEventListener('scroll', onScroll, { passive: true });
-      scrollAttached = true;
-      onScroll();
-    }
-
-    function detach() {
-      if (!scrollAttached) return;
-      window.removeEventListener('scroll', onScroll);
-      scrollAttached = false;
-      if (rafId) {
-        cancelAnimationFrame(rafId);
-        rafId = null;
-      }
-      document.documentElement.style.removeProperty('--scroll-offset');
-      document.documentElement.style.removeProperty('--scroll-lerp');
-      document.documentElement.style.removeProperty('--scroll-y');
-    }
-
-    const initialTier = (App.Tier && App.Tier.get()) || 'mid';
-    if (!reducedMotion && initialTier !== 'low') {
-      attach();
-    } else {
-      detach();
-    }
-
-    if (App.Tier && App.Tier.onChange) {
-      App.Tier.onChange(function (tier) {
-        if (tier === 'low' || reducedMotion) {
-          detach();
-        } else {
-          attach();
-        }
-      });
+    if (App.Parallax && typeof App.Parallax.reinit === 'function') {
+      App.Parallax.reinit();
     }
   };
 
+  let rippleBound = false;
   App.initRipple = function () {
+    if (rippleBound) return;
+    rippleBound = true;
     document.addEventListener('click', function (e) {
       const btn = e.target.closest('.btn, .icon-btn');
       if (!btn) return;

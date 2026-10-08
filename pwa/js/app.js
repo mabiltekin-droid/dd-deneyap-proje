@@ -54,6 +54,16 @@
     const filtPath = $('gasFiltWave');
     if (!rawPath || !filtPath) return;
 
+    const svg = rawPath.closest('svg');
+    if (svg) {
+      if (svg.getAttribute('viewBox') !== '0 0 100 40') {
+        svg.setAttribute('viewBox', '0 0 100 40');
+      }
+      if (svg.getAttribute('preserveAspectRatio') !== 'none') {
+        svg.setAttribute('preserveAspectRatio', 'none');
+      }
+    }
+
     const count = telemetryHistory.raw.length;
     if (count < 2) return;
 
@@ -66,7 +76,7 @@
     }
     const span = Math.max(16, max - min);
     const mid = (max + min) / 2;
-    const stepX = 320 / (count - 1);
+    const stepX = 100 / (count - 1);
 
     let dRaw = '', dFilt = '';
     for (let i = 0; i < count; i++) {
@@ -721,13 +731,22 @@
 
   /* ------------------------------------------------------------- Başlatma */
 
+  let dashboardEventsBound = false;
+
   function destroy() {
     clearTimeout(pollTimer);
     clearInterval(tickTimer);
+    clearTimeout(pumpArmTimer);
     pollTimer = null;
     tickTimer = null;
+    pumpArmTimer = null;
+    pumpArmed = false;
     online = false;
-    pushUnsubs.forEach(function (u) { try { u(); } catch (e) {} });
+    pushUnsubs.forEach(function (u) {
+      try {
+        if (typeof u === 'function') u();
+      } catch (e) {}
+    });
     pushUnsubs = [];
     if (lastData && lastData.pump) disarmPump();
   }
@@ -743,7 +762,7 @@
     startTicker();
 
     if (App.init3DTilt) App.init3DTilt();
-    if (App.initParallax) App.initParallax();
+    /* Eski App.initParallax() kaldırıldı; tüm scroll/lerp yönetimi parallax.js motorunda */
     if (App.initRipple) App.initRipple();
     if (App.initHistory) App.initHistory();
 
@@ -760,18 +779,21 @@
       poll();
     }
 
-    document.addEventListener('visibilitychange', function () {
-      if (document.hidden) {
-        clearTimeout(pollTimer);
-      } else {
-        clearTimeout(pollTimer);
-        poll();
-      }
-    });
+    if (!dashboardEventsBound) {
+      dashboardEventsBound = true;
+      document.addEventListener('visibilitychange', function () {
+        if (document.hidden) {
+          clearTimeout(pollTimer);
+        } else {
+          clearTimeout(pollTimer);
+          if ($('homeWidget')) poll();
+        }
+      });
 
-    window.addEventListener('pagehide', function () {
-      if (lastData && lastData.pump) disarmPump();
-    });
+      window.addEventListener('pagehide', function () {
+        if (lastData && lastData.pump) disarmPump();
+      });
+    }
 
     console.info('%c[Deneyap Ev Koruma] Cyber-Console v' + App.VERSION + ' devrede',
       'color:#38bdf8;font-weight:bold;font-size:12px');
