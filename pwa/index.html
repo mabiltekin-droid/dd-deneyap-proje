@@ -43,7 +43,7 @@
     <div class="ambient-orb orb-accent"></div>
   </div>
 
-  <a class="skip-link" href="#main">İçeriğe geç</a>
+  <a class="skip-link" href="#hero">İçeriğe geç</a>
 
   <!-- Cam-morfik Yapışkan SCADA Üst Bar -->
   <header class="glass-header">
@@ -83,14 +83,13 @@
         <span>Ayarlar</span>
       </a>
 
-      <button id="accountBtn" class="acct-pill" type="button"
-              aria-label="Hesap" title="Hesap & Roller"
-              onclick="location.href='./settings.html#accountCard'">
+      <a href="./settings.html#accountCard" id="accountBtn" class="acct-pill"
+         role="button" aria-label="Hesap" title="Hesap & Roller">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
         </svg>
         <span id="accountBtnText">Hesap</span>
-      </button>
+      </a>
       <button id="pwaInstallBtn" class="pwa-install-btn" type="button" aria-label="Uygulamayı İndir" title="Ev Koruma Uygulamasını Cihazınıza İndirin">
         <svg class="install-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -128,8 +127,10 @@
     </div>
   </header>
 
-  <!-- 1. SİNEMATİK HERO & PARALLAX BÖLÜMÜ -->
-  <section class="hero-section" id="hero" aria-label="Sinematik Başlangıç ve Canlı Hat">
+  <!-- ANA İÇERİK: GÖREV KONTROL MERKEZİ & SCROLLYTELLING BÖLÜMLERİ -->
+  <main id="main" class="page-container mission-control-page">
+    <!-- 1. SİNEMATİK HERO & PARALLAX BÖLÜMÜ -->
+    <section class="hero-section" id="hero" aria-label="Sinematik Başlangıç ve Canlı Hat">
     <div class="parallax-stage" data-parallax-layers>
       <!-- Katman 1: Derinlik & Siber Izgara (yPercent: 70) -->
       <div class="p-layer p-layer-1" data-parallax-layer="1" aria-hidden="true">
@@ -268,7 +269,7 @@
   </section>
 
   <!-- ANA İÇERİK: GENİŞ BANTLI SCROLLYTELLING BÖLÜMLERİ -->
-  <main id="main" class="mission-main">
+  <div class="mission-main">
     <!-- Kritik Durum Banner'ı -->
     <div id="banner" class="banner" role="status" hidden></div>
 
@@ -730,10 +731,7 @@
         Bu konsol Deneyap Kart ile gerçek zamanlı iletişim kurmak için JavaScript gerektirir.
       </div>
     </noscript>
-  </main>
-
-  <!-- Bildirim & Toast Kutusu -->
-  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  </div>
 
   <!-- Kurumsal SCADA Web Footer -->
   <footer class="scada-footer">
@@ -769,6 +767,10 @@
       </div>
     </div>
   </footer>
+  </main>
+
+  <!-- Bildirim & Toast Kutusu -->
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
   <!-- Mobil Hızlı Alt Navigasyon Barı -->
   <nav class="bottom-nav" aria-label="Ana gezinme">

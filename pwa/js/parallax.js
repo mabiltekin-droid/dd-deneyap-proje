@@ -46,13 +46,13 @@
     try {
       var isUltra = (tier === 'ultra');
       lenisInstance = new window.Lenis({
-        duration: isUltra ? 0.9 : 0.65,
+        duration: isUltra ? 1.05 : 0.85,
         easing: function (t) {
-          return Math.min(1, 1.001 - Math.pow(2, -10 * t));
+          return t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
         },
         orientation: 'vertical',
         gestureOrientation: 'vertical',
-        smoothWheel: false,
+        smoothWheel: true,
         wheelMultiplier: 1.0,
         touchMultiplier: 1.0
       });
@@ -89,22 +89,59 @@
 
   /* ------------------------------------------- Buton & Bağlantı ScrollTo Motoru */
 
-  function scrollToElement(target, hash) {
-    if (!target) return;
+  function smoothScrollTo(targetPos, duration) {
+    if (isReducedMotion()) {
+      window.scrollTo({ top: targetPos, behavior: 'auto' });
+      if (lenisInstance && typeof lenisInstance.scrollTo === 'function') {
+        try { lenisInstance.scrollTo(targetPos, { immediate: true }); } catch (e) {}
+      }
+      return;
+    }
 
-    var header = document.querySelector('.glass-header');
-    var headerHeight = (header ? header.offsetHeight : 72) + 12;
-    var targetPos = target.getBoundingClientRect().top + (window.pageYOffset || window.scrollY || 0) - headerHeight;
-
-    window.scrollTo({
-      top: Math.max(0, targetPos),
-      behavior: isReducedMotion() ? 'auto' : 'smooth'
-    });
+    var dur = typeof duration === 'number' ? duration : 1.15;
 
     if (lenisInstance && typeof lenisInstance.scrollTo === 'function') {
       try {
-        lenisInstance.scrollTo(Math.max(0, targetPos), { immediate: true });
+        lenisInstance.scrollTo(targetPos, {
+          duration: dur,
+          easing: function (t) {
+            return t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
+          },
+          immediate: false
+        });
+        return;
       } catch (e) {}
+    }
+
+    var start = window.pageYOffset || window.scrollY || 0;
+    var change = targetPos - start;
+    if (Math.abs(change) < 2) return;
+
+    var durMs = dur * 1000;
+    var startTime = null;
+
+    function anim(currentTime) {
+      if (!startTime) startTime = currentTime;
+      var elapsed = currentTime - startTime;
+      var progress = Math.min(1, elapsed / durMs);
+      var ease = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
+      window.scrollTo(0, start + change * ease);
+      if (progress < 1) {
+        requestAnimationFrame(anim);
+      }
+    }
+    requestAnimationFrame(anim);
+  }
+
+  function scrollToElement(target, hash, options) {
+    if (!target) return;
+    options = options || {};
+
+    var header = document.querySelector('.glass-header');
+    var headerHeight = (header ? header.offsetHeight : 72) + 16;
+    var targetPos = 0;
+    if (target !== document.body && target.id !== 'hero') {
+      targetPos = Math.max(0, target.getBoundingClientRect().top + (window.pageYOffset || window.scrollY || 0) - headerHeight);
     }
 
     if (hash && window.history && window.history.pushState) {
@@ -112,6 +149,7 @@
     }
 
     updateActiveNavLink(hash);
+    smoothScrollTo(targetPos, options.duration || 1.15);
   }
 
   function updateActiveNavLink(targetId) {
@@ -507,7 +545,9 @@
     if (currentClean === targetFile) {
       if (hash) {
         var el = document.querySelector(hash);
-        if (el) scrollToElement(el, hash);
+        if (el) scrollToElement(el, hash, { duration: 1.15 });
+      } else {
+        smoothScrollTo(0, 0.85);
       }
       return Promise.resolve();
     }
@@ -528,7 +568,14 @@
         return;
       }
 
+      /* Temizle: Eski DOM'da main dışında kalmış olabilecek fazlalıklar */
+      var strayHero = document.querySelector('body > #hero, body > .hero-section');
+      if (strayHero) strayHero.remove();
+      var strayFooter = document.querySelector('body > .scada-footer');
+      if (strayFooter) strayFooter.remove();
+
       document.title = doc.title || document.title;
+      document.body.className = doc.body.className;
 
       oldMain.className = newMain.className;
       oldMain.id = newMain.id;
@@ -555,7 +602,9 @@
         }
         var newAcct = newActions.querySelector('#accountBtn');
         var oldAcct = oldActions.querySelector('#accountBtn');
-        if (newAcct && !oldAcct) {
+        if (newAcct && oldAcct) {
+          oldAcct.replaceWith(newAcct);
+        } else if (newAcct && !oldAcct) {
           oldActions.insertBefore(newAcct, oldActions.firstChild);
         } else if (!newAcct && oldAcct) {
           oldAcct.remove();
@@ -573,10 +622,16 @@
       }
 
       if (targetFile.indexOf('settings') !== -1) {
+        if (window.App && typeof window.App.destroyDashboard === 'function') {
+          window.App.destroyDashboard();
+        }
         if (window.App && typeof window.App.initSettings === 'function') {
           window.App.initSettings();
         }
       } else {
+        if (window.App && typeof window.App.destroySettings === 'function') {
+          window.App.destroySettings();
+        }
         if (window.App && typeof window.App.initDashboard === 'function') {
           window.App.initDashboard();
         }
@@ -587,18 +642,22 @@
       }
       setupLiquidBubbleNav();
       setupInstantPageTransitions();
+      if (window.App && window.App.init3DTilt) window.App.init3DTilt();
+      if (window.App && window.App.initRipple) window.App.initRipple();
 
       if (hash) {
         requestAnimationFrame(function () {
-          var targetEl = document.querySelector(hash);
-          if (targetEl) {
-            scrollToElement(targetEl, hash);
-          } else {
-            window.scrollTo({ top: 0, behavior: 'instant' });
-          }
+          requestAnimationFrame(function () {
+            var targetEl = document.querySelector(hash);
+            if (targetEl) {
+              scrollToElement(targetEl, hash, { duration: 1.2 });
+            } else {
+              smoothScrollTo(0, 0.85);
+            }
+          });
         });
       } else {
-        window.scrollTo({ top: 0, behavior: 'instant' });
+        smoothScrollTo(0, 0.85);
       }
 
       if (window.App && window.App.sound && window.App.sound.click) {
@@ -670,6 +729,13 @@
       });
     }
 
+    if (window.location.hash) {
+      setTimeout(function () {
+        var initEl = document.querySelector(window.location.hash);
+        if (initEl) scrollToElement(initEl, window.location.hash, { duration: 1.1 });
+      }, 300);
+    }
+
     window.addEventListener('pagehide', function () {
       cleanupParallax();
       if (lenisInstance) {
@@ -706,8 +772,10 @@
       applyTier(getTier());
     },
     scrollTo: scrollToElement,
+    smoothScrollTo: smoothScrollTo,
     getLenis: function () { return lenisInstance; }
   };
 
   window.App.scrollTo = scrollToElement;
+  window.App.smoothScrollTo = smoothScrollTo;
 })();

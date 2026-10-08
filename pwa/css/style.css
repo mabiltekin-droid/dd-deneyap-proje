@@ -105,6 +105,24 @@
 html {
   -webkit-text-size-adjust: 100%;
   color-scheme: light dark;
+  scroll-behavior: smooth;
+  scroll-padding-top: calc(var(--nav-h) + 24px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+main.page-container {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  position: relative;
+  z-index: 10;
 }
 
 body {
@@ -1990,6 +2008,7 @@ main {
   border-radius: 999px;
   cursor: pointer;
   backdrop-filter: blur(8px);
+  text-decoration: none;
   transition: border-color 0.18s, background 0.18s, color 0.18s;
 }
 

@@ -486,36 +486,36 @@
      Yayıncı üzerinden durum her geldiğinde anında çizilir; periyodik
      yoklama yapılmaz. Polling yalnızca "cihaz hâlâ konuşuyor mu" denetimi
      ve tekrar bağlanma tetikleyicisi olarak kalır. */
+  let pushUnsubs = [];
+
   function startPush() {
-    App.api.onStatus(function (msg) {
-      if (!msg || msg.__relay || msg.__device) return;  /* bağlantı olayları ayrı ele alınır */
-      const at = Date.now();
-      if (lastData && Number(msg.t) && Number(msg.t) <= Number(lastData.t) &&
-          Number(msg.uptime) <= Number(lastData.uptime)) return;  /* eski kopyayı yut */
-      setText('pingMs', Math.max(0, Date.now() - at + (msg.__rtt || 0)) + ' ms');
-      lastData = msg;
-      markOnline();
-      render(msg);
-    });
+    pushUnsubs.forEach(function (u) { try { u(); } catch (e) {} });
+    pushUnsubs = [];
 
-    /* Yayıncı (broker) bağlantısı koparsa kumandalar kilitlenir: komut
-       gönderilse de gitmez. */
-    App.api.onStatus(function (msg) {
-      if (!msg || !msg.__relay || msg.online) return;
-      failStreak += 1;
-      App.setConnBadge('offline', msg.msg || 'Bağlantı Yok');
-      setControlsEnabled(false);
-    });
-
-    /* Cihazın LWT ile bildirdiği kendi durumu. Cihaz koptuğunda rozet
-       "Canlı Telemetri"ye dönemez; bir sonraki (saklanmış) durum mesajı
-       da bunu değiştiremez — markOnline() bunu zaten reddediyor. */
-    App.api.onStatus(function (msg) {
-      if (!msg || !msg.__device || msg.online) return;
-      failStreak += 1;
-      App.setConnBadge('offline', msg.msg || 'Cihaz Çevrimdışı');
-      setControlsEnabled(false);
-    });
+    pushUnsubs.push(
+      App.api.onStatus(function (msg) {
+        if (!msg || msg.__relay || msg.__device) return;  /* bağlantı olayları ayrı ele alınır */
+        const at = Date.now();
+        if (lastData && Number(msg.t) && Number(msg.t) <= Number(lastData.t) &&
+            Number(msg.uptime) <= Number(lastData.uptime)) return;  /* eski kopyayı yut */
+        setText('pingMs', Math.max(0, Date.now() - at + (msg.__rtt || 0)) + ' ms');
+        lastData = msg;
+        markOnline();
+        render(msg);
+      }),
+      App.api.onStatus(function (msg) {
+        if (!msg || !msg.__relay || msg.online) return;
+        failStreak += 1;
+        App.setConnBadge('offline', msg.msg || 'Bağlantı Yok');
+        setControlsEnabled(false);
+      }),
+      App.api.onStatus(function (msg) {
+        if (!msg || !msg.__device || msg.online) return;
+        failStreak += 1;
+        App.setConnBadge('offline', msg.msg || 'Cihaz Çevrimdışı');
+        setControlsEnabled(false);
+      })
+    );
 
     App.api.startMqtt();
   }
@@ -721,7 +721,19 @@
 
   /* ------------------------------------------------------------- Başlatma */
 
+  function destroy() {
+    clearTimeout(pollTimer);
+    clearInterval(tickTimer);
+    pollTimer = null;
+    tickTimer = null;
+    online = false;
+    pushUnsubs.forEach(function (u) { try { u(); } catch (e) {} });
+    pushUnsubs = [];
+    if (lastData && lastData.pump) disarmPump();
+  }
+
   function init() {
+    destroy();
     if (!$('homeWidget')) return;
     setupTheme();
     setupServiceWorker();
@@ -765,6 +777,7 @@
   }
 
   window.App.initDashboard = init;
+  window.App.destroyDashboard = destroy;
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () {

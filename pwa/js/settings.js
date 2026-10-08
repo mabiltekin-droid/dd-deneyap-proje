@@ -629,12 +629,20 @@
     };
     App.registerServiceWorker().then(function (r) { reg = r; });
     App.setupPwaInstall();
+    if (window.App && typeof window.App.initAccount === 'function') {
+      window.App.initAccount();
+    }
     refreshDeviceInfo().then(refreshTgInfo).catch(function () {
       refreshTgInfo().catch(function () {});
     });
   }
 
+  function destroy() {
+    // Cleanup
+  }
+
   window.App.initSettings = init;
+  window.App.destroySettings = destroy;
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () {
