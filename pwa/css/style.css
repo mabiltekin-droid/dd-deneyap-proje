@@ -115,6 +115,25 @@ html {
   }
 }
 
+/* Lenis Yumuşak Kaydırma Entegrasyonu */
+html.lenis,
+html.lenis body {
+  height: auto;
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
 main.page-container {
   width: 100%;
   max-width: 100%;

@@ -369,6 +369,7 @@
   }
 
   let lastPts = [];
+  let eventsBound = false;
 
   /* ----------------------------------------------------------- init ------ */
 
@@ -377,6 +378,8 @@
 
     const rangeBtns = document.querySelectorAll('.hist-range [data-span]');
     rangeBtns.forEach(function (b) {
+      if (b._histBound) return;
+      b._histBound = true;
       b.addEventListener('click', function () {
         spanMin = Number(b.getAttribute('data-span')) || 1440;
         rangeBtns.forEach(function (o) { o.classList.remove('primary'); });
@@ -386,27 +389,36 @@
     });
 
     const rb = $('histRefreshBtn');
-    if (rb) rb.addEventListener('click', function () { load(true); });
-
-    /* Cihazdan gelen her durum örneğe dönüşsün (yerel önbellek). */
-    if (App.api && typeof App.api.onStatus === 'function') {
-      App.api.onStatus(function (s) { if (s && s.ok) noteSample(s); });
+    if (rb && !rb._histBound) {
+      rb._histBound = true;
+      rb.addEventListener('click', function () { load(true); });
     }
 
-    /* Sekme görünür olunca grafiği tazele; ayrıca ilk çizim için. */
-    document.addEventListener('visibilitychange', function () {
-      if (!document.hidden) load(false);
-    });
-    load(false);
+    if (!eventsBound) {
+      eventsBound = true;
+      /* Cihazdan gelen her durum örneğe dönüşsün (yerel önbellek). */
+      if (App.api && typeof App.api.onStatus === 'function') {
+        App.api.onStatus(function (s) { if (s && s.ok) noteSample(s); });
+      }
 
-    let rt = null;
-    window.addEventListener('resize', function () {
-      clearTimeout(rt);
-      rt = setTimeout(function () { if (lastPts.length) draw(lastPts); }, 180);
-    });
+      /* Sekme görünür olunca grafiği tazele; ayrıca ilk çizim için. */
+      document.addEventListener('visibilitychange', function () {
+        if (!document.hidden && $('historyCard')) load(false);
+      });
+
+      let rt = null;
+      window.addEventListener('resize', function () {
+        clearTimeout(rt);
+        rt = setTimeout(function () { if (lastPts.length && $('historyCard')) draw(lastPts); }, 180);
+      });
+    }
+
+    load(false);
   }
 
+  App.initHistory = init;
   App.History = {
+    init: init,
     reload: function () { load(true); },
     noteSample: noteSample
   };

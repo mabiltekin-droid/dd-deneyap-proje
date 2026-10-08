@@ -14,7 +14,9 @@
 
   var lenisInstance = null;
   var scrollTriggers = [];
-  var tickerCallback = null;
+  var lenisRafId = null;
+  var isProgrammaticScroll = false;
+  var programmaticScrollTimer = null;
   var isInitialized = false;
 
   function isReducedMotion() {
@@ -28,16 +30,36 @@
 
   /* ------------------------------------------------------------- Lenis Motoru */
 
-  function initLenis(tier) {
+  function startLenisLoop() {
+    stopLenisLoop();
+    function loop(time) {
+      if (lenisInstance) {
+        try {
+          lenisInstance.raf(time);
+        } catch (e) {}
+        lenisRafId = requestAnimationFrame(loop);
+      }
+    }
+    lenisRafId = requestAnimationFrame(loop);
+  }
+
+  function stopLenisLoop() {
+    if (lenisRafId) {
+      cancelAnimationFrame(lenisRafId);
+      lenisRafId = null;
+    }
+  }
+
+  function destroyLenis() {
+    stopLenisLoop();
     if (lenisInstance) {
       try { lenisInstance.destroy(); } catch (e) {}
       lenisInstance = null;
     }
+  }
 
-    if (tickerCallback && window.gsap && window.gsap.ticker) {
-      try { window.gsap.ticker.remove(tickerCallback); } catch (e) {}
-      tickerCallback = null;
-    }
+  function initLenis(tier) {
+    destroyLenis();
 
     if (tier === 'low' || isReducedMotion() || typeof window.Lenis === 'undefined') {
       return null;
@@ -46,7 +68,7 @@
     try {
       var isUltra = (tier === 'ultra');
       lenisInstance = new window.Lenis({
-        duration: isUltra ? 1.05 : 0.85,
+        duration: isUltra ? 1.0 : 0.85,
         easing: function (t) {
           return t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
         },
@@ -61,24 +83,8 @@
         lenisInstance.on('scroll', window.ScrollTrigger.update);
       }
 
-      /* RAF Ticker — Her sayfada (index veya settings) KESİNTİSİZ çalışır */
-      if (window.gsap && window.gsap.ticker) {
-        tickerCallback = function (time) {
-          if (lenisInstance) {
-            lenisInstance.raf(time * 1000);
-          }
-        };
-        window.gsap.ticker.add(tickerCallback);
-        window.gsap.ticker.lagSmoothing(0);
-      } else {
-        var rafFn = function (time) {
-          if (lenisInstance) {
-            lenisInstance.raf(time);
-            requestAnimationFrame(rafFn);
-          }
-        };
-        requestAnimationFrame(rafFn);
-      }
+      /* Lenis bağımsız ve kesintisiz rAF döngüsü ile çalışır */
+      startLenisLoop();
 
       return lenisInstance;
     } catch (e) {
@@ -89,35 +95,72 @@
 
   /* ------------------------------------------- Buton & Bağlantı ScrollTo Motoru */
 
-  function smoothScrollTo(targetPos, duration) {
+  function smoothScrollTo(targetPos, duration, onComplete) {
+    if (typeof targetPos !== 'number' || isNaN(targetPos)) {
+      targetPos = 0;
+    }
+    targetPos = Math.max(0, Math.round(targetPos));
+
     if (isReducedMotion()) {
-      window.scrollTo({ top: targetPos, behavior: 'auto' });
+      window.scrollTo(0, targetPos);
       if (lenisInstance && typeof lenisInstance.scrollTo === 'function') {
         try { lenisInstance.scrollTo(targetPos, { immediate: true }); } catch (e) {}
       }
+      if (typeof onComplete === 'function') onComplete();
       return;
     }
 
-    var dur = typeof duration === 'number' ? duration : 1.15;
+    var dur = typeof duration === 'number' ? duration : 0.95;
 
     if (lenisInstance && typeof lenisInstance.scrollTo === 'function') {
       try {
+        var completed = false;
+        var done = function () {
+          if (completed) return;
+          completed = true;
+          if (typeof onComplete === 'function') onComplete();
+        };
+
         lenisInstance.scrollTo(targetPos, {
           duration: dur,
           easing: function (t) {
             return t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
           },
-          immediate: false
+          immediate: false,
+          onComplete: done
         });
+
+        // Güvenlik zaman aşımı (Lenis nadir durumlarda tamamlanamazsa garanti fallback)
+        setTimeout(function () {
+          if (!completed) {
+            var curr = window.pageYOffset || window.scrollY || document.documentElement.scrollTop || 0;
+            if (Math.abs(curr - targetPos) > 30) {
+              fallbackRafScroll(targetPos, 0.35, done);
+            } else {
+              done();
+            }
+          }
+        }, (dur * 1000) + 120);
+
         return;
-      } catch (e) {}
+      } catch (e) {
+        console.warn('[parallax] Lenis scrollTo hatası, dahili RAF kaydırma devreye giriyor:', e);
+      }
     }
 
-    var start = window.pageYOffset || window.scrollY || 0;
-    var change = targetPos - start;
-    if (Math.abs(change) < 2) return;
+    fallbackRafScroll(targetPos, dur, onComplete);
+  }
 
-    var durMs = dur * 1000;
+  function fallbackRafScroll(targetPos, duration, onComplete) {
+    var start = window.pageYOffset || window.scrollY || document.documentElement.scrollTop || 0;
+    var change = targetPos - start;
+    if (Math.abs(change) < 2) {
+      window.scrollTo(0, targetPos);
+      if (typeof onComplete === 'function') onComplete();
+      return;
+    }
+
+    var durMs = (duration || 0.85) * 1000;
     var startTime = null;
 
     function anim(currentTime) {
@@ -125,9 +168,12 @@
       var elapsed = currentTime - startTime;
       var progress = Math.min(1, elapsed / durMs);
       var ease = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
-      window.scrollTo(0, start + change * ease);
+      window.scrollTo(0, Math.round(start + change * ease));
       if (progress < 1) {
         requestAnimationFrame(anim);
+      } else {
+        window.scrollTo(0, targetPos);
+        if (typeof onComplete === 'function') onComplete();
       }
     }
     requestAnimationFrame(anim);
@@ -140,16 +186,33 @@
     var header = document.querySelector('.glass-header');
     var headerHeight = (header ? header.offsetHeight : 72) + 16;
     var targetPos = 0;
+
     if (target !== document.body && target.id !== 'hero') {
-      targetPos = Math.max(0, target.getBoundingClientRect().top + (window.pageYOffset || window.scrollY || 0) - headerHeight);
+      var rect = target.getBoundingClientRect();
+      var currentScroll = window.pageYOffset || window.scrollY || document.documentElement.scrollTop || 0;
+      targetPos = Math.max(0, Math.round(rect.top + currentScroll - headerHeight));
     }
 
     if (hash && window.history && window.history.pushState) {
-      window.history.pushState(null, '', hash);
+      try {
+        window.history.pushState(null, '', hash);
+      } catch (e) {}
     }
 
+    isProgrammaticScroll = true;
+    clearTimeout(programmaticScrollTimer);
     updateActiveNavLink(hash);
-    smoothScrollTo(targetPos, options.duration || 1.15);
+
+    var dur = options.duration || 0.95;
+    smoothScrollTo(targetPos, dur, function () {
+      isProgrammaticScroll = false;
+      updateActiveNavLink(hash);
+      if (typeof options.onComplete === 'function') options.onComplete();
+    });
+
+    programmaticScrollTimer = setTimeout(function () {
+      isProgrammaticScroll = false;
+    }, (dur * 1000) + 150);
   }
 
   function updateActiveNavLink(targetId) {
@@ -207,7 +270,7 @@
           y: top,
           width: width,
           height: height,
-          duration: 0.55,
+          duration: 0.5,
           ease: 'elastic.out(1, 0.75)',
           overwrite: 'auto'
         });
@@ -219,6 +282,9 @@
       }
 
       items.forEach(function (item) {
+        if (item._bubbleBound) return;
+        item._bubbleBound = true;
+
         item.addEventListener('mouseenter', function () {
           moveBubbleTo(item, true);
         });
@@ -226,25 +292,32 @@
           items.forEach(function (i) { i.classList.remove('active'); });
           item.classList.add('active');
           moveBubbleTo(item, true);
-          try {
-            item.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
-          } catch (e) {}
+
+          // Yatay çubuk taşması varsa (mobil ekranlar), yalnızca nav içi yatay kaydır
+          // ASLA item.scrollIntoView çağrılmaz (sayfa dikey kaydırmasını bozmaz)!
+          if (nav.scrollWidth > nav.clientWidth) {
+            var centerOffset = item.offsetLeft - (nav.clientWidth / 2) + (item.clientWidth / 2);
+            nav.scrollTo({ left: Math.max(0, centerOffset), behavior: 'smooth' });
+          }
         });
       });
 
-      nav.addEventListener('mouseleave', function () {
-        syncToActive(true);
-      });
+      if (!nav._bubbleEventsBound) {
+        nav._bubbleEventsBound = true;
+        nav.addEventListener('mouseleave', function () {
+          syncToActive(true);
+        });
 
-      nav.addEventListener('scroll', function () {
-        syncToActive(false);
-      }, { passive: true });
+        nav.addEventListener('scroll', function () {
+          syncToActive(false);
+        }, { passive: true });
+
+        window.addEventListener('resize', function () {
+          syncToActive(false);
+        });
+      }
 
       requestAnimationFrame(function () {
-        syncToActive(false);
-      });
-
-      window.addEventListener('resize', function () {
         syncToActive(false);
       });
 
@@ -296,13 +369,6 @@
         try { st.kill(); } catch (e) {}
       });
       scrollTriggers = [];
-    }
-
-    if (window.gsap && window.gsap.ticker && tickerCallback) {
-      try {
-        window.gsap.ticker.remove(tickerCallback);
-      } catch (e) {}
-      tickerCallback = null;
     }
 
     var hero = document.getElementById('hero');
@@ -488,8 +554,12 @@
           trigger: el,
           start: 'top 40%',
           end: 'bottom 40%',
-          onEnter: function () { updateActiveNavLink('#' + secId); },
-          onEnterBack: function () { updateActiveNavLink('#' + secId); }
+          onEnter: function () {
+            if (!isProgrammaticScroll) updateActiveNavLink('#' + secId);
+          },
+          onEnterBack: function () {
+            if (!isProgrammaticScroll) updateActiveNavLink('#' + secId);
+          }
         });
         scrollTriggers.push(st);
       });
@@ -628,12 +698,18 @@
         if (window.App && typeof window.App.initSettings === 'function') {
           window.App.initSettings();
         }
+        if (window.App && typeof window.App.initAccount === 'function') {
+          window.App.initAccount();
+        }
       } else {
         if (window.App && typeof window.App.destroySettings === 'function') {
           window.App.destroySettings();
         }
         if (window.App && typeof window.App.initDashboard === 'function') {
           window.App.initDashboard();
+        }
+        if (window.App && typeof window.App.initHistory === 'function') {
+          window.App.initHistory();
         }
       }
 
@@ -646,18 +722,16 @@
       if (window.App && window.App.initRipple) window.App.initRipple();
 
       if (hash) {
-        requestAnimationFrame(function () {
-          requestAnimationFrame(function () {
-            var targetEl = document.querySelector(hash);
-            if (targetEl) {
-              scrollToElement(targetEl, hash, { duration: 1.2 });
-            } else {
-              smoothScrollTo(0, 0.85);
-            }
-          });
-        });
+        setTimeout(function () {
+          var targetEl = document.querySelector(hash);
+          if (targetEl) {
+            scrollToElement(targetEl, hash, { duration: 1.0 });
+          } else {
+            smoothScrollTo(0, 0.7);
+          }
+        }, 120);
       } else {
-        smoothScrollTo(0, 0.85);
+        smoothScrollTo(0, 0.7);
       }
 
       if (window.App && window.App.sound && window.App.sound.click) {
@@ -738,10 +812,7 @@
 
     window.addEventListener('pagehide', function () {
       cleanupParallax();
-      if (lenisInstance) {
-        lenisInstance.destroy();
-        lenisInstance = null;
-      }
+      destroyLenis();
     });
 
     window.addEventListener('resize', function () {
@@ -763,10 +834,7 @@
     },
     destroy: function () {
       cleanupParallax();
-      if (lenisInstance) {
-        lenisInstance.destroy();
-        lenisInstance = null;
-      }
+      destroyLenis();
     },
     reinit: function () {
       applyTier(getTier());

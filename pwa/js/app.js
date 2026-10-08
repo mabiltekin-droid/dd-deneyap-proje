@@ -742,9 +742,10 @@
     setupAccountPill();
     startTicker();
 
-    App.init3DTilt();
-    App.initParallax();
-    App.initRipple();
+    if (App.init3DTilt) App.init3DTilt();
+    if (App.initParallax) App.initParallax();
+    if (App.initRipple) App.initRipple();
+    if (App.initHistory) App.initHistory();
 
     const controls = document.querySelector('.controls');
     if (controls) controls.addEventListener('click', onControlClick);
