@@ -170,7 +170,18 @@ console.log('\n[4/6] HTML dosya referansları');
   while ((m = re.exec(src)) !== null) refs.push(m[1]);
 
   const bozuk = refs.filter(function (r) {
-    return !fs.existsSync(path.join(PWA, r.replace(/^\.\//, '')));
+    /* "?x=1" ve "#bolum" kısımları dosya yolunun parçası değildir. */
+    const hashIdx = r.indexOf('#');
+    const hash = hashIdx !== -1 ? r.slice(hashIdx + 1) : '';
+    const dosya = r.split('#')[0].split('?')[0].replace(/^\.\//, '');
+    if (!dosya) return false;
+    if (!fs.existsSync(path.join(PWA, dosya))) return true;
+
+    /* #bolum verildiyse hedef HTML'de o id gerçekten tanımlı mı? */
+    if (!hash || !/\.html?$/i.test(dosya)) return false;
+    const hedef = fs.readFileSync(path.join(PWA, dosya), 'utf8');
+    return hedef.indexOf('id="' + hash + '"') === -1 &&
+           hedef.indexOf("id='" + hash + "'") === -1;
   });
 
   if (bozuk.length) basarisiz(rel + ' — diskte olmayan referans: ' + bozuk.join(', '));

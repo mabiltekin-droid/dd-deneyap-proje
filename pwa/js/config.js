@@ -170,17 +170,24 @@
     return isDarkTheme;
   };
 
+  /* matchMedia dinleyicisi yalnızca bir kez eklenir; son kaydedilen cb
+     çağrılır. Yoksa her sayfa geçişinde yeni bir dinleyici birikirdi. */
+  let systemThemeMq = null;
+  let systemThemeCb = null;
+
   App.onSystemThemeChange = function (cb) {
     if (!window.matchMedia) return;
-    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    systemThemeCb = cb;
+    if (systemThemeMq) return;
+    systemThemeMq = window.matchMedia('(prefers-color-scheme: dark)');
     const handler = function () {
       if ((App.settings().theme || 'system') === 'system') {
         const isDark = App.applyTheme('system');
-        if (typeof cb === 'function') cb(isDark);
+        if (typeof systemThemeCb === 'function') systemThemeCb(isDark);
       }
     };
-    if (mq.addEventListener) mq.addEventListener('change', handler);
-    else if (mq.addListener) mq.addListener(handler);
+    if (systemThemeMq.addEventListener) systemThemeMq.addEventListener('change', handler);
+    else if (systemThemeMq.addListener) systemThemeMq.addListener(handler);
   };
 
   /* ------------------------------------------- Web Audio API Sentezleyici */

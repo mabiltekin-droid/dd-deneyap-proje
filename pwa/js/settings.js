@@ -549,8 +549,15 @@
 
   /* ------------------------------------------------------------- Başlatma */
 
+  let boundForm = null;   /* hangi #settingsForm düğümüne bağlandık */
+
   function init() {
-    if (!$('settingsForm')) return;
+    const form = $('settingsForm');
+    if (!form) return;
+    /* Aynı DOM'a iki kez bağlanmayı engelle: hem doğrudan settings.html
+       açılışında hem de SPA geçişinde çağrılabilir. */
+    if (boundForm === form) return;
+    boundForm = form;
     fillForm();
     App.applyTheme();
 

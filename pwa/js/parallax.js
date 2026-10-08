@@ -614,7 +614,9 @@
       .catch(function () { return null; });
   }
 
-  function switchToPage(targetUrl) {
+  /* fromHistory: popstate'ten (Geri/İleri) geldiğinde true — bu durumda
+     geçmişe tekrar yazılmaz, yoksa girdiler kopyalanır ve Geri/İleri bozulur. */
+  function switchToPage(targetUrl, fromHistory) {
     var cleanTarget = targetUrl.split('#')[0].split('?')[0];
     var hash = targetUrl.indexOf('#') !== -1 ? targetUrl.substring(targetUrl.indexOf('#')) : '';
 
@@ -696,7 +698,7 @@
         oldBottom.innerHTML = newBottom.innerHTML;
       }
 
-      if (window.history && window.history.pushState) {
+      if (!fromHistory && window.history && window.history.pushState) {
         window.history.pushState(null, '', targetUrl);
       }
 
@@ -793,7 +795,7 @@
   }
 
   window.addEventListener('popstate', function () {
-    switchToPage(window.location.href);
+    switchToPage(window.location.href, true);
   });
 
   /* ------------------------------------------------------------- Başlatma */

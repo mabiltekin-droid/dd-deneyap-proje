@@ -281,8 +281,21 @@
 
   /* -------------------------------------------------------- init --------- */
 
+  let boundCard = null;   /* hangi #accountCard düğümüne bağlandık */
+
+  function onStatusChanged(s) {
+    if (s && s.dev && s.dev !== lastDeviceId) loadDevice().catch(function () {});
+  }
+
   function init() {
-    if (!$('accountCard')) return;
+    const card = $('accountCard');
+    if (!card) return;
+    /* initAccount() üç yerden çağrılabilir: settings.js'in init'i,
+       parallax.js'in SPA geçişi ve account.js'in kendi DOMContentLoaded
+       kaydı. Aynı DOM düğümüne ikinci kez bağlanılırsa her buton (giriş,
+       kayıt, cihazı bağla...) iki kez tetiklenir. */
+    if (boundCard === card) return;
+    boundCard = card;
 
     $('authSignInBtn').addEventListener('click', doSignIn);
     $('authSignUpBtn').addEventListener('click', doSignUp);
@@ -315,11 +328,11 @@
       setResult(e.human || e.message, 'err');
     });
 
-    /* Cihaz kimliği bağlantı gelince görünür hale gelir. */
+    /* Cihaz kimliği bağlantı gelince görünür hale gelir. Set tabanlı
+       onStatus yalnızca fonksiyon kimliğine bakar — anonim closure her
+       init'te yeniden eklenirdi, bu yüzden sabit isimli fonksiyon. */
     if (App.api && typeof App.api.onStatus === 'function') {
-      App.api.onStatus(function (s) {
-        if (s && s.dev && s.dev !== lastDeviceId) loadDevice().catch(function () {});
-      });
+      App.api.onStatus(onStatusChanged);
     }
   }
 
