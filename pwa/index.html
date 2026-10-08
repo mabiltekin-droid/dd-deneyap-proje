@@ -347,6 +347,24 @@
                 <span class="tl-filt"><span class="tl-dot"></span>EMA Filtrelenmiş (gasFiltered)</span>
               </div>
             </div>
+
+            <!-- DSP Sinyal-Gürültü & SNR Spektrum Çubukları -->
+            <div class="snr-spectrum-wrap" id="snrSpectrumWrap">
+              <div class="snr-header">
+                <span class="snr-title">SNR SİNYAL-GÜRÜLTÜ ANALİZÖRÜ</span>
+                <span class="snr-badge" id="snrBadge" data-state="ok">SNR: 98 dB · STABİL</span>
+              </div>
+              <div class="snr-bars" id="snrBars" aria-label="Gürültü spektrum çubukları">
+                <div class="snr-bar"><div class="snr-bar-fill" style="height:12%;"></div></div>
+                <div class="snr-bar"><div class="snr-bar-fill" style="height:18%;"></div></div>
+                <div class="snr-bar"><div class="snr-bar-fill" style="height:10%;"></div></div>
+                <div class="snr-bar"><div class="snr-bar-fill" style="height:15%;"></div></div>
+                <div class="snr-bar"><div class="snr-bar-fill" style="height:22%;"></div></div>
+                <div class="snr-bar"><div class="snr-bar-fill" style="height:14%;"></div></div>
+                <div class="snr-bar"><div class="snr-bar-fill" style="height:19%;"></div></div>
+                <div class="snr-bar"><div class="snr-bar-fill" style="height:11%;"></div></div>
+              </div>
+            </div>
           </div>
 
           <div class="card-foot">
@@ -425,9 +443,16 @@
               </svg>
               <span class="ctrl-label">Havalandırma Fanı</span>
             </div>
-            <button class="btn" type="button" data-device="fan" data-action="toggle">
-              <span id="fanState">KAPALI</span>
-            </button>
+            <div class="radial-btn-wrapper">
+              <svg class="radial-countdown-ring" id="fanCountdownSvg" viewBox="0 0 100 100" aria-hidden="true">
+                <circle class="ring-bg" cx="50" cy="50" r="44"></circle>
+                <circle class="ring-progress fan-ring" id="fanRingCircle" cx="50" cy="50" r="44"></circle>
+              </svg>
+              <button class="btn" type="button" data-device="fan" data-action="toggle">
+                <span id="fanState">KAPALI</span>
+              </button>
+              <span class="radial-time-badge" id="fanTimeBadge" hidden>120s</span>
+            </div>
           </div>
 
           <!-- Su Motoru (Güvenlik Korumalı Çift Dokunuş) -->
@@ -439,9 +464,16 @@
               </svg>
               <span class="ctrl-label">Su Pompası / Motor</span>
             </div>
-            <button class="btn danger" type="button" data-device="pump" data-action="toggle">
-              <span id="pumpState">KAPALI</span>
-            </button>
+            <div class="radial-btn-wrapper">
+              <svg class="radial-countdown-ring" id="pumpCountdownSvg" viewBox="0 0 100 100" aria-hidden="true">
+                <circle class="ring-bg" cx="50" cy="50" r="44"></circle>
+                <circle class="ring-progress pump-ring" id="pumpRingCircle" cx="50" cy="50" r="44"></circle>
+              </svg>
+              <button class="btn danger" type="button" data-device="pump" data-action="toggle">
+                <span id="pumpState">KAPALI</span>
+              </button>
+              <span class="radial-time-badge" id="pumpTimeBadge" hidden>5:00</span>
+            </div>
           </div>
 
           <!-- Buzzer -->
@@ -583,6 +615,39 @@
           <span class="lg lg-yagmur">Yağmur %</span>
           <span class="lg lg-alarm">Alarm / Tehlike Eşiği</span>
           <span class="lg lg-ariza">Sensör Arızası / Anomali</span>
+        </div>
+
+        <!-- 5. Olay Anı Telemetri Kara Kutusu (Incident Blackbox Recorder & Replay Scrubber) -->
+        <div class="blackbox-wrap" id="blackboxWrap">
+          <div class="blackbox-head">
+            <div class="blackbox-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="10"/>
+                <polygon points="10 8 16 12 10 16 10 8"/>
+              </svg>
+              <span>TELEMETRİ KARA KUTUSU &amp; OLAY OYNATICI (INCIDENT REPLAY)</span>
+            </div>
+            <div class="blackbox-actions">
+              <select class="blackbox-select" id="blackboxSelect" aria-label="Kayıtlı olay seçin">
+                <option value="">Olay Yükleniyor…</option>
+              </select>
+            </div>
+          </div>
+          <div class="blackbox-body" id="blackboxBody" data-state="normal">
+            <div class="blackbox-scrubber-row">
+              <button class="btn sm icon-btn" id="bbPlayBtn" type="button" title="Oynat / Duraklat" aria-label="Oynat / Duraklat">▶</button>
+              <input type="range" class="blackbox-scrubber" id="bbScrubber" min="0" max="60" value="0" step="1" aria-label="Zaman çubuğu">
+              <span class="bb-time" id="bbTimeLabel">-00:00</span>
+            </div>
+            <div class="blackbox-readout-grid">
+              <div class="bb-item"><span class="bb-lbl">Zaman:</span><strong id="bbValTime">—</strong></div>
+              <div class="bb-item"><span class="bb-lbl">Gaz Seviyesi:</span><strong id="bbValPpm">— PPM</strong></div>
+              <div class="bb-item"><span class="bb-lbl">Ham ADC:</span><strong id="bbValRaw">—</strong></div>
+              <div class="bb-item"><span class="bb-lbl">Yağmur:</span><strong id="bbValRain">—</strong></div>
+              <div class="bb-item"><span class="bb-lbl">Havalandırma:</span><strong id="bbValFan">—</strong></div>
+              <div class="bb-item"><span class="bb-lbl">Su Pompası:</span><strong id="bbValPump">—</strong></div>
+            </div>
+          </div>
         </div>
 
         <p class="card-foot">
@@ -805,6 +870,8 @@
 
   <script src="./js/tier.js"></script>
   <script src="./js/parallax.js"></script>
+  <script src="./js/shaders.js"></script>
+  <script src="./js/blackbox.js"></script>
   <script src="./js/api.js"></script>
   <script src="./js/mqtt.js"></script>
   <script src="./js/supabase.js"></script>

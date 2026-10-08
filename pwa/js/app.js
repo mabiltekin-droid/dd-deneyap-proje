@@ -42,6 +42,128 @@
     maxPoints: 16
   };
 
+  /* Reaktif Aktüatör Radyal Geri Sayım Parametreleri (config.h) */
+  const FAN_AUTO_OFF_MS = 120000;  // 120 saniye otomatik kapanma
+  const PUMP_MAX_RUN_MS = 300000;  // 300 saniye (5 dk) taşma koruması
+  let fanStartTime = null;
+  let pumpStartTime = null;
+
+  function updateSnrSpectrum() {
+    const n = telemetryHistory.raw.length;
+    if (n < 2) return;
+
+    const diffs = [];
+    let sumDiff = 0;
+    for (let i = 0; i < n; i++) {
+      const d = telemetryHistory.raw[i] - telemetryHistory.filt[i];
+      diffs.push(d);
+      sumDiff += d;
+    }
+    const meanDiff = sumDiff / n;
+    let varSum = 0;
+    for (let i = 0; i < n; i++) {
+      const dev = diffs[i] - meanDiff;
+      varSum += dev * dev;
+    }
+    const variance = varSum / n;
+    const stdDev = Math.sqrt(variance);
+
+    // SNR Değeri (dB cinsinden telemetri netliği)
+    const snrDb = Math.max(15, Math.min(99, Math.round(98 - stdDev * 2.6)));
+
+    const badge = $('snrBadge');
+    if (badge) {
+      if (stdDev < 3.0) {
+        badge.setAttribute('data-state', 'ok');
+        badge.textContent = 'SNR: ' + snrDb + ' dB · STABİL';
+      } else if (stdDev < 10.0) {
+        badge.setAttribute('data-state', 'noisy');
+        badge.textContent = 'SNR: ' + snrDb + ' dB · PARAZİT';
+      } else {
+        badge.setAttribute('data-state', 'critical');
+        badge.textContent = 'SNR: ' + snrDb + ' dB · YÜKSEK GÜRÜLTÜ';
+      }
+    }
+
+    const barFills = document.querySelectorAll('#snrBars .snr-bar-fill');
+    if (barFills && barFills.length) {
+      const baseHeight = Math.min(100, Math.max(8, stdDev * 4.8));
+      barFills.forEach(function (bar, idx) {
+        const sliceIdx = Math.floor((idx / barFills.length) * n);
+        const localDelta = Math.abs(diffs[sliceIdx] || 0);
+        const jitter = Math.sin(idx * 1.6 + n) * 6;
+        const h = Math.max(8, Math.min(100, Math.round(baseHeight + localDelta * 2.2 + jitter)));
+        bar.style.height = h + '%';
+        if (stdDev >= 10.0) {
+          bar.style.background = 'linear-gradient(to top, #ef4444, #f59e0b)';
+        } else if (stdDev >= 3.0) {
+          bar.style.background = 'linear-gradient(to top, #f59e0b, #eab308)';
+        } else {
+          bar.style.background = 'linear-gradient(to top, #10b981, #00e5ff)';
+        }
+      });
+    }
+  }
+
+  function tickActuatorRings() {
+    const CIRCUMFERENCE = 276.46;
+
+    // 1. Fan Geri Sayım Halkası (120 saniye)
+    const fanCircle = $('fanRingCircle');
+    const fanBadge = $('fanTimeBadge');
+    if (fanCircle && fanBadge) {
+      if (lastData && lastData.fan && fanStartTime) {
+        const elapsed = Date.now() - fanStartTime;
+        const remaining = Math.max(0, FAN_AUTO_OFF_MS - elapsed);
+        const fraction = remaining / FAN_AUTO_OFF_MS;
+        const offset = CIRCUMFERENCE * (1 - fraction);
+        fanCircle.style.strokeDashoffset = offset.toFixed(1);
+        fanBadge.textContent = Math.ceil(remaining / 1000) + 's';
+        fanBadge.hidden = false;
+      } else {
+        fanCircle.style.strokeDashoffset = CIRCUMFERENCE.toString();
+        fanBadge.hidden = true;
+      }
+    }
+
+    // 2. Su Motoru Taşma Koruması (300 saniye = 5 dakika)
+    const pumpCircle = $('pumpRingCircle');
+    const pumpBadge = $('pumpTimeBadge');
+    if (pumpCircle && pumpBadge) {
+      if (lastData && lastData.pump && pumpStartTime) {
+        const elapsed = Date.now() - pumpStartTime;
+        const remaining = Math.max(0, PUMP_MAX_RUN_MS - elapsed);
+        const fraction = remaining / PUMP_MAX_RUN_MS;
+        const offset = CIRCUMFERENCE * (1 - fraction);
+        pumpCircle.style.strokeDashoffset = offset.toFixed(1);
+        const mins = Math.floor(remaining / 60000);
+        const secs = Math.floor((remaining % 60000) / 1000);
+        pumpBadge.textContent = mins + ':' + (secs < 10 ? '0' : '') + secs;
+        pumpBadge.hidden = false;
+      } else {
+        pumpCircle.style.strokeDashoffset = CIRCUMFERENCE.toString();
+        pumpBadge.hidden = true;
+      }
+    }
+  }
+
+  function updateActuatorTimers(data) {
+    if (!data) return;
+    if (data.fan) {
+      if (!fanStartTime) fanStartTime = Date.now();
+    } else {
+      fanStartTime = null;
+    }
+
+    if (data.pump) {
+      if (!pumpStartTime) pumpStartTime = Date.now();
+    } else {
+      pumpStartTime = null;
+    }
+
+    tickActuatorRings();
+  }
+
   function updateTelemetryWave(rawVal, filtVal) {
     telemetryHistory.raw.push(rawVal);
     telemetryHistory.filt.push(filtVal);
@@ -49,6 +171,8 @@
       telemetryHistory.raw.shift();
       telemetryHistory.filt.shift();
     }
+
+    updateSnrSpectrum();
 
     const rawPath = $('gasRawWave');
     const filtPath = $('gasFiltWave');
@@ -282,6 +406,9 @@
       .forEach(function (b) {
         b.classList.toggle('armed', !!data.moving);
       });
+
+    /* Radyal Aktüatör Geri Sayım Sayaçları */
+    updateActuatorTimers(data);
   }
 
   /* Ambient Ekran Kenarı Darbesi & Sesli Uyarılar */
@@ -294,7 +421,10 @@
       glow.className = '';
       if (state === 'danger') {
         glow.classList.add('state-danger');
-        App.sound.alarm();
+        const ppm = Number(lastData && lastData.gasPpm) || 0;
+        const dangerTh = (lastData && typeof lastData.gasDanger === 'number') ? lastData.gasDanger : 400;
+        const normPpm = Math.min(1.0, ppm / Math.max(dangerTh * 1.5, 100));
+        App.sound.alarm(normPpm);
         App.haptic(60);
       } else if (state === 'warning') {
         glow.classList.add('state-warning');
@@ -348,6 +478,14 @@
     renderWidget(data, state);
     renderLockHint();
     setControlsEnabled(controlsAllowed());
+
+    /* SCADA WebGL Shader Motoru & Telemetri Kara Kutusu */
+    if (window.App.Shaders && window.App.Shaders.update) {
+      window.App.Shaders.update(data);
+    }
+    if (window.App.Blackbox && window.App.Blackbox.ingest) {
+      window.App.Blackbox.ingest(data);
+    }
   }
 
   /* Cihaz başka hesaba bağlıysa kumanda bölgesinde açıklayıcı not. */
@@ -696,6 +834,7 @@
         const liveUptime = baseUptimeMs + (Date.now() - baseUptimeStamp);
         setText('uptime', App.fmtDuration(liveUptime));
       }
+      tickActuatorRings();
     }, 1000);
   }
 
@@ -749,6 +888,25 @@
     });
     pushUnsubs = [];
     if (lastData && lastData.pump) disarmPump();
+
+    /* WebGL Shader Motoru & Kara Kutu Yaşam Döngüsü Temizliği */
+    if (window.App.Shaders && window.App.Shaders.destroy) {
+      window.App.Shaders.destroy();
+    }
+    if (window.App.Blackbox && window.App.Blackbox.destroy) {
+      window.App.Blackbox.destroy();
+    }
+
+    fanStartTime = null;
+    pumpStartTime = null;
+    const fanCircle = $('fanRingCircle');
+    const fanBadge = $('fanTimeBadge');
+    if (fanCircle) fanCircle.style.strokeDashoffset = '276.46';
+    if (fanBadge) fanBadge.hidden = true;
+    const pumpCircle = $('pumpRingCircle');
+    const pumpBadge = $('pumpTimeBadge');
+    if (pumpCircle) pumpCircle.style.strokeDashoffset = '276.46';
+    if (pumpBadge) pumpBadge.hidden = true;
   }
 
   function init() {
@@ -765,6 +923,14 @@
     /* Eski App.initParallax() kaldırıldı; tüm scroll/lerp yönetimi parallax.js motorunda */
     if (App.initRipple) App.initRipple();
     if (App.initHistory) App.initHistory();
+
+    /* Donanım Gücüne Duyarlı WebGL Shader Motoru ve Olay Kara Kutusu */
+    if (window.App.Shaders && window.App.Shaders.init) {
+      window.App.Shaders.init(window.App.Tier && window.App.Tier.get());
+    }
+    if (window.App.Blackbox && window.App.Blackbox.init) {
+      window.App.Blackbox.init();
+    }
 
     const controls = document.querySelector('.controls');
     if (controls) controls.addEventListener('click', onControlClick);

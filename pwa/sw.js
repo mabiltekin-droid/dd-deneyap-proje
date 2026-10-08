@@ -30,6 +30,8 @@ const PRECACHE = [
   './js/config.js',
   './js/tier.js',
   './js/parallax.js',
+  './js/shaders.js',
+  './js/blackbox.js',
   './js/vendor/gsap.min.js',
   './js/vendor/ScrollTrigger.min.js',
   './js/vendor/lenis.min.js',

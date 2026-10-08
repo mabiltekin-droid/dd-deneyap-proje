@@ -3765,3 +3765,323 @@ main {
   font-size: 0.85rem;
   font-family: var(--font-mono);
 }
+
+/* ==========================================================================
+   WEBGL SHADERS, RADYAL AKTÜATÖR HALKALARI, DSP SNR & KARA KUTU
+   ========================================================================== */
+
+/* 1. WebGL Canvas Katmanları */
+.shader-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  border-radius: inherit;
+  z-index: 1;
+}
+
+.gas-shader-canvas {
+  opacity: 0.42;
+  mix-blend-mode: screen;
+}
+
+.rain-shader-canvas {
+  opacity: 0.55;
+  mix-blend-mode: lighten;
+}
+
+.emergency-glitch-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  mix-blend-mode: screen;
+}
+
+/* 2. Reaktif Aktüatör Radyal Geri Sayım Halkaları (SVG Rings) */
+.radial-btn-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.radial-countdown-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-90deg);
+  width: calc(100% + 14px);
+  height: calc(100% + 14px);
+  max-width: 120px;
+  max-height: 120px;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.radial-countdown-ring .ring-bg {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-width: 3.5;
+}
+
+.radial-countdown-ring .ring-progress {
+  fill: none;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-dasharray: 276.46;
+  stroke-dashoffset: 276.46;
+  transition: stroke-dashoffset 0.4s linear;
+}
+
+.radial-countdown-ring .fan-ring {
+  stroke: #00e5ff;
+  filter: drop-shadow(0 0 6px rgba(0, 229, 255, 0.65));
+}
+
+.radial-countdown-ring .pump-ring {
+  stroke: #ff9100;
+  filter: drop-shadow(0 0 6px rgba(255, 145, 0, 0.65));
+}
+
+.radial-time-badge {
+  position: absolute;
+  top: -6px;
+  right: -4px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(10, 15, 29, 0.9);
+  color: #00e5ff;
+  border: 1px solid currentColor;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  z-index: 4;
+}
+
+/* 3. DSP Sinyal-Gürültü & SNR Spektrum Çubukları */
+.snr-spectrum-wrap {
+  margin-top: 0.85rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed rgba(255, 255, 255, 0.09);
+}
+
+.snr-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.45rem;
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+}
+
+.snr-title {
+  color: var(--text-dim);
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.snr-badge {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  transition: all 0.3s ease;
+}
+
+.snr-badge[data-state="noisy"] {
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+  border-color: rgba(245, 158, 11, 0.45);
+}
+
+.snr-badge[data-state="critical"] {
+  background: rgba(239, 68, 68, 0.25);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.55);
+}
+
+.snr-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+  height: 28px;
+  padding: 4px 6px;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.snr-bar {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.snr-bar-fill {
+  width: 100%;
+  height: 12%;
+  background: linear-gradient(to top, #10b981, #00e5ff);
+  border-radius: 2px;
+  transition: height 0.18s ease, background 0.25s ease;
+}
+
+/* 4. Olay Anı Telemetri Kara Kutusu (Incident Blackbox & Scrubber) */
+.blackbox-wrap {
+  margin-top: 1.5rem;
+  padding: 1.15rem;
+  background: rgba(12, 18, 34, 0.65);
+  border: 1px solid rgba(56, 189, 248, 0.18);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+}
+
+.blackbox-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.blackbox-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--primary);
+  letter-spacing: 0.5px;
+}
+
+.blackbox-title svg {
+  width: 16px;
+  height: 16px;
+  color: var(--primary);
+}
+
+.blackbox-select {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.78rem;
+  font-family: var(--font-mono);
+  background: rgba(18, 26, 47, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  color: var(--text);
+  outline: none;
+  cursor: pointer;
+  max-width: 320px;
+}
+
+.blackbox-body {
+  padding: 0.75rem;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: border-color 0.3s ease, background 0.3s ease;
+}
+
+.blackbox-body[data-state="danger"] {
+  border-color: rgba(239, 68, 68, 0.5);
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.blackbox-body[data-state="warning"] {
+  border-color: rgba(245, 158, 11, 0.45);
+  background: rgba(245, 158, 11, 0.06);
+}
+
+.blackbox-scrubber-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.blackbox-scrubber {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
+}
+
+.blackbox-scrubber::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--primary);
+  box-shadow: 0 0 10px var(--primary);
+  cursor: pointer;
+}
+
+.blackbox-scrubber::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--primary);
+  box-shadow: 0 0 10px var(--primary);
+  cursor: pointer;
+}
+
+.bb-time {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-dim);
+  min-width: 65px;
+  text-align: right;
+}
+
+.blackbox-readout-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.6rem;
+}
+
+.bb-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0.4rem 0.6rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+}
+
+.bb-lbl {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+.bb-item strong {
+  font-size: 0.82rem;
+  color: var(--text);
+  font-weight: 700;
+}
+
+[data-tier="low"] .shader-canvas,
+[data-tier="low"] .emergency-glitch-canvas {
+  display: none !important;
+}

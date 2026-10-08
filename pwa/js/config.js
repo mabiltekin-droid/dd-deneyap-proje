@@ -248,23 +248,55 @@
       } catch (e) { /* yoksay */ }
     },
 
-    alarm: function () {
+    /* FM Osilatör Sentezleyicisi (Reactor FM Synthesis Alarm) */
+    alarm: function (intensity) {
       if (!settings.soundEnabled) return;
       try {
         const ctx = getAudioCtx();
         if (!ctx) return;
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sawtooth';
+
         const now = ctx.currentTime;
-        osc.frequency.setValueAtTime(940, now);
-        osc.frequency.setValueAtTime(520, now + 0.1);
-        gain.gain.setValueAtTime(0.09, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start(now);
-        osc.stop(now + 0.22);
+        // 0.0 - 1.0 arası normalize tehlike şiddeti (varsayılan: 0.7)
+        const norm = typeof intensity === 'number' ? Math.max(0, Math.min(1.0, intensity)) : 0.7;
+
+        // Taşıyıcı (Carrier) & Modülatör (Modulator) Osilatörleri
+        const carrier = ctx.createOscillator();
+        const modulator = ctx.createOscillator();
+        const modGain = ctx.createGain();
+        const masterGain = ctx.createGain();
+
+        carrier.type = 'triangle';
+        modulator.type = 'sawtooth';
+
+        // Reaktif reaktör parametreleri (PPM yükseldikçe tırmanan ton ve vuruş)
+        const baseFreq = 260 + norm * 340;        // 260Hz .. 600Hz
+        const modFreq = 8 + norm * 26;            // 8Hz .. 34Hz modülasyon vuruşu
+        const modIndex = 110 + norm * 320;        // Modülasyon derinliği
+        const dur = 0.28 + norm * 0.12;           // Süre (0.28s .. 0.40s)
+
+        carrier.frequency.setValueAtTime(baseFreq, now);
+        modulator.frequency.setValueAtTime(modFreq, now);
+        modulator.frequency.exponentialRampToValueAtTime(modFreq * 1.4, now + dur);
+
+        modGain.gain.setValueAtTime(modIndex, now);
+        modGain.gain.linearRampToValueAtTime(0, now + dur);
+
+        // FM Bağlantısı: Modülatör -> ModGain -> Carrier Frekansı
+        modulator.connect(modGain);
+        modGain.connect(carrier.frequency);
+
+        // Çıkış Zarfı (Düşük ses seviyesi: gain <= 0.08)
+        masterGain.gain.setValueAtTime(0.001, now);
+        masterGain.gain.linearRampToValueAtTime(0.075, now + 0.035);
+        masterGain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+
+        carrier.connect(masterGain);
+        masterGain.connect(ctx.destination);
+
+        carrier.start(now);
+        modulator.start(now);
+        carrier.stop(now + dur);
+        modulator.stop(now + dur);
       } catch (e) { /* yoksay */ }
     }
   };
