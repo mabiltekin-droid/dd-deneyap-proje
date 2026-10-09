@@ -9,7 +9,7 @@
 
   const App = (window.App = window.App || {});
 
-  App.VERSION = '2.5.3';
+  App.VERSION = '2.5.4';
   App.STORAGE_KEY = 'deneyap.settings.v2';
 
   App.DEFAULTS = {

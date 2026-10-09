@@ -208,6 +208,11 @@
 
     session: function () { return current(); },
 
+    /* Auth modülü (auth.js) oturum geri yüklerken/yenilerken bunu kullanır.
+       Dışa aktarılmazsa her sayfa yenilemesinde oturum düşer —
+       "Cihazı Bağla" pasif kalır (canClaim, oturumsuzken false olur). */
+    ensureSession: ensureSession,
+
     /* Şema yüklü mü? Oturum GEREKTİRMEZ — giriş yapılmadan da panel
        "kurulum bekleniyor" diyebilmeli. Tablo yoksa PGRST205 döner. */
     probeSetup: async function () {
