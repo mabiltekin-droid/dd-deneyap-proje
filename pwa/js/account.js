@@ -64,6 +64,15 @@
     if (snap.isAdmin && !setup) loadUsers().catch(function (e) {
       setResult(e.human || e.message, 'err');
     });
+
+    /* Oturum/kimlik değişince sahiplik kutusu ve Bağla/Serbest bırak
+       butonları da yeniden hesaplanır. loadDevice yalnızca cihaz kimliği
+       değiştiğinde çalışıyordu — bu yüzden giriş yapılınca "Cihazı Bağla"
+       pasif kalabiliyordu. */
+    paintOwnership();
+    if (lastDeviceId) {
+      App.Auth.listBindings().catch(function () {}).then(paintOwnership);
+    }
   }
 
   /* ------------------------------------------------ kullanıcı listesi ----- */
@@ -212,19 +221,17 @@
 
   let lastDeviceId = null;
 
-  async function loadDevice() {
+  /* Sahiplik kutusu + Bağla/Serbest bırak butonlarını çizer.
+     loadDevice() cihaz kimliği değişince, paintOwnership() oturum/kimlik
+     değişince de çağrılır — giriş yapılınca butonun pasif kalmasını önler. */
+  function paintOwnership() {
     const box = $('deviceOwnership');
     if (!box) return;
-    let s = null;
-    try { s = await App.api.status(); } catch (e) { s = null; }
-    const dev = s && s.dev;
-    lastDeviceId = dev || lastDeviceId;
     if (!lastDeviceId) { box.hidden = true; return; }
 
     box.hidden = false;
     $('ownDevId').textContent = lastDeviceId;
 
-    await App.Auth.listBindings().catch(function () {});
     const b = App.Auth.bindingOf(lastDeviceId);
     const snap = App.Auth.snapshot();
 
@@ -248,6 +255,19 @@
     claim.hidden = !!b && !App.Auth.canClaim(lastDeviceId);
     release.disabled = !b || !(snap.isAdmin || (snap.user && b && b.owner_id === snap.user.id));
     release.hidden = !b;
+  }
+
+  async function loadDevice() {
+    const box = $('deviceOwnership');
+    if (!box) return;
+    let s = null;
+    try { s = await App.api.status(); } catch (e) { s = null; }
+    const dev = s && s.dev;
+    lastDeviceId = dev || lastDeviceId;
+    if (!lastDeviceId) { box.hidden = true; return; }
+
+    await App.Auth.listBindings().catch(function () {});
+    paintOwnership();
   }
 
   async function doClaim() {
