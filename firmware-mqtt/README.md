@@ -35,7 +35,8 @@ Geri kalanı Deneyap Kart (ESP32) çekirdeğiyle gelir:
    - `WIFI_SSID`, `WIFI_PASS` → evinizin Wi-Fi ağı
    - `MQTT_HOST`, `MQTT_TOPIC` → panel ayarlarıyla **birebir aynı** olmalı
      (varsayılan: `broker.emqx.io` / `deneyap/kart1`)
-   - `DEVICE_ID` → kartın kısa kimliği (örn. `kart1`)
+   - `DEVICE_ID` → boş bırakılabilir; boşsa kartın eFuse MAC'inden otomatik
+     `DK-XXXX` kimliği üretilir (karta özel; panele hesap bağlamada bu kimliği kullanır).
 2. `DeneyapEvKoruma/DeneyapEvKoruma.ino` dosyasını Deneyap Kart IDE ile açın.
 3. Kart seçimi: **Deneyap Kart** (veya kullandığınız model).
 4. Yükleyin. Seri monitör (115200 baud) bağlantı durumunu gösterir.

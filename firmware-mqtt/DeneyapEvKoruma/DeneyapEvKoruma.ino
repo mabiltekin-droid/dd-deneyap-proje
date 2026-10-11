@@ -45,6 +45,7 @@ WiFiClient        netClient;
 PubSubClient      mqttClient(netClient);
 WebServer         server(80);
 Preferences       prefs;
+char              deviceId[12] = "DK-0000";   // "dev" alani: DEVICE_ID veya eFuse MAC'ten "DK-XXXX"
 
 bool              wifiStaOk     = false;   // STA bağlı mı
 bool              apActive      = false;   // yedek AP açık mı
@@ -488,6 +489,15 @@ static String buildHistJson(long id, long n, long last) {
 }
 
 /* ------------------------------------------------------------ durum JSON */
+/* Efuse MAC'in alt 16 bitinden "DK-XXXX" kalici kimlik uretimi (tek acilista
+   sabit, kart degisince degisir => eskiden beri panelin gordugu DK-1744 gibi).
+   DEVICE_ID doluysa o ad kullanilir. */
+static void makeDeviceId() {
+  if (DEVICE_ID[0]) { snprintf(deviceId, sizeof(deviceId), "%s", DEVICE_ID); return; }
+  uint64_t mac = ESP.getEfuseMac();
+  snprintf(deviceId, sizeof(deviceId), "DK-%04X", (unsigned int)(mac & 0xFFFFUL));
+}
+
 static String buildStatus() {
   uint32_t now = millis();
   bool moving  = (int32_t)(servoReleaseAt - now) > 0;
@@ -504,7 +514,7 @@ static String buildStatus() {
 
   String j; j.reserve(900);
   j += "{\"ok\":true,\"fw\":\""; j += FW_VERSION;
-  j += "\",\"dev\":\""; j += DEVICE_ID;
+  j += "\",\"dev\":\""; j += deviceId;
   j += "\",\"t\":"; j += (unsigned long)now;
   j += ",\"uptime\":"; j += (unsigned long)(now - bootMs);
   j += ",\"ip\":\""; j += (wifiStaOk ? WiFi.localIP().toString() : WiFi.softAPIP().toString());
@@ -729,7 +739,7 @@ static void mqttConnect() {
   if (WiFi.status() != WL_CONNECTED) return;
   if (mqttClient.connected()) return;
 
-  String clientId = String(DEVICE_ID) + "-" + String((uint32_t)ESP.getEfuseMac(), HEX);
+  String clientId = String(deviceId) + "-" + String((uint32_t)ESP.getEfuseMac(), HEX);
   String willTopic = baseTopic() + "/online";
   bool ok = (strlen(MQTT_USER) > 0)
     ? mqttClient.connect(clientId.c_str(), MQTT_USER, MQTT_PASS,
@@ -889,6 +899,7 @@ void setup() {
   analogReadResolution(10);
 
   loadSettings();
+  makeDeviceId();
 
   pinMode(PIN_RELAY_FAN, OUTPUT);  digitalWrite(PIN_RELAY_FAN, LOW);
   pinMode(PIN_RELAY_PUMP, OUTPUT); digitalWrite(PIN_RELAY_PUMP, LOW);

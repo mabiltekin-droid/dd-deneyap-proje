@@ -21,9 +21,11 @@
 #include <Arduino.h>
 
 /* ============================ CİHAZ KİMLİĞİ ============================ */
-/* Panelde her kartı ayırt eden kısa kimlik. Hesap eşleştirmesi bu değeri
-   kullanır. Aynı MQTT_TOPIC'i kullanan iki kart olmasın! */
-#define DEVICE_ID          "kart1"
+/* Panelde her kartı ayırt eden kimlik; hesap eşleştirmesi (device_bindings)
+   bu değeri kullanır. Boş = eFuse MAC'ten otomatik "DK-XXXX" üretilir
+   (karta özel, yeniden flaşta değişmez). Aynı MQTT_TOPIC'i kullanan iki
+   kart olmasın! */
+#define DEVICE_ID          ""        // boş = otomatik "DK-XXXX"; istersen sabit ad yaz (örn. "kart1")
 #define FW_VERSION         "3.0.0"   // cihazın kendi sürümü; panel /status'te `fw` olarak gösterir
                                      // (not: panel sürümü package.json/config.js/sw.js'ten ayrıdır)
 
