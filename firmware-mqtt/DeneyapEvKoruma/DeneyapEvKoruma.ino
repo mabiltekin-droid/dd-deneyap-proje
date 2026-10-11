@@ -38,6 +38,10 @@
 
 #include "config.h"
 
+/* Brownout detektörünü kapatmak için SDK kayıt tanımları */
+#include "soc/soc.h"
+#include "soc/rtc_cntl_reg.h"
+
 /* ------------------------------------------------------------------ durum */
 enum GasState : uint8_t { GAS_NORMAL = 0, GAS_WARN = 1, GAS_DANGER = 2 };
 
@@ -864,6 +868,9 @@ static void setupRoutes() {
 static void connectWiFi() {
   Serial.print(F("[wifi] STA baglaniyor: ")); Serial.println(WIFI_SSID);
   WiFi.mode(WIFI_STA);
+  /* Marjinal USB beslemede TX tepe akımını düşür (brownout reseti önlemi):
+     8.5 dBm (~35 mW), ev içi mesafeler için yeterli. */
+  WiFi.setTxPower(WIFI_POWER_8_5dBm);
   WiFi.setAutoReconnect(true);
   WiFi.begin(WIFI_SSID, WIFI_PASS);
 
@@ -893,6 +900,13 @@ static void connectWiFi() {
 
 /* ----------------------------------------------------------------- setup */
 void setup() {
+  /* USB beslemesi marjinalken Wi-Fi TX ani akımı voltajı brownout eşiğine
+     çekiyor ve kart sürekli resetleniyordu. Detektörü kapatıyoruz; tepe akımı
+     için TX gücü ayrıca connectWiFi() içinde düşürülür.
+     (Derin/gerçek yetersayı koruması kalkar ama kısmi voltaj düşüşü kartı
+     öldürmez; buna karşı TX gücü + güç kaynağı önerisi README'de.) */
+  WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);
+
   Serial.begin(115200);
   delay(200);
   bootMs = millis();

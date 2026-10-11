@@ -86,3 +86,9 @@ Komutlar: `fan`/`pump`/`buzzer` → `on|off|toggle`; `window`/`blind` →
   yeniden başlarsa sıfırlanır (panel yerel önbelleğiyle tamamlar).
 - Telegram: panel `Ayarlar → Telegram` bölümünden bot token + chat id girilir;
   firmware bunları NVS'ye kaydeder ve gaz tehlikesi/su baskınında bildirim yollar.
+- **Güç / brownout:** Wi-Fi TX ani akımı, marjinal USB beslemelerde voltajı
+  düşürüp sistemin sürekli resetlenmesine yol açabilir. Firmware bu duruma karşı
+  (a) açılışta brownout detektörünü kapatır, (b) Wi-Fi TX gücünü 8.5 dBm'e
+  indirir. Yine de kartın doğrudan (hub üzerinden değil) yeterli güçlü bir USB
+  portuna, kısa/kaliteli kabloyla bağlanması önerilir. MQ-2 sensörü takılacaksa
+  ısıtıcı akımı (≈150-180 mA) için en az 5V/500mA ayrı besleme kullanın.
