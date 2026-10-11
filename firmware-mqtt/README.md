@@ -24,7 +24,10 @@ uyumlu **Deneyap Kart / Arduino IDE** firmware'ini içerir.
 - **PubSubClient** (Nick O'Leary)
 
 Geri kalanı Deneyap Kart (ESP32) çekirdeğiyle gelir:
-`WiFi`, `WebServer`, `Servo`, `Preferences`, `HTTPClient`, `WiFiClientSecure`.
+`WiFi`, `WebServer`, `Preferences`, `HTTPClient`, `WiFiClientSecure`.
+
+> **Servo.h bu çekirdekte bulunmaz** — servo sürücüsü firmware içinde
+> ESP32 yerleşik **LEDC** donanımıyla yapılır (ekstra kütüphane gerekmez).
 
 ## Kurulum adımları
 

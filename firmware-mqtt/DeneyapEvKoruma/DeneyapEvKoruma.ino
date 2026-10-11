@@ -24,14 +24,14 @@
  *  Gerekli kütüphaneler (Deneyap Kart IDE > Kütüphane Yöneticisi):
  *    - PubSubClient (Nick O'Leary)
  *  Geri kalanı Deneyap Kart (ESP32) çekirdeğiyle gelir:
- *    WiFi, WebServer, Servo, Preferences, LittleFS, HTTPClient, WiFiClientSecure
+ *    WiFi, WebServer, Preferences, HTTPClient, WiFiClientSecure
+ *  Not: Servo.h bu çekirdekte bulunmaz; servo sürücüsü yerleşik LEDC ile yapılır.
  * ============================================================================
  */
 
 #include <WiFi.h>
 #include <WebServer.h>
 #include <PubSubClient.h>
-#include <Servo.h>
 #include <Preferences.h>
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
@@ -44,8 +44,6 @@ enum GasState : uint8_t { GAS_NORMAL = 0, GAS_WARN = 1, GAS_DANGER = 2 };
 WiFiClient        netClient;
 PubSubClient      mqttClient(netClient);
 WebServer         server(80);
-Servo             servoWindow;
-Servo             servoBlind;
 Preferences       prefs;
 
 bool              wifiStaOk     = false;   // STA bağlı mı
@@ -254,30 +252,39 @@ static void setBuzzer(bool on) {
   digitalWrite(PIN_BUZZER, on ? HIGH : LOW);
   buzzerOn = on;
 }
-static void servoRelease(Servo &s, int pin) {
-  s.detach();
+/* Servo sürücü: Servo.h yerine ESP32 yerleşik LEDC (Deneyap çekirdeğinde
+   Servo.h yoktur). Sürekli dönen aktüatörlerde "stop" işlemi pini INPUT
+   yapıp sürücüyü bırakır (motor ısınmaz, kendi frenine geçer). */
+static void servoDrive(uint8_t pin, uint8_t ch, int angle) {
+  if (angle < 0)   angle = 0;
+  if (angle > 180) angle = 180;
+  uint32_t us   = (uint32_t)SERVO_MIN_US +
+                   ((uint32_t)(SERVO_MAX_US - SERVO_MIN_US) * (uint32_t)angle) / 180UL;
+  /* 50 Hz => periyot 20000 us; duty = us * (2^RES - 1) / 20000 */
+  uint32_t duty = (us * ((1UL << SERVO_RES) - 1UL)) / 20000UL;
+  static bool setupDone[2] = { false, false };
+  uint8_t slot = (ch == LEDC_CH_WINDOW) ? 0 : 1;
+  if (!setupDone[slot]) { ledcSetup(ch, SERVO_FREQ, SERVO_RES); setupDone[slot] = true; }
+  pinMode(pin, OUTPUT);
+  ledcAttachPin(pin, ch);
+  ledcWrite(ch, duty);
+}
+static void servoRelease(uint8_t pin, uint8_t ch) {
+  ledcDetachPin(pin);
   pinMode(pin, INPUT);
   servoReleaseAt = 0;
 }
 static void setWindow(int angle) {
-  if (angle < 0)   angle = 0;
-  if (angle > 180) angle = 180;
-  servoWindow.attach(PIN_SERVO_WINDOW);
-  pinMode(PIN_SERVO_WINDOW, OUTPUT);
-  servoWindow.write(angle);
+  servoDrive(PIN_SERVO_WINDOW, LEDC_CH_WINDOW, angle);
   windowPos = angle;
   servoReleaseAt = millis() + SERVO_MOVE_MS;
   Serial.print(F("[servo] pencere -> ")); Serial.println(angle);
 }
 static void setBlind(int angle) {
-  if (angle < 0)   angle = 0;
-  if (angle > 180) angle = 180;
-  servoBlind.attach(PIN_SERVO_BLIND);
-  pinMode(PIN_SERVO_BLIND, OUTPUT);
-  servoBlind.write(angle);
+  servoDrive(PIN_SERVO_BLIND, LEDC_CH_BLIND, angle);
   blindPos = angle;
   servoReleaseAt = millis() + SERVO_MOVE_MS;
-  Serial.print(F("[servo] panjur -> ")); Serial.println(angle);
+  Serial.print(F("[servo] panjur  -> ")); Serial.println(angle);
 }
 
 /* ------------------------------------------------------ sensör + otomasyon */
@@ -593,7 +600,7 @@ static String applyCommand(const String &device, const String &action, long valu
     else if (action == "shut")  setWindow(SERVO_WINDOW_SHUT);
     else if (action == "ajar")  setWindow(SERVO_WINDOW_AJAR);
     else if (action == "set" || action == "angle") setWindow((int)value);
-    else if (action == "stop")  servoRelease(servoWindow, PIN_SERVO_WINDOW);
+    else if (action == "stop")  servoRelease(PIN_SERVO_WINDOW, LEDC_CH_WINDOW);
     else if (value >= 0 && value <= 180) setWindow((int)value);
     else return "gecersiz pencere komutu";
 
@@ -601,7 +608,7 @@ static String applyCommand(const String &device, const String &action, long valu
     if (action == "open")       setBlind(SERVO_BLIND_OPEN);
     else if (action == "shut")  setBlind(SERVO_BLIND_SHUT);
     else if (action == "set" || action == "angle") setBlind((int)value);
-    else if (action == "stop")  servoRelease(servoBlind, PIN_SERVO_BLIND);
+    else if (action == "stop")  servoRelease(PIN_SERVO_BLIND, LEDC_CH_BLIND);
     else if (value >= 0 && value <= 180) setBlind((int)value);
     else return "gecersiz panjur komutu";
 
@@ -893,11 +900,8 @@ void setup() {
   /* Servo başlangıç konumları, sonra motorları serbest bırak */
   setWindow(SERVO_WINDOW_OPEN);
   setBlind(SERVO_BLIND_SHUT);
-  servoWindow.detach();
-  servoBlind.detach();
-  pinMode(PIN_SERVO_WINDOW, INPUT);
-  pinMode(PIN_SERVO_BLIND, INPUT);
-  servoReleaseAt = 0;
+  servoRelease(PIN_SERVO_WINDOW, LEDC_CH_WINDOW);
+  servoRelease(PIN_SERVO_BLIND, LEDC_CH_BLIND);
 
   /* Gaz tabanı ölçümü + ısınma penceresi */
   calibrateGasBaseline();
@@ -976,11 +980,8 @@ void loop() {
 
   /* Servo hareketi bitince motorları serbest bırak */
   if (servoReleaseAt != 0 && (int32_t)(now - servoReleaseAt) >= 0) {
-    servoWindow.detach();
-    servoBlind.detach();
-    pinMode(PIN_SERVO_WINDOW, INPUT);
-    pinMode(PIN_SERVO_BLIND, INPUT);
-    servoReleaseAt = 0;
+    servoRelease(PIN_SERVO_WINDOW, LEDC_CH_WINDOW);
+    servoRelease(PIN_SERVO_BLIND, LEDC_CH_BLIND);
   }
 
   /* Geçmiş örnekleme */

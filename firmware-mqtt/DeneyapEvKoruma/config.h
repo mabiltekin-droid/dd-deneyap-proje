@@ -24,7 +24,8 @@
 /* Panelde her kartı ayırt eden kısa kimlik. Hesap eşleştirmesi bu değeri
    kullanır. Aynı MQTT_TOPIC'i kullanan iki kart olmasın! */
 #define DEVICE_ID          "kart1"
-#define FW_VERSION         "3.0.0"   // package.json / config.js / sw.js ile aynı tutulmalı
+#define FW_VERSION         "3.0.0"   // cihazın kendi sürümü; panel /status'te `fw` olarak gösterir
+                                     // (not: panel sürümü package.json/config.js/sw.js'ten ayrıdır)
 
 /* ============================ Wi-Fi (STA) ============================== */
 /* Kart evdeki modem/telefon paylaşımına bağlanır; panel internet üzerinden
@@ -78,6 +79,15 @@
 #define SERVO_WINDOW_AJAR  90
 #define SERVO_BLIND_OPEN   180
 #define SERVO_BLIND_SHUT   0
+
+/* Servo sürücü: ESP32 yerleşik LEDC (bu çekirdekte Servo.h YOKTUR).
+   50 Hz standart servo darbe genişliği; 16-bit çözünürlük; 500..2400 us. */
+#define LEDC_CH_WINDOW     0
+#define LEDC_CH_BLIND      1
+#define SERVO_FREQ         50
+#define SERVO_RES          16
+#define SERVO_MIN_US       500
+#define SERVO_MAX_US       2400
 
 /* ======================= SENSÖR KALİBRASYONU =========================== */
 /* MQ2 ham ADC değerini PPM'e çevirmek için doğrusal model:
