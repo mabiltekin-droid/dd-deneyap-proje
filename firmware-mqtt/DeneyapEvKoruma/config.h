@@ -26,7 +26,7 @@
    (karta özel, yeniden flaşta değişmez). Aynı MQTT_TOPIC'i kullanan iki
    kart olmasın! */
 #define DEVICE_ID          ""        // boş = otomatik "DK-XXXX"; istersen sabit ad yaz (örn. "kart1")
-#define FW_VERSION         "3.0.0"   // cihazın kendi sürümü; panel /status'te `fw` olarak gösterir
+#define FW_VERSION         "3.0.1"   // cihazın kendi sürümü; panel /status'te `fw` olarak gösterir
                                      // (not: panel sürümü package.json/config.js/sw.js'ten ayrıdır)
 
 /* ============================ Wi-Fi (STA) ============================== */
@@ -102,8 +102,9 @@
 #define GAS_FAULT_LOW      3             // bu ham değerin altı = sensör kopuk/arıza
 #define GAS_FAULT_HIGH     1020          // bu ham değerin üstü = sensör kısa devre
 
-/* MQ2 ısınma süresi: bu süre dolmadan `ready=false` yayınlanır. */
-#define GAS_WARMUP_MS      20000UL
+/* MQ2 ısınma süresi: bu süre dolmadan `ready=false` yayınlanır.
+   MQ-2 ~60 sn'de oturur; 60 sn öncesinde okumalar kararlı değildir. */
+#define GAS_WARMUP_MS      60000UL
 
 /* Sensör gürültü filtreleme (Üstel Hareketli Ortalama - EMA) */
 #define SENSOR_EMA_ALPHA   0.2f          // yeni ölçüm ağırlığı (0..1)

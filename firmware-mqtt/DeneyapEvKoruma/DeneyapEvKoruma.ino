@@ -322,8 +322,13 @@ static void readSensors() {
   float span = ADC_FULL_SCALE - (float)gasBaseRaw;
   if (span <= 0) span = 1.0f;
   float ppm = ((float)gasFiltered - (float)gasBaseRaw) * (GAS_PPM_FULL_SCALE / span);
-  gasPpm = (ppm < 0) ? 0 : (int)(ppm + 0.5f);
-  if (gasPpm > (int)GAS_PPM_FULL_SCALE) gasPpm = (int)GAS_PPM_FULL_SCALE;
+  /* Tabanın ALTINDAKİ okumalar 0'a kırpılmaz: gasPpm negatifse okuma temiz
+     hava tabanının altında demektir (sensör boşta / henüz ısınmamış).
+     Alarm eşikleri pozitif ppm ile karşılaştırıldığından negatif değer
+     uyarı tetiklemez; panel ve geçmiş kaydı 0'a kırpar. */
+  gasPpm = (int)(ppm + 0.5f);
+  if (gasPpm < (int)(-GAS_PPM_FULL_SCALE)) gasPpm = (int)(-GAS_PPM_FULL_SCALE);
+  if (gasPpm > (int)GAS_PPM_FULL_SCALE)   gasPpm = (int)GAS_PPM_FULL_SCALE;
 
   /* Yağmur: ıslaklık yüzdesi 0..100 */
   int wetness = rainInvert ? (1023 - rainFiltered) : rainFiltered;
@@ -448,7 +453,7 @@ static int histIndex(int i) {
 static void historyPush() {
   HistRec &r = hist[histHead];
   r.t = (uint32_t)((millis() - bootMs) / 1000UL);
-  r.ppm = (uint16_t)(gasPpm > 65000 ? 65000 : gasPpm);
+  r.ppm = (uint16_t)(gasPpm < 0 ? 0 : (gasPpm > 65000 ? 65000 : gasPpm));
   r.rain = (uint8_t)(rainPct < 0 ? 0 : (rainPct > 100 ? 100 : rainPct));
   r.st = (uint8_t)(gasFault ? 3 : (uint8_t)gasState);
   uint8_t fl = 0;
