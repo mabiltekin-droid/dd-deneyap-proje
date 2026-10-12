@@ -35,6 +35,7 @@
 #include <Preferences.h>
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
+#include <driver/i2s.h>
 
 #include "config.h"
 
@@ -44,6 +45,14 @@
 
 /* ------------------------------------------------------------------ durum */
 enum GasState : uint8_t { GAS_NORMAL = 0, GAS_WARN = 1, GAS_DANGER = 2 };
+
+/* Ses motoru (I2S/MAX98357A) ön tanımları. Çıkış yardımcıları (outputsSafe)
+   bu sabitleri kullanabilsin diye en üstte durur. */
+enum SoundMode : uint8_t { SND_NONE = 0, SND_ALARM = 1, SND_SIREN = 2, SND_TEST = 3, SND_BEEP = 4 };
+static volatile uint8_t  sndMode     = SND_NONE;
+static volatile uint32_t sndStartMs  = 0;
+static volatile bool     sndReady    = false;
+static TaskHandle_t      audioTaskH  = nullptr;
 
 WiFiClient        netClient;
 PubSubClient      mqttClient(netClient);
@@ -64,6 +73,16 @@ int               rainFloodPct  = RAIN_FLOOD_PCT;
 bool              rainInvert    = false;
 bool              autoControl   = true;
 
+/* Titreşim / sarsıntı ayarları (NVS) */
+bool              vibEnabled    = VIB_ENABLED_DEFAULT;
+bool              vibAlarm      = VIB_ALARM_DEFAULT;
+bool              vibUseDigital = VIB_DIGITAL_DEFAULT;
+bool              vibUseAnalog  = VIB_ANALOG_DEFAULT;
+bool              vibTg         = VIB_ALARM_TG_DEFAULT;
+
+/* Ses / hoparlör ayarları (NVS) */
+int               sndVolume     = SND_VOLUME_DEFAULT;   // 0..100
+
 /* Telegram */
 bool              tgEnabled     = TG_ENABLED_DEFAULT;
 String            tgToken       = "";
@@ -81,11 +100,21 @@ float             rainEma       = 0.0f;
 int               rainFiltered  = 0;
 int               rainPct       = 0;
 bool              rainWet       = false;
+bool              rainOk        = true;   // sensör mantıklı bir değer veriyor mu
 bool              floodRaw      = false;
 bool              floodActive   = false;
 uint32_t          floodStartMs  = 0;
+/* Titreşim / sarsıntı okumaları */
+int               vibRaw        = 0;      // AO ham ADC (0..1023)
+float             vibEma        = 0.0f;   // AO yavaş taban (baseline) izleme
+int               vibBase       = 0;      // AO boştaki referans
+bool              vibDigital    = false;  // DO mantıksal durum (titreşim = true)
+bool              vibActive     = false;  // olay aktif mi (hold penceresi)
+bool              vibConnected  = false;  // en az bir giriş hareket gördü mü
+uint32_t          vibHoldUntilMs = 0;
 uint32_t          warmUpUntilMs = 0;
 bool              firstRead     = true;
+bool              gasBaseStable = false;   // ısınma penceresi bitince taban yeniden ölçüldü mü
 GasState          gasState      = GAS_NORMAL;
 
 /* Çıkışlar */
@@ -95,6 +124,8 @@ bool              buzzerOn        = false;
 bool              fanByAutomation = false;
 bool              wasDanger       = false;
 bool              wasRainShut     = false;
+bool              wasVibShut      = false;
+bool              soundManual     = false;   // panelden elle açılan ses (otomasyon ezmez)
 uint32_t          alarmSimUntilMs = 0;
 int               windowPos       = SERVO_WINDOW_OPEN;
 int               blindPos        = SERVO_BLIND_SHUT;
@@ -111,6 +142,12 @@ uint32_t          servoReleaseAt  = 0;
 uint32_t          wifiRetryAt     = 0;
 uint32_t          mqttRetryAt     = 0;
 uint32_t          rebootAtMs      = 0;
+
+/* MQTT broker yedekleme + yeniden bağlanma durumu */
+bool              brokerFallback    = false;            // şu an yedek broker kullanılıyor mu
+uint8_t           mqttFailStreak    = 0;                // üst üste başarısız deneme sayısı
+uint32_t          mqttBackoffMs     = MQTT_RETRY_MIN;   // üstel geri çekilme gecikmesi
+uint32_t          mqttPrimaryProbeAt = 0;               // yedekteyken birincili yeniden dene zamanı
 
 /* MQTT yanıt durumu */
 uint32_t          lastCmdId       = 0;
@@ -137,6 +174,12 @@ static void loadSettings() {
   rainFloodPct = prefs.getInt("rainFlood", RAIN_FLOOD_PCT);
   rainInvert   = prefs.getBool("rainInvert", false);
   autoControl  = prefs.getBool("autoControl", true);
+  vibEnabled   = prefs.getBool("vibEnabled", VIB_ENABLED_DEFAULT);
+  vibAlarm     = prefs.getBool("vibAlarm", VIB_ALARM_DEFAULT);
+  vibUseDigital= prefs.getBool("vibDigital", VIB_DIGITAL_DEFAULT);
+  vibUseAnalog = prefs.getBool("vibAnalog", VIB_ANALOG_DEFAULT);
+  vibTg        = prefs.getBool("vibTg", VIB_ALARM_TG_DEFAULT);
+  sndVolume    = prefs.getInt("sndVol", SND_VOLUME_DEFAULT);
   tgEnabled    = prefs.getBool("tgEnabled", TG_ENABLED_DEFAULT);
   tgToken      = prefs.getString("tgToken", "");
   tgChatId     = prefs.getString("tgChat", "");
@@ -147,6 +190,7 @@ static void loadSettings() {
   if (gasHyst < 0 || gasHyst >= gasWarnPpm) gasHyst = GAS_HYSTERESIS;
   if (rainWetPct < 1 || rainWetPct > 100) rainWetPct = RAIN_WET_PCT;
   if (rainFloodPct <= rainWetPct || rainFloodPct > 100) rainFloodPct = RAIN_FLOOD_PCT;
+  if (sndVolume < 0 || sndVolume > 100) sndVolume = SND_VOLUME_DEFAULT;
   Serial.println(F("[nvs] ayarlar yuklendi"));
 }
 
@@ -159,6 +203,12 @@ static void saveSettings() {
   prefs.putInt("rainFlood", rainFloodPct);
   prefs.putBool("rainInvert", rainInvert);
   prefs.putBool("autoControl", autoControl);
+  prefs.putBool("vibEnabled", vibEnabled);
+  prefs.putBool("vibAlarm", vibAlarm);
+  prefs.putBool("vibDigital", vibUseDigital);
+  prefs.putBool("vibAnalog", vibUseAnalog);
+  prefs.putBool("vibTg", vibTg);
+  prefs.putInt("sndVol", sndVolume);
   prefs.putBool("tgEnabled", tgEnabled);
   prefs.putString("tgToken", tgToken);
   prefs.putString("tgChat", tgChatId);
@@ -182,9 +232,12 @@ static const char *gasStateName(GasState s) {
 static void outputsSafe(const char *reason) {
   digitalWrite(PIN_RELAY_FAN, LOW);
   digitalWrite(PIN_RELAY_PUMP, LOW);
+#if PIN_BUZZER >= 0
   digitalWrite(PIN_BUZZER, LOW);
+#endif
   fanOn = pumpOn = buzzerOn = false;
   fanByAutomation = false;
+  if (sndMode == SND_ALARM) sndStop();
   if (reason) { Serial.print(F("[guvenlik] cikislar kapatildi: ")); Serial.println(reason); }
 }
 
@@ -235,6 +288,125 @@ static String jsonEscape(const String &s) {
   return o;
 }
 
+/* ============================================================ SES MOTORU ==
+   I2S amplifikatör (MAX98357A) üzerinden siren/ton üretimi. Ayrı bir FreeRTOS
+   görevi (core 0) DMA tamponunu besler; ana döngü (MQTT/HTTP) bloklanmaz.
+   Sesli "anons" (konuşma) panel tarafında, telefonun konuşma senteziyle
+   yapılır; buradaki motor yalnızca siren/uyarı tonları çalar. */
+static const char *sndName(uint8_t m) {
+  switch (m) {
+    case SND_ALARM: return "alarm";
+    case SND_SIREN: return "siren";
+    case SND_TEST:  return "test";
+    case SND_BEEP:  return "bip";
+    default:        return "kapali";
+  }
+}
+static void sndPlay(uint8_t m) { sndStartMs = millis(); sndMode = m; }
+static void sndStop()          { sndMode = SND_NONE; }
+
+static void i2sInit() {
+#if PIN_I2S_BCLK >= 0
+  i2s_config_t cfg;
+  memset(&cfg, 0, sizeof(cfg));
+  cfg.mode                 = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_TX);
+  cfg.sample_rate          = SND_SAMPLE_RATE;
+  cfg.bits_per_sample      = I2S_BITS_PER_SAMPLE_16BIT;
+  cfg.channel_format       = I2S_CHANNEL_FMT_RIGHT_LEFT;   // iki kanala da aynı örnek (kanal seçimi önemsiz)
+  cfg.communication_format = I2S_COMM_FORMAT_STAND_I2S;
+  cfg.intr_alloc_flags     = 0;
+  cfg.dma_buf_count        = 6;
+  cfg.dma_buf_len          = 128;
+  cfg.use_apll             = false;
+  cfg.tx_desc_auto_clear   = true;
+  cfg.fixed_mclk           = 0;
+  cfg.mclk_multiple        = I2S_MCLK_MULTIPLE_256;
+  if (i2s_driver_install(I2S_NUM_0, &cfg, 0, nullptr) != ESP_OK) {
+    Serial.println(F("[ses] I2S surucusu kurulamadi"));
+    return;
+  }
+  i2s_pin_config_t pins;
+  memset(&pins, 0, sizeof(pins));
+  pins.bck_io_num   = PIN_I2S_BCLK;
+  pins.ws_io_num    = PIN_I2S_LRC;
+  pins.data_out_num = PIN_I2S_DIN;
+  pins.data_in_num  = I2S_PIN_NO_CHANGE;
+  i2s_set_pin(I2S_NUM_0, &pins);
+  i2s_zero_dma_buffer(I2S_NUM_0);
+#if PIN_I2S_SD >= 0
+  pinMode(PIN_I2S_SD, OUTPUT);
+  digitalWrite(PIN_I2S_SD, LOW);   // boşta amfiyi kapat (gürültü olmasın)
+#endif
+  sndReady = true;
+  Serial.println(F("[ses] I2S hoparlor hazir (MAX98357A)"));
+#endif
+}
+
+/* 16-bit örnek üretici: kare dalga siren/ton. freq<=0 => sessizlik. */
+static void audioTask(void *arg) {
+  const int N = 128;
+  static int16_t buf[256];   // stereo: 128 kare * 2
+  uint32_t phase = 0;
+  for (;;) {
+    uint8_t m = sndMode;
+    if (m == SND_NONE || !sndReady) {
+      vTaskDelay(15 / portTICK_PERIOD_MS);
+      continue;
+    }
+    uint32_t el = millis() - sndStartMs;
+    int freq = 0;
+    switch (m) {
+      case SND_ALARM: {                       // 900/1300 Hz dönüşümlü (250 ms)
+        freq = ((el / 250) & 1) ? 1300 : 900;
+        break;
+      }
+      case SND_SIREN: {                       // 2 sn'de 600->1400->600 süpürme
+        uint32_t p = el % 2000;
+        freq = (p < 1000) ? (600 + (int)(800 * p / 1000))
+                          : (1400 - (int)(800 * (p - 1000) / 1000));
+        break;
+      }
+      case SND_TEST: {                        // 3 kısa bip (150 ms on / 200 ms off)
+        if (el > 1050) { sndMode = SND_NONE; break; }
+        freq = ((el % 350) < 150) ? 1000 : 0;
+        break;
+      }
+      case SND_BEEP: {                        // tek 150 ms bip
+        if (el > 150) { sndMode = SND_NONE; break; }
+        freq = 1200;
+        break;
+      }
+      default: break;
+    }
+    int amp = 0;
+    if (freq > 0) {
+      int vol = sndVolume; if (vol < 0) vol = 0; if (vol > 100) vol = 100;
+      amp = (int)(30000L * vol / 100);        // tam ölçek ~30000 (kırpma yok)
+    }
+    uint32_t inc = (uint32_t)(((uint64_t)freq << 32) / SND_SAMPLE_RATE);
+    for (int i = 0; i < N; i++) {
+      int16_t v = 0;
+      if (amp) { phase += inc; v = (phase & 0x80000000UL) ? (int16_t)amp : (int16_t)(-amp); }
+      buf[i * 2]     = v;
+      buf[i * 2 + 1] = v;
+    }
+    size_t written = 0;
+    i2s_write(I2S_NUM_0, buf, sizeof(buf), &written, portMAX_DELAY);
+#if PIN_I2S_SD >= 0
+    pinMode(PIN_I2S_SD, INPUT);   // çalarken amfiyi serbest bırak (açık)
+#endif
+    if (sndMode == SND_NONE) {
+#if PIN_I2S_SD >= 0
+      pinMode(PIN_I2S_SD, OUTPUT); digitalWrite(PIN_I2S_SD, LOW);
+#endif
+    }
+  }
+}
+static void audioStart() {
+  if (!sndReady) return;
+  xTaskCreatePinnedToCore(audioTask, "ses", 4096, nullptr, 3, &audioTaskH, 0);
+}
+
 /* --------------------------------------------------------------- çıkışlar */
 static void setFan(bool on, bool byAutomation) {
   digitalWrite(PIN_RELAY_FAN, on ? HIGH : LOW);
@@ -254,8 +426,13 @@ static void setPump(bool on) {
   pumpStartedMs = on ? millis() : 0;
 }
 static void setBuzzer(bool on) {
-  digitalWrite(PIN_BUZZER, on ? HIGH : LOW);
   buzzerOn = on;
+#if PIN_BUZZER >= 0
+  digitalWrite(PIN_BUZZER, on ? HIGH : LOW);
+#endif
+  /* Sesli alarmı I2S hoparlöre yönlendir (test/bip çalarken kesme). */
+  if (on) { if (sndMode == SND_NONE) sndPlay(SND_ALARM); }
+  else if (sndMode == SND_ALARM) sndStop();
 }
 /* Servo sürücü: Servo.h yerine ESP32 yerleşik LEDC (Deneyap çekirdeğinde
    Servo.h yoktur). Sürekli dönen aktüatörlerde "stop" işlemi pini INPUT
@@ -301,6 +478,9 @@ static void calibrateGasBaseline() {
     delay(100);
   }
   gasBaseRaw = (n > 0) ? (int)(sum / n) : 200;
+  /* Plausibility: 900+ taban = modül raylanmış / sensör yok (gerçek MQ2
+     temiz hava 3.3V'da ~150-350). Böyle taban span'i çökertir. */
+  if (gasBaseRaw < GAS_BASE_MIN || gasBaseRaw > GAS_BASE_MAX) gasBaseRaw = 200;
   gasEma = (float)gasBaseRaw;
   gasFiltered = gasBaseRaw;
   Serial.print(F("[mq2] temiz hava tabani=")); Serial.println(gasBaseRaw);
@@ -309,20 +489,33 @@ static void calibrateGasBaseline() {
 static void readSensors() {
   gasRaw  = analogRead(PIN_MQ2);
   rainRaw = analogRead(PIN_RAIN);
+  vibRaw  = (PIN_VIB_AO >= 0) ? analogRead(PIN_VIB_AO) : 0;
+  int vibDoLevel = (PIN_VIB_DO >= 0) ? digitalRead(PIN_VIB_DO) : HIGH;
 
-  if (firstRead) { gasEma = gasRaw; rainEma = rainRaw; firstRead = false; }
+  if (firstRead) { gasEma = gasRaw; rainEma = rainRaw; vibEma = vibRaw; firstRead = false; }
   else {
     gasEma  = (SENSOR_EMA_ALPHA * gasRaw)  + ((1.0f - SENSOR_EMA_ALPHA) * gasEma);
     rainEma = (SENSOR_EMA_ALPHA * rainRaw) + ((1.0f - SENSOR_EMA_ALPHA) * rainEma);
+    /* AO yavaş taban: gerçek sarsıntının tabanı kaydırmaması için çok yavaş izle */
+    vibEma  = (0.02f * vibRaw) + (0.98f * vibEma);
   }
   gasFiltered  = (int)(gasEma + 0.5f);
   rainFiltered = (int)(rainEma + 0.5f);
+  vibBase      = (int)(vibEma + 0.5f);
 
   /* Gaz sensörü arıza tespiti (kopuk / kısa devre) */
   gasFault = (gasRaw <= GAS_FAULT_LOW) || (gasRaw >= GAS_FAULT_HIGH);
 
   /* Ham ADC -> PPM (doğrusal model) */
-  if (gasBaseRaw < GAS_BASE_MIN) gasBaseRaw = 200;
+  if (gasBaseRaw < GAS_BASE_MIN || gasBaseRaw > GAS_BASE_MAX) gasBaseRaw = 200;
+  /* Uyarlanabilir taban: MQ-2 (özellikle 3.3V'da) saatler içinde yavaşça kayar.
+     Temiz hava varsayımıyla (ppm uyarı eşiğinin altında) tabanı yavaşça okumaya
+     doğru çek; gaz şüphesi varsa DOKUNMA ki gerçek gazı yutup alarmı maskeleme.
+     Isınma bitmeden (gasBaseStable) çalışmaz. */
+  if (gasBaseStable && !gasFault && gasPpm < gasWarnPpm) {
+    gasBaseRaw += (int)((gasFiltered - gasBaseRaw) * 0.01f);
+    if (gasBaseRaw < GAS_BASE_MIN || gasBaseRaw > GAS_BASE_MAX) gasBaseRaw = 200;
+  }
   float span = ADC_FULL_SCALE - (float)gasBaseRaw;
   if (span <= 0) span = 1.0f;
   float ppm = ((float)gasFiltered - (float)gasBaseRaw) * (GAS_PPM_FULL_SCALE / span);
@@ -334,15 +527,31 @@ static void readSensors() {
   if (gasPpm < (int)(-GAS_PPM_FULL_SCALE)) gasPpm = (int)(-GAS_PPM_FULL_SCALE);
   if (gasPpm > (int)GAS_PPM_FULL_SCALE)   gasPpm = (int)GAS_PPM_FULL_SCALE;
 
-  /* Yağmur: ıslaklık yüzdesi 0..100 */
-  int wetness = rainInvert ? (1023 - rainFiltered) : rainFiltered;
-  if (wetness < 0) wetness = 0;
-  if (wetness > 1023) wetness = 1023;
-  rainPct = (int)((long)wetness * 100 / 1023);
-  rainWet = rainPct >= rainWetPct;
+  /* Yağmur: ham ADC'yi kalibre edilmiş aralıkta %0 (kuru) .. %100 (ıslak)
+     ıslaklığa çevir. Bu modül ters (kuru=tepe, ıslak=düşük); rainInvert=true
+     ise çıkan yüzde ters çevrilerek karşı tip modüller de desteklenir. */
+  /* Arıza/kopuk koruması: ters tip modülde kuru hava ~1023, tam ıslak ~500
+     verir; ham değer bunun çok altına (RAIN_FAULT_LOW) düşerse sensör
+     kopuk/kısa sayılır ve YANLIŞ "su baskını" üretilmez. rainInvert açıkken
+     (karşı tip modül) bu koruma uygulanmaz, çünkü orada düşük değer normaldir. */
+  rainOk = rainInvert || ((long)rainRaw >= (long)RAIN_FAULT_LOW);
+  if (rainOk) {
+    long rspan = (long)RAIN_DRY_ADC - (long)RAIN_WET_ADC;
+    if (rspan == 0) rspan = 1;
+    int wetness = (int)(( (long)RAIN_DRY_ADC - (long)rainFiltered) * 100 / rspan);
+    if (wetness < 0)   wetness = 0;
+    if (wetness > 100) wetness = 100;
+    if (rainInvert)    wetness = 100 - wetness;
+    rainPct = wetness;
+    rainWet = rainPct >= rainWetPct;
+    floodRaw = rainPct >= rainFloodPct;
+  } else {
+    rainPct = 0;
+    rainWet = false;
+    floodRaw = false;
+  }
 
   /* Su baskını: eşik üstünde FLOOD_HOLD_MS boyunca kalırsa kalıcı say */
-  floodRaw = rainPct >= rainFloodPct;
   uint32_t now = millis();
   if (floodRaw) {
     if (floodStartMs == 0) floodStartMs = now;
@@ -354,6 +563,26 @@ static void readSensors() {
     floodStartMs = 0;
     floodActive = false;
   }
+
+  /* Titreşim / sarsıntı: dijital DO (LOW=olay) ve/veya analog AO (tabandan
+     sapma). Herhangi biri tetiklerse olay VIB_TRIGGER_HOLD_MS boyunca aktif
+     kalır (beliren sarsıntı serileri tek olay sayılır). */
+  bool vibDigitalNow = false;
+  if (vibEnabled && vibUseDigital) {
+    bool low = (vibDoLevel == LOW);
+    vibDigitalNow = VIB_DO_ACTIVE_LOW ? low : !low;
+  }
+  bool vibAnalogNow = false;
+  if (vibEnabled && vibUseAnalog) {
+    int dev = vibRaw - vibBase; if (dev < 0) dev = -dev;
+    vibAnalogNow = (vibRaw > 5) && (dev >= VIB_ANALOG_DELTA);
+  }
+  vibDigital = vibDigitalNow;
+  if (vibDigitalNow || vibAnalogNow) {
+    vibHoldUntilMs = now + VIB_TRIGGER_HOLD_MS;
+    vibConnected = true;
+  }
+  vibActive = vibEnabled && ((int32_t)(vibHoldUntilMs - now) > 0);
 
   /* Isınma süresi dolmadan güvenli tarafta kal */
   if ((int32_t)(warmUpUntilMs - now) > 0) {
@@ -392,23 +621,49 @@ static void readSensors() {
 
 static void runAutomation() {
   uint32_t now = millis();
+  bool alarmSound = false;
 
   /* 1) Gaz tehlikesi (en yüksek öncelik) */
   if (gasState == GAS_DANGER) {
-    setBuzzer(true);
+    alarmSound = true;
     setFan(true, true);
     setPump(false);
     if (autoControl && !wasDanger) setWindow(SERVO_WINDOW_SHUT);
     wasDanger = true;
+    setBuzzer(alarmSound || soundManual);
     return;
   }
-  setBuzzer(false);
 
   if (fanByAutomation && timeReached(now, fanLatchedMs, FAN_AUTO_OFF_MS)) setFan(false, false);
 
   if (wasDanger && gasState != GAS_DANGER) {
     wasDanger = false;
     if (autoControl) {
+      if (rainWet) { setWindow(SERVO_WINDOW_SHUT); wasRainShut = true; }
+      else         { setWindow(SERVO_WINDOW_OPEN); wasRainShut = false; }
+    }
+  }
+
+  /* 1.5) Titreşim / kurcalama alarmı (gaz tehlikesinden sonra, yağmurdan önce) */
+  if (vibAlarm && vibActive) {
+    alarmSound = true;                       // siren: oto kapalı olsa da çalar (güvenlik)
+    if (autoControl) {
+      setPump(false);
+      setFan(true, true);
+      if (!wasVibShut) {
+        setWindow(SERVO_WINDOW_SHUT);
+        wasVibShut = true;
+        Serial.println(F("[otomasyon] TITRESIM -> pencere kapatildi, siren"));
+        if (vibTg) tgSend(String("SARSINTI/KURCALAMA algilandi! Siren caliyor, pencere kapatildi. Cihaz: ") + deviceId, false);
+      }
+    } else if (!wasVibShut) {
+      wasVibShut = true;
+      if (vibTg) tgSend(String("SARSINTI/KURCALAMA algilandi (otomasyon kapali). Cihaz: ") + deviceId, false);
+    }
+  } else if (wasVibShut) {
+    wasVibShut = false;
+    if (fanByAutomation) setFan(false, false);
+    if (autoControl && gasState != GAS_DANGER) {
       if (rainWet) { setWindow(SERVO_WINDOW_SHUT); wasRainShut = true; }
       else         { setWindow(SERVO_WINDOW_OPEN); wasRainShut = false; }
     }
@@ -428,6 +683,9 @@ static void runAutomation() {
       Serial.println(F("[otomasyon] Yagmur dindi -> pencere acildi"));
     }
   }
+
+  /* 3) Ses kararı: alarm veya panelden elle açık ise siren çal */
+  setBuzzer(alarmSound || soundManual);
 }
 
 /* ------------------------------------------------------------- Telegram */
@@ -468,6 +726,7 @@ static void historyPush() {
   if (blindPos > 30)     fl |= 16;
   if (floodActive)       fl |= 32;
   if (autoControl)       fl |= 64;
+  if (vibActive)         fl |= 128;
   r.fl = fl;
   histHead = (histHead + 1) % HISTORY_MAX;
   if (histCount < HISTORY_MAX) histCount++;
@@ -512,7 +771,7 @@ static String buildStatus() {
   bool moving  = (int32_t)(servoReleaseAt - now) > 0;
   int  warmLeft = 0;
   if ((int32_t)(warmUpUntilMs - now) > 0) warmLeft = (int)((warmUpUntilMs - now) / 1000UL);
-  bool ready = warmLeft == 0;
+  bool ready = (warmLeft == 0) && gasBaseStable;
   long pumpLeft = 0;
   if (pumpOn && pumpStartedMs) {
     long e = (long)(now - pumpStartedMs);
@@ -521,7 +780,7 @@ static String buildStatus() {
   int clients = apActive ? (int)WiFi.softAPgetStationNum() : (wifiStaOk ? 1 : 0);
   String err = lastCmdErr;
 
-  String j; j.reserve(900);
+  String j; j.reserve(1320);
   j += "{\"ok\":true,\"fw\":\""; j += FW_VERSION;
   j += "\",\"dev\":\""; j += deviceId;
   j += "\",\"t\":"; j += (unsigned long)now;
@@ -549,6 +808,21 @@ static String buildStatus() {
   j += ",\"rainWetPct\":"; j += rainWetPct;
   j += ",\"rainFloodPct\":"; j += rainFloodPct;
   j += ",\"rainInvert\":"; j += (rainInvert ? "true" : "false");
+  j += ",\"rainOk\":"; j += (rainOk ? "true" : "false");
+  j += ",\"vib\":"; j += (vibActive ? "true" : "false");
+  j += ",\"vibRaw\":"; j += vibRaw;
+  j += ",\"vibBase\":"; j += vibBase;
+  j += ",\"vibDigital\":"; j += (vibDigital ? "true" : "false");
+  j += ",\"vibEnabled\":"; j += (vibEnabled ? "true" : "false");
+  j += ",\"vibAlarm\":"; j += (vibAlarm ? "true" : "false");
+  j += ",\"vibDetected\":"; j += (vibConnected ? "true" : "false");
+  j += ",\"vibUseDigital\":"; j += (vibUseDigital ? "true" : "false");
+  j += ",\"vibUseAnalog\":"; j += (vibUseAnalog ? "true" : "false");
+  j += ",\"vibTg\":"; j += (vibTg ? "true" : "false");
+  j += ",\"sndMode\":\""; j += sndName(sndMode); j += "\"";
+  j += ",\"sndVol\":"; j += sndVolume;
+  j += ",\"sndManual\":"; j += (soundManual ? "true" : "false");
+  j += ",\"sndReady\":"; j += (sndReady ? "true" : "false");
   j += ",\"fan\":"; j += (fanOn ? "true" : "false");
   j += ",\"pump\":"; j += (pumpOn ? "true" : "false");
   j += ",\"buzzer\":"; j += (buzzerOn ? "true" : "false");
@@ -559,6 +833,7 @@ static String buildStatus() {
   j += ",\"blind\":"; j += blindPos;
   j += ",\"moving\":"; j += (moving ? "true" : "false");
   j += ",\"mqtt\":"; j += (mqttOnline ? "true" : "false");
+  j += ",\"broker\":\""; j += (brokerFallback ? "yedek" : "birincil"); j += "\"";
   j += ",\"cmdId\":"; j += (unsigned long)lastCmdId;
   j += ",\"cmdErr\":\""; j += jsonEscape(err); j += "\"";
   j += ",\"tgOn\":"; j += (tgEnabled ? "true" : "false");
@@ -569,7 +844,7 @@ static String buildStatus() {
 }
 
 static String buildSettingsJson() {
-  String j; j.reserve(280);
+  String j; j.reserve(460);
   j += "{\"ok\":true,\"gasWarn\":"; j += gasWarnPpm;
   j += ",\"gasDanger\":"; j += gasDangerPpm;
   j += ",\"gasHyst\":"; j += gasHyst;
@@ -577,6 +852,12 @@ static String buildSettingsJson() {
   j += ",\"rainFloodPct\":"; j += rainFloodPct;
   j += ",\"rainInvert\":"; j += (rainInvert ? "true" : "false");
   j += ",\"autoControl\":"; j += (autoControl ? "true" : "false");
+  j += ",\"vibEnabled\":"; j += (vibEnabled ? "true" : "false");
+  j += ",\"vibAlarm\":"; j += (vibAlarm ? "true" : "false");
+  j += ",\"vibUseDigital\":"; j += (vibUseDigital ? "true" : "false");
+  j += ",\"vibUseAnalog\":"; j += (vibUseAnalog ? "true" : "false");
+  j += ",\"vibTg\":"; j += (vibTg ? "true" : "false");
+  j += ",\"sndVolume\":"; j += sndVolume;
   j += ",\"tgEnabled\":"; j += (tgEnabled ? "true" : "false");
   j += ",\"tgTokenSet\":"; j += (tgToken.length() ? "true" : "false");
   j += ",\"tgChatSet\":"; j += (tgChatId.length() ? "true" : "false");
@@ -608,11 +889,31 @@ static String applyCommand(const String &device, const String &action, long valu
     else if (action == "toggle") setPump(!pumpOn);
     else return "gecersiz pompa komutu";
 
-  } else if (device == "buzzer") {
-    if (action == "on")          setBuzzer(true);
-    else if (action == "off")    setBuzzer(false);
-    else if (action == "toggle") setBuzzer(!buzzerOn);
-    else return "gecersiz buzzer komutu";
+  } else if (device == "buzzer" || device == "sound" || device == "speaker") {
+    if (action == "on")          { soundManual = true;  setBuzzer(true); }
+    else if (action == "off")    { soundManual = false; setBuzzer(false); }
+    else if (action == "toggle") { soundManual = !buzzerOn; setBuzzer(soundManual); }
+    else if (action == "test")   sndPlay(SND_TEST);
+    else if (action == "siren")  sndPlay(SND_SIREN);
+    else if (action == "beep")   sndPlay(SND_BEEP);
+    else if (action == "set" || action == "volume") {
+      if (value < 0) value = 0;
+      if (value > 100) value = 100;
+      sndVolume = (int)value;
+      saveSettings();
+    }
+    else return "gecersiz ses komutu";
+
+  } else if (device == "vibration" || device == "vib") {
+    if (action == "on")           vibEnabled = true;
+    else if (action == "off")     vibEnabled = false;
+    else if (action == "toggle")  vibEnabled = !vibEnabled;
+    else if (action == "alarm")   vibAlarm = true;
+    else if (action == "noalarm") vibAlarm = false;
+    else if (action == "clear")   { vibActive = false; vibHoldUntilMs = 0; }
+    else if (action == "test")    { vibHoldUntilMs = millis() + VIB_TRIGGER_HOLD_MS; vibConnected = true; }
+    else return "gecersiz titresim komutu";
+    saveSettings();
 
   } else if (device == "window") {
     if (action == "open")       setWindow(SERVO_WINDOW_OPEN);
@@ -639,6 +940,13 @@ static String applyCommand(const String &device, const String &action, long valu
     saveSettings();
     if (!autoControl && gasState != GAS_DANGER) { wasRainShut = false; setWindow(SERVO_WINDOW_OPEN); }
 
+  } else if (device == "gas") {
+    if (action == "recalibrate") {
+      calibrateGasBaseline();     // panel isteğiyle temiz hava tabanını yeniden ölç
+      gasBaseStable = true;
+      Serial.print(F("[mq2] panel istegiyle taban yeniden olculdu=")); Serial.println(gasBaseRaw);
+    } else return "bilinmeyen gaz aksiyonu";
+
   } else if (device == "test") {
     if (action == "simulate_alarm") {
       alarmSimUntilMs = millis() + 5000;
@@ -661,6 +969,8 @@ static String applySettingsJson(const String &body) {
   long warn = gasWarnPpm, danger = gasDangerPpm, hyst = gasHyst;
   long rw = rainWetPct, rf = rainFloodPct;
   bool invert = rainInvert, autc = autoControl, tgen = tgEnabled;
+  bool vibEn = vibEnabled, vibAl = vibAlarm, vibDig = vibUseDigital, vibAna = vibUseAnalog, vibTelegram = vibTg;
+  long sndVol = sndVolume;
   bool ttest = false, forgetTok = false, forgetChat = false;
   String token = "", chat = "";
 
@@ -671,6 +981,12 @@ static String applySettingsJson(const String &body) {
   jsonGetNum(body, "rainFloodPct", rf);
   jsonGetBool(body, "rainInvert", invert);
   jsonGetBool(body, "autoControl", autc);
+  jsonGetBool(body, "vibEnabled", vibEn);
+  jsonGetBool(body, "vibAlarm", vibAl);
+  jsonGetBool(body, "vibUseDigital", vibDig);
+  jsonGetBool(body, "vibUseAnalog", vibAna);
+  jsonGetBool(body, "vibTg", vibTelegram);
+  jsonGetNum(body, "sndVolume", sndVol);
   jsonGetBool(body, "tgEnabled", tgen);
   jsonGetStr(body, "tgToken", token);
   jsonGetStr(body, "tgChatId", chat);
@@ -691,6 +1007,14 @@ static String applySettingsJson(const String &body) {
   rainFloodPct = (int)rf;
   rainInvert   = invert;
   autoControl  = autc;
+  vibEnabled   = vibEn;
+  vibAlarm     = vibAl;
+  vibUseDigital= vibDig;
+  vibUseAnalog = vibAna;
+  vibTg        = vibTelegram;
+  if (sndVol < 0) sndVol = 0;
+  if (sndVol > 100) sndVol = 100;
+  sndVolume    = (int)sndVol;
   tgEnabled    = tgen;
   if (forgetTok) tgToken = "";
   else if (token.length()) tgToken = token;
@@ -748,6 +1072,13 @@ static void mqttConnect() {
   if (WiFi.status() != WL_CONNECTED) return;
   if (mqttClient.connected()) return;
 
+  /* Birincil / yedek broker seçimi (yedekteyken birincil yoklaması loop'ta
+     ayrıca yapılır; burada yalnızca akım hedef bağlanır). */
+  const char *host; uint16_t port; const char *label;
+  if (brokerFallback) { host = MQTT_HOST_FALLBACK; port = MQTT_PORT_FALLBACK; label = "yedek"; }
+  else                { host = MQTT_HOST;         port = MQTT_PORT;         label = "birincil"; }
+
+  mqttClient.setServer(host, port);
   String clientId = String(deviceId) + "-" + String((uint32_t)ESP.getEfuseMac(), HEX);
   String willTopic = baseTopic() + "/online";
   bool ok = (strlen(MQTT_USER) > 0)
@@ -757,17 +1088,36 @@ static void mqttConnect() {
                          willTopic.c_str(), 0, true, "offline");
   if (ok) {
     mqttOnline = true;
+    mqttFailStreak = 0;
+    mqttBackoffMs = MQTT_RETRY_MIN;
     mqttClient.publish(willTopic.c_str(), "online", true);
     String base = baseTopic();
     mqttClient.subscribe((base + "/cmd").c_str(), 0);
     mqttClient.subscribe((base + "/settings").c_str(), 0);
     mqttClient.subscribe((base + "/histreq").c_str(), 0);
-    Serial.print(F("[mqtt] baglandi: ")); Serial.print(MQTT_HOST);
+    Serial.print(F("[mqtt] baglandi: ")); Serial.print(host);
     Serial.print(F("  konu: ")); Serial.println(base);
+    Serial.print(F("[mqtt] broker: ")); Serial.println(label);
     publishStatus();
   } else {
     mqttOnline = false;
+    mqttFailStreak++;
     Serial.print(F("[mqtt] baglanti basarisiz, durum=")); Serial.println(mqttClient.state());
+
+    /* Birincil üst üste başarısızsa yedeğe geç. Yedekteyken de birincili
+       zaman zaman yokla ki düzelince kendiliğinden geri dönsün (düşmüş
+       bağlantı zaten loop'ta yeniden kurulur). */
+    if (!brokerFallback && mqttFailStreak >= MQTT_FAILOVER_AFTER) {
+      brokerFallback = true;
+      mqttFailStreak = 0;
+      mqttBackoffMs = MQTT_RETRY_MIN;   // yedeği hızlı dene (geri çekilmeyi sıfırla)
+      mqttPrimaryProbeAt = millis() + MQTT_PRIMARY_PROBE_MS;
+      Serial.println(F("[mqtt] birincil broker erisilemiyor -> yedek deneniyor"));
+    } else if (brokerFallback && (int32_t)(millis() - mqttPrimaryProbeAt) >= 0) {
+      brokerFallback = false;   // sonraki deneme birincile gidecek
+      mqttFailStreak = 0;
+      Serial.println(F("[mqtt] birincil broker yeniden deneniyor"));
+    }
   }
 }
 
@@ -922,10 +1272,18 @@ void setup() {
 
   pinMode(PIN_RELAY_FAN, OUTPUT);  digitalWrite(PIN_RELAY_FAN, LOW);
   pinMode(PIN_RELAY_PUMP, OUTPUT); digitalWrite(PIN_RELAY_PUMP, LOW);
+#if PIN_BUZZER >= 0
   pinMode(PIN_BUZZER, OUTPUT);     digitalWrite(PIN_BUZZER, LOW);
+#endif
   pinMode(PIN_MQ2, INPUT);
   pinMode(PIN_RAIN, INPUT);
+  if (PIN_VIB_AO >= 0) pinMode(PIN_VIB_AO, INPUT);
+  if (PIN_VIB_DO >= 0) pinMode(PIN_VIB_DO, INPUT_PULLUP);   // LM393 açık kolektör
   outputsSafe("acilis");
+
+  /* I2S hoparlör (MAX98357A) + ses görevi */
+  i2sInit();
+  audioStart();
 
   /* Servo başlangıç konumları, sonra motorları serbest bırak */
   setWindow(SERVO_WINDOW_OPEN);
@@ -939,7 +1297,6 @@ void setup() {
 
   connectWiFi();
 
-  mqttClient.setServer(MQTT_HOST, MQTT_PORT);
   mqttClient.setCallback(mqttCallback);
   mqttClient.setBufferSize(MQTT_BUFFER_SIZE);
   mqttClient.setKeepAlive(30);
@@ -975,11 +1332,28 @@ void loop() {
     Serial.print(F("[wifi] yeniden bagli. IP: ")); Serial.println(WiFi.localIP());
   }
 
-  /* MQTT bağlantısı */
+  /* MQTT bağlantısı: kesikse üstel geri çekilmeyle yeniden dene (3 s -> 60 s
+     tavan); herhangi bir broker'a bağlanamıyorsak emqx'i de yoklayarak tahammül
+     etme. Yedek broker'a bağlıyken birincili zaman zaman yoklarız ki düzelince
+     kart-panel aynı broker'da buluşsun. */
   if (wifiStaOk && WiFi.status() == WL_CONNECTED) {
+    if (mqttClient.connected() && brokerFallback && (int32_t)(now - mqttPrimaryProbeAt) >= 0) {
+      mqttPrimaryProbeAt = now + MQTT_PRIMARY_PROBE_MS;
+      Serial.println(F("[mqtt] yedekteyken birincil broker yoklaniyor"));
+      mqttClient.disconnect();               // akım bağlantıyı bırak; yeniden bağlanma birincili dener
+      brokerFallback = false;
+      mqttFailStreak = 0;
+    }
     if (!mqttClient.connected()) {
       mqttOnline = false;
-      if (timeReached(now, mqttRetryAt, 3000)) { mqttRetryAt = now; mqttConnect(); }
+      if (timeReached(now, mqttRetryAt, mqttBackoffMs)) {
+        mqttRetryAt = now;
+        mqttConnect();
+        if (!mqttClient.connected() && mqttBackoffMs < MQTT_RETRY_MAX) {
+          mqttBackoffMs *= 2;                 // başarısızsa bekleme süresini artır
+          if (mqttBackoffMs > MQTT_RETRY_MAX) mqttBackoffMs = MQTT_RETRY_MAX;
+        }
+      }
     }
     mqttClient.loop();
   }
@@ -1000,6 +1374,18 @@ void loop() {
     if (!floodBefore && floodActive) {
       tgSend(String("SU BASKINI! Islaklik %") + rainPct + ". Pencere kapatildi.", false);
     }
+  }
+
+  /* Isınma penceresi bitince tabanı yeniden ölç: açılıştaki soğuk spike
+     (örnekler 1023'e yakınken ölçülen taban) span'i çökertip tüm oturumu
+     -10000 ppm'e kilitleyebiliyordu. İlk ölçüm yalnızca ön bilgi; asıl
+     taban burada oturmuş sensör üzerinden bir kez daha alınır. */
+  if (!gasBaseStable && (int32_t)(now - warmUpUntilMs) >= 0) {
+    calibrateGasBaseline();
+    gasBaseStable = true;
+    historyPush();    // taban değişince geçmiş kaydını da tazele
+    publishStatus();
+    Serial.println(F("[mq2] isinma bitti, taban yeniden olculdu -> HAZIR"));
   }
 
   /* Su motoru taşma koruması */
@@ -1039,6 +1425,9 @@ void loop() {
     Serial.print(F(" ham ")); Serial.print(gasRaw);
     Serial.print(F(")  yagmur: %")); Serial.print(rainPct);
     Serial.print(rainWet ? " ISLAK" : " KURU");
+    Serial.print(F("  titresim: ")); Serial.print(vibActive ? "VAR" : "yok");
+    Serial.print(F(" (AO ")); Serial.print(vibRaw);
+    Serial.print(F(" / DO ")); Serial.print(vibDigital ? "1" : "0"); Serial.print(')');
     Serial.print(F("  durum: ")); Serial.print(gasStateName(gasState));
     Serial.print(F("  fan: ")); Serial.print(fanOn ? "ACIK" : "KAPALI");
     Serial.print(F("  pompa: ")); Serial.print(pumpOn ? "ACIK" : "KAPALI");

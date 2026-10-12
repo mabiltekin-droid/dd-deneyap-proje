@@ -19,6 +19,10 @@ public/
 .opencode/session/
 *.log
 
+# Python araçları (mqtt-pub.py vb.) çalıştırılınca oluşan önbellek
+__pycache__/
+*.pyc
+
 # Paket yöneticisi (bağımlılık yok ama yine de)
 node_modules/
 

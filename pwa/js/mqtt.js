@@ -49,6 +49,15 @@
      yapılan yayın "Yayıncıya bağlı değil" diye hata verir. Bu yüzden
      "kuruluyor mu / kurulu mu" durumunu ayrıca izliyoruz. */
   let connecting = false;
+  /* Birincil + yedek broker rotasyonu: emqx gibi herkese açık yayıncılar
+     zaman zaman bağlantı reddedebiliyor. Panel önce birincili dener, o
+     reddederse yedeğe geçer; birincil düzelince (60 sn'de bir yoklama)
+     kendiliğinden ona döner. Sıra firmware'deki birincil/yedek ile aynıdır
+     ki kart-panel hep aynı yayıncıda buluşsun. */
+  const BROKER_RECHECK_MS = 60000;
+  let urlIdx = 0;                  /* akım yayıncı sırası (0 = birincil) */
+  let gotConnectOnThisUrl = false; /* bu adresten en az bir kez bağlanıldı mı */
+  let recheckTimer = null;
   const waiters = new Map();   /* cmdId -> {resolve, reject, timer} */
   const histWaiters = new Map(); /* geçmiş isteği id -> {resolve, reject, timer} */
 
@@ -132,10 +141,69 @@
     App.api._pushStatus(data);
   }
 
+  /* Kullanımdaki yayıncı adresleri: birincil (mqttUrl), varsa yedek (mqttUrl2).
+     Boş ve tekrarlı olanlar ayıklanır; sıra korunur. */
+  function brokerUrls() {
+    const s = App.settings();
+    const list = [];
+    [s.mqttUrl, s.mqttUrl2].forEach(function (u) {
+      const t = String(u || '').trim();
+      if (t && list.indexOf(t) === -1) list.push(t);
+    });
+    if (!list.length) list.push('');
+    return list;
+  }
+
+  /* Yalnızca erişilebilirlik yoklaması: kısa ömürlü ikinci bir istemci açar,
+     bağlanabilirse true döner ve hemen kapatır. Ana bağlantıya dokunmaz. */
+  function testBrokerUrl(url) {
+    const M = lib();
+    return new Promise(function (resolve) {
+      if (!M) { resolve(false); return; }
+      let done = false;
+      let t = null;
+      function finish(ok) {
+        if (done) return;
+        done = true;
+        try { if (t) t.end(true); } catch (e) { /* yoksay */ }
+        resolve(ok);
+      }
+      try {
+        t = M.connect(url, {
+          clientId: 'pwa-yokla-' + Math.random().toString(16).slice(2, 8),
+          clean: true, reconnectPeriod: 0, connectTimeout: 6000
+        });
+      } catch (e) { resolve(false); return; }
+      t.on('connect', function () { finish(true); });
+      t.on('error',   function () { finish(false); });
+      t.on('close',   function () { finish(false); });
+      t.on('offline', function () { finish(false); });
+      setTimeout(function () { finish(false); }, 7000);
+    });
+  }
+
+  /* Yedekteyken birincili 60 sn'de bir yokla; düzeldiyse ona dön ki kart ve
+     panel aynı yayıncıda buluşsun (firmware de aynı mantığı uygular). */
+  function ensureRecheck() {
+    if (recheckTimer) return;
+    recheckTimer = setInterval(function () {
+      if (!connected || urlIdx === 0) return;
+      const urls = brokerUrls();
+      if (urls.length < 2) return;
+      testBrokerUrl(urls[0]).then(function (ok) {
+        if (!ok || !connected || urlIdx === 0) return;
+        console.log('[mqtt] birincil adres düzeldi, ona geçiliyor:', urls[0]);
+        urlIdx = 0;
+        reconnect();
+      });
+    }, BROKER_RECHECK_MS);
+  }
+
+  function reconnect() { dropClient(); connect(); }
+
   function connect() {
     const M = lib();
-    if (!M) { console.warn('[mqtt] mqtt.js yüklenemedi'); return; }
-    /* Kimlik koruması: elde zaten bağlanan ya da bağlı bir istemci varken
+    if (!M) { console.warn('[mqtt] mqtt.js yüklenemedi'); return; }    /* Kimlik koruması: elde zaten bağlanan ya da bağlı bir istemci varken
        yeniden kurmak, canlı bağlantıyı düşürür ve hemen ardından yapılan
        yayınların "Yayıncıya bağlı değil" diye geri dönmesine yol açar
        (ayarlar sayfasında test/deneme düğmelerinde görüldü).
@@ -147,11 +215,14 @@
     dropClient();
 
     const s = App.settings();
-    const url = String(s.mqttUrl || '').trim();
+    const urls = brokerUrls();
+    if (urlIdx >= urls.length) urlIdx = 0;   /* liste kısaldıysa başa dön */
+    const url = urls[urlIdx];
     if (!url) {
       App.api._setRelayOnline(false, 'yayıncı adresi boş');
       return;
     }
+    gotConnectOnThisUrl = false;
 
     connected = false;
     const opts = {
@@ -185,13 +256,15 @@
       if (client !== c) return;
       connected = true;
       connecting = false;
+      gotConnectOnThisUrl = true;
       retryMs = RECONNECT_MIN;
       const base = topicBase();
       c.subscribe(base + '/status', { qos: 0 });
       c.subscribe(base + '/online', { qos: 0 });
       c.subscribe(base + '/hist',   { qos: 0 });
-      App.api._setRelayOnline(true, 'yayıncıya bağlandı');
-      console.log('[mqtt] bağlandı:', url, 'konu:', base);
+      App.api._setRelayOnline(true, urlIdx > 0 ? 'yayıncıya bağlandı (yedek)' : 'yayıncıya bağlandı');
+      console.log('[mqtt] bağlandı:', url, urlIdx > 0 ? '(yedek)' : '(birincil)', 'konu:', base);
+      if (urlIdx > 0) ensureRecheck();   /* yedekteyiz: birincili yoklamaya başla */
     });
 
     c.on('message', onMessage);
@@ -205,6 +278,15 @@
       connected = false;
       connecting = false;
       App.api._setRelayOnline(false, 'yayıncı bağlantısı koptu');
+      /* Bu adreste hiç bağlanamadıysak (ör. emqx kabul etmiyor) sıradaki
+         yedeğe geç; bağlanmışken koptuysa aynı adreste kal (geçici kesinti). */
+      if (!gotConnectOnThisUrl) {
+        const urls = brokerUrls();
+        if (urlIdx + 1 < urls.length) {
+          urlIdx++;
+          console.log('[mqtt] yedek adrese geçiliyor:', urls[urlIdx]);
+        }
+      }
       scheduleReconnect();
     });
 
@@ -250,7 +332,7 @@
 
   App.mqtt = {
     /* Ayarlar değişince yeniden bağlan */
-    restart: function () { dropClient(); connect(); },
+    restart: function () { urlIdx = 0; dropClient(); connect(); },
 
     isEnabled: function () {
       const s = App.settings();

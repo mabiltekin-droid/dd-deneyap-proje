@@ -28,6 +28,8 @@
   let online = false;
   let pumpArmed = false;
   let pumpArmTimer = null;
+  let sndVolumeActive = false;
+  let prevAlarm = { danger: false, warn: false, flood: false, vib: false };
 
   /* Canlı Uptime Takibi (Cihaz sorguları arasında saniye saniye artar) */
   let baseUptimeMs = 0;
@@ -323,16 +325,95 @@
        sürümünde erişilemiyordu; "s" değişkeni de yalnızca onun için
        tanımlanmıştı. */
     const wet = !!(data && data.rain);
+    /* Ham değer mantıksızsa (sensör kopuk/kısa) firmware rainOk=false yollar.
+       Bu durumda "KURU" demek yanıltıcı olur; ayrıca sel de üretilmez. */
+    const ok = !(data && data.rainOk === false);
 
-    setText('rainValue', wet ? 'ISLAK' : 'KURU');
+    const card = $('rainCard');
+    if (card) card.setAttribute('data-state', !ok ? 'unknown' : (wet ? 'wet' : 'normal'));
+
+    setText('rainValue', !ok ? 'SENSÖR YOK' : (wet ? 'ISLAK' : 'KURU'));
     const rainTxt = 'ham: ' + (Number(data.rainRaw) || 0) + (data.rainFiltered !== undefined ? ' · filtre: ' + data.rainFiltered : '');
     setText('rainRaw', rainTxt);
-    setChip('rainChip', wet ? 'wet' : 'normal', wet ? 'ISLAK' : 'KURU');
+    setChip('rainChip', !ok ? 'unknown' : (wet ? 'wet' : 'normal'),
+      !ok ? 'KOPUK' : (wet ? 'ISLAK' : 'KURU'));
 
     const modeTxt = $('rainMode');
     if (modeTxt) {
-      modeTxt.textContent = data.auto ? 'otomatik kapama: aktif' : 'otomatik kapama: kapalı';
+      modeTxt.textContent = !ok ? 'yağmur sensörü: kopuk/kısa'
+        : (data.auto ? 'otomatik kapama: aktif' : 'otomatik kapama: kapalı');
     }
+  }
+
+  /* Titreşim / sarsıntı sensörü (SW-420 / 801S sınıfı) */
+  function renderVibration(data) {
+    if (!$('vibCard')) return;
+    const active = !!(data && data.vib);
+    const enabled = !(data && data.vibEnabled === false);
+    const raw = Number(data && data.vibRaw) || 0;
+    const base = Number(data && data.vibBase) || 0;
+    const digital = !!(data && (data.vibDigital === true || data.vibDigital === 'true'));
+
+    const card = $('vibCard');
+    if (card) card.setAttribute('data-state', active ? 'danger' : (enabled ? 'normal' : 'unknown'));
+    setText('vibValue', active ? 'SARSINTI!' : (enabled ? 'SAKİN' : 'PASİF'));
+    setChip('vibChip', active ? 'danger' : (enabled ? 'normal' : 'unknown'),
+      active ? 'ALARM' : (enabled ? 'İZLENİYOR' : 'KAPALI'));
+    setText('vibRaw', 'ham ' + raw + ' · taban ' + base + ' · DO ' + (digital ? '1' : '0'));
+
+    const fill = $('vibFill');
+    if (fill) {
+      const dev = Math.min(100, Math.abs(raw - base) / 4);
+      fill.style.width = (active ? 100 : dev) + '%';
+      fill.style.background = active ? 'var(--danger)' : 'var(--primary)';
+    }
+    const note = $('vibMode');
+    if (note) note.textContent = enabled ? 'sarsıntı izleme: aktif' : 'sarsıntı izleme: kapalı';
+  }
+
+  /* Cihaz hoparlörü (I2S / MAX98357A) durumu ve ses seviyesi */
+  function renderSound(data) {
+    const on = !!(data && (data.buzzer === true || data.buzzer === 'true'));
+    const btn = document.querySelector('.btn[data-device="sound"][data-action="toggle"]');
+    const lbl = $('soundState');
+    if (lbl) lbl.textContent = on ? 'ÇALIYOR' : 'SESSİZ';
+    if (btn) btn.classList.toggle('on', on);
+
+    const vol = (data && typeof data.sndVol === 'number') ? data.sndVol : Number(App.settings().sndVolume);
+    const sl = $('sndVolume');
+    if (sl && !sndVolumeActive) sl.value = vol;
+    setText('sndVolumeVal', vol + '%');
+
+    const info = $('sndModeInfo');
+    if (info) {
+      const ready = data ? (data.sndReady !== false) : false;
+      info.textContent = ready
+        ? ('hoparlör hazır · desen: ' + (data.sndMode || 'kapali'))
+        : 'hoparlör: hazır değil';
+    }
+  }
+
+  /* Alarm geçişlerinde Türkçe sesli anons (AI ses). Aynı durumda her
+     yoklamada tekrar konuşmasın diye yalnızca yükselen kenarda tetiklenir. */
+  function announceAlarms(data, state) {
+    if (!App.voice || !App.voice.available()) return;
+    const danger = state === 'danger';
+    const warn = state === 'warning';
+    const flood = !!(data && data.flood);
+    const vib = !!(data && data.vib);
+
+    if (danger && !prevAlarm.danger) {
+      App.voice.speak('Dikkat! Gaz kaçağı algılandı. Tahliye fanı çalıştırıldı, su motoru kilitlendi ve pencere kapatıldı. Gaz vanasını kapatıp ortamı havalandırın.', { force: true });
+    } else if (warn && !prevAlarm.warn && !danger) {
+      App.voice.speak('Uyarı. Gaz yoğunluğu yükseliyor. Lütfen ortamı havalandırın.');
+    }
+    if (flood && !prevAlarm.flood) {
+      App.voice.speak('Su baskını algılandı. Pencere kapatıldı. Su motorunu ve tahliye önlemlerini kontrol edin.', { force: true });
+    }
+    if (vib && !prevAlarm.vib) {
+      App.voice.speak('Sarsıntı veya kurcalama algılandı. Siren çalıyor ve pencere kapatıldı. Evdeki durumu kontrol edin.', { force: true });
+    }
+    prevAlarm = { danger: danger, warn: warn, flood: flood, vib: vib };
   }
 
   function renderSystem(data, state) {
@@ -374,7 +455,7 @@
     const pairs = [
       ['fan', data.fan, 'fanState'],
       ['pump', data.pump, 'pumpState'],
-      ['buzzer', data.buzzer, 'buzzerState'],
+      ['vibration', !(data.vibEnabled === false), 'vibEnableState'],
       ['auto', data.auto, 'autoState']
     ];
 
@@ -435,6 +516,14 @@
   function renderBanner(state) {
     const el = $('banner');
     if (!el) return;
+    if (lastData && lastData.vib) {
+      el.className = 'banner danger';
+      el.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>' +
+        '<div><strong>SARSINTI / KURCALAMA ALARMI</strong>' +
+        'Sarsıntı sensörü tetiklendi. Siren (hoparlör) çalıyor ve pencere kapatıldı. Ortamı ve evinizi kontrol edin.</div>';
+      el.hidden = false;
+      return;
+    }
     if (state === 'danger') {
       el.className = 'banner danger';
       el.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>' +
@@ -471,6 +560,8 @@
     const state = gasStateOf(data);
     renderGas(data, state);
     renderRain(data);
+    renderVibration(data);
+    renderSound(data);
     renderSystem(data, state);
     renderOutlets(data);
     renderAmbientAlarm(state);
@@ -478,6 +569,7 @@
     renderWidget(data, state);
     renderLockHint();
     setControlsEnabled(controlsAllowed());
+    announceAlarms(data, state);
 
     /* SCADA WebGL Shader Motoru & Telemetri Kara Kutusu */
     if (window.App.Shaders && window.App.Shaders.update) {
@@ -525,7 +617,10 @@
     let label = W_STATE[st];
 
     /* Sel, gazdan bağımsız ve daha acildir. */
-    if (data && data.flood && st !== 'offline') {
+    if (data && data.vib && st !== 'offline') {
+      st = 'danger';
+      label = 'SARSINTI / KURCALAMA';
+    } else if (data && data.flood && st !== 'offline') {
       st = 'danger';
       label = 'SEL TEHLİKESİ';
     } else if (data && data.gasFault && st !== 'offline') {
@@ -693,7 +788,20 @@
       App.haptic(25);
       if (device === 'pump' && action === 'on') App.toast('Su motoru çalıştırıldı', { kind: 'ok' });
       if (device === 'test' && action === 'simulate_alarm') App.toast('5 saniyelik alarm simülasyonu başlatıldı', { kind: 'warn' });
-      if (action === 'set') App.toast(device === 'window' ? 'Pencere açısı güncellendi' : 'Panjur açısı güncellendi', { kind: 'ok' });
+      if (device === 'gas' && action === 'recalibrate') App.toast('Gaz tabanı yeniden kalibre edildi', { kind: 'ok' });
+      if (action === 'set' && (device === 'window' || device === 'blind')) App.toast(device === 'window' ? 'Pencere açısı güncellendi' : 'Panjur açısı güncellendi', { kind: 'ok' });
+      if (device === 'sound' || device === 'speaker' || device === 'buzzer') {
+        if (action === 'test') App.toast('Hoparlör test tonu çalınıyor', { kind: 'ok' });
+        else if (action === 'siren') { App.toast('Siren çalınıyor', { kind: 'warn' }); App.voice.speak('Dikkat! Siren testi çalıştırıldı.'); }
+        else if (action === 'beep') App.toast('Kısa bip', { kind: 'ok' });
+        else if (action === 'set') App.toast('Ses seviyesi güncellendi', { kind: 'ok' });
+        else App.toast(action === 'on' ? 'Sesli alarm açıldı (hoparlör)' : 'Sesli alarm kapatıldı', { kind: 'ok' });
+      }
+      if (device === 'vibration' || device === 'vib') {
+        if (action === 'test') App.toast('Titreşim alarmı simüle edildi', { kind: 'warn' });
+        else if (action === 'clear') App.toast('Titreşim olayı temizlendi', { kind: 'ok' });
+        else App.toast('Titreşim sensörü ' + (action === 'on' ? 'açıldı' : action === 'off' ? 'kapatıldı' : 'güncellendi'), { kind: 'ok' });
+      }
     } catch (err) {
       /* Cihazın kendisi reddetti (HTTP 4xx/5xx ya da MQTT cmdErr) ile
          bağlantının kopması AYNI ŞEY DEĞİLDİR. Eski kod her hatada
@@ -785,6 +893,23 @@
         send('blind', 'set', Number(bSlider.value));
       });
     }
+  }
+
+  /* ---------------------------------------------- Hoparlör (I2S) ses seviyesi */
+  function setupSpeaker() {
+    const sl = $('sndVolume');
+    const val = $('sndVolumeVal');
+    if (!sl) return;
+    sl.addEventListener('input', function () {
+      sndVolumeActive = true;
+      if (val) val.textContent = sl.value + '%';
+    });
+    sl.addEventListener('change', function () {
+      sndVolumeActive = false;
+      if (val) val.textContent = sl.value + '%';
+      App.saveSettings({ sndVolume: Number(sl.value) });
+      send('sound', 'set', Number(sl.value));
+    });
   }
 
   /* ----------------------------------------------------------------- Tema */
@@ -916,6 +1041,7 @@
     setupServiceWorker();
     App.setupPwaInstall();
     setupServoSliders();
+    setupSpeaker();
     setupAccountPill();
     startTicker();
 

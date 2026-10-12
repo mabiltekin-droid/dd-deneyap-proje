@@ -21,6 +21,7 @@
     const s = App.settings();
     $('transport').value = App.settings().transport || 'mqtt';
     $('mqttUrl').value = s.mqttUrl || '';
+    $('mqttUrl2').value = s.mqttUrl2 || '';
     $('mqttTopic').value = s.mqttTopic || '';
     $('mqttUser').value = s.mqttUser || '';
     $('mqttPass').value = s.mqttPass || '';
@@ -49,6 +50,21 @@
     const vibEl = $('vibrateEnabled');
     if (vibEl) vibEl.checked = (s.vibrateEnabled !== false);
 
+    /* Yeni donanım özellikleri (cihaz NVS ile senkron) */
+    const setChk = function (id, val, def) {
+      const el = $(id);
+      if (!el) return;
+      el.checked = (val === undefined || val === null) ? !!def : (val === true || val === 'true');
+    };
+    setChk('vibEnabled', s.vibEnabled, true);
+    setChk('vibAlarm', s.vibAlarm, true);
+    setChk('vibUseDigital', s.vibUseDigital, true);
+    setChk('vibUseAnalog', s.vibUseAnalog, false);
+    setChk('vibTg', s.vibTg, true);
+    setChk('aiVoice', s.aiVoice, true);
+    const sndVolEl = $('sndVolume');
+    if (sndVolEl) sndVolEl.value = String(s.sndVolume !== undefined ? s.sndVolume : 70);
+
     const themeRadio = document.querySelector('input[name="theme"][value="' + (s.theme || 'dark') + '"]');
     if (themeRadio) themeRadio.checked = true;
 
@@ -64,6 +80,7 @@
     return {
       transport: $('transport').value,
       mqttUrl: $('mqttUrl').value.trim(),
+      mqttUrl2: $('mqttUrl2').value.trim(),
       mqttTopic: $('mqttTopic').value.trim(),
       mqttUser: $('mqttUser').value.trim(),
       mqttPass: $('mqttPass').value,
@@ -78,6 +95,13 @@
       tgChatId: $('tgChatId') ? $('tgChatId').value.trim() : '',
       soundEnabled: soundEl ? soundEl.checked : true,
       vibrateEnabled: vibEl ? vibEl.checked : true,
+      aiVoice: $('aiVoice') ? $('aiVoice').checked : true,
+      vibEnabled: $('vibEnabled') ? $('vibEnabled').checked : true,
+      vibAlarm: $('vibAlarm') ? $('vibAlarm').checked : true,
+      vibUseDigital: $('vibUseDigital') ? $('vibUseDigital').checked : true,
+      vibUseAnalog: $('vibUseAnalog') ? $('vibUseAnalog').checked : false,
+      vibTg: $('vibTg') ? $('vibTg').checked : true,
+      sndVolume: $('sndVolume') ? Number($('sndVolume').value) : 70,
       theme: themeEl ? themeEl.value : 'dark'
     };
   }
@@ -86,7 +110,7 @@
    Karışık görünüm, hangi ayarın geçerli olduğunu bulmayı zorlaştırıyor. */
   function applyTransportVisibility() {
     const mqtt = $('transport').value === 'mqtt';
-    ['mqttUrl', 'mqttTopic', 'mqttUser', 'mqttPass'].forEach(function (id) {
+    ['mqttUrl', 'mqttUrl2', 'mqttTopic', 'mqttUser', 'mqttPass'].forEach(function (id) {
       const el = $(id);
       if (!el) return;
       const field = el.closest('.field');
@@ -242,6 +266,14 @@
         App.sound.alarm();
         return;
       }
+      const v2 = (v.mqttUrl2 || '').trim();
+      if (v2 && !/^wss?:\/\/.+/i.test(v2)) {
+        setResult($('testResult'),
+          'Yedek yayıncı adresi de wss:// ile başlamalıdır (boş bırakılabilir).', 'fail');
+        $('mqttUrl2').focus();
+        App.sound.alarm();
+        return;
+      }
       if (!v.mqttTopic || /^\s*$|\s/.test(v.mqttTopic)) {
         setResult($('testResult'),
           'Cihaz konu adı boş bırakılamaz ve boşluk içeremez (örn. deneyap/kart1).', 'fail');
@@ -260,6 +292,12 @@
         'Uyarı eşiği (' + v.gasWarn + ') tehlike eşiğinden (' + v.gasDanger + ') küçük olmalıdır.',
         'fail');
       $('gasWarn').focus();
+      App.sound.alarm();
+      return;
+    }
+    if (v.vibEnabled && !v.vibUseDigital && !v.vibUseAnalog) {
+      setResult($('testResult'),
+        'Sarsıntı algılama açık ama hiçbir giriş seçili değil — Dijital (DO) veya Analog (AO) seçin.', 'fail');
       App.sound.alarm();
       return;
     }
@@ -290,6 +328,12 @@
         gasDanger: v.gasDanger,
         rainInvert: v.rainInvert,
         autoControl: v.autoControl,
+        vibEnabled: v.vibEnabled,
+        vibAlarm: v.vibAlarm,
+        vibUseDigital: v.vibUseDigital,
+        vibUseAnalog: v.vibUseAnalog,
+        vibTg: v.vibTg,
+        sndVolume: Math.max(0, Math.min(100, Number(v.sndVolume) || 0)),
         tgEnabled: v.tgEnabled,
         tgChatId: v.tgChatId
       };
@@ -355,12 +399,36 @@
           if (s.auto !== undefined) {
             $('autoControl').checked = (s.auto === true || s.auto === 'true');
           }
+          if (s.vibEnabled !== undefined) {
+            $('vibEnabled').checked = (s.vibEnabled === true || s.vibEnabled === 'true');
+          }
+          if (s.vibAlarm !== undefined) {
+            $('vibAlarm').checked = (s.vibAlarm === true || s.vibAlarm === 'true');
+          }
+          if (s.vibUseDigital !== undefined) {
+            $('vibUseDigital').checked = (s.vibUseDigital === true || s.vibUseDigital === 'true');
+          }
+          if (s.vibUseAnalog !== undefined) {
+            $('vibUseAnalog').checked = (s.vibUseAnalog === true || s.vibUseAnalog === 'true');
+          }
+          if (s.vibTg !== undefined) {
+            $('vibTg').checked = (s.vibTg === true || s.vibTg === 'true');
+          }
+          if (typeof s.sndVol === 'number' && $('sndVolume')) {
+            $('sndVolume').value = String(s.sndVol);
+          }
 
           App.saveSettings({
             gasWarn: Number($('gasWarn').value),
             gasDanger: Number($('gasDanger').value),
             rainInvert: $('rainInvert').checked,
-            autoControl: $('autoControl').checked
+            autoControl: $('autoControl').checked,
+            vibEnabled: $('vibEnabled').checked,
+            vibAlarm: $('vibAlarm').checked,
+            vibUseDigital: $('vibUseDigital').checked,
+            vibUseAnalog: $('vibUseAnalog').checked,
+            vibTg: $('vibTg').checked,
+            sndVolume: Number($('sndVolume').value) || 0
           });
         }
 
@@ -598,12 +666,13 @@
 
     /* Yöntem ya da yayıncı bilgisi değişince bağlantıyı tazele:
        eski yayıncıya bağlı kalmış bir istemci kalmasın. */
-    ['mqttUrl', 'mqttTopic', 'mqttUser', 'mqttPass'].forEach(function (id) {
+    ['mqttUrl', 'mqttUrl2', 'mqttTopic', 'mqttUser', 'mqttPass'].forEach(function (id) {
       const el = $(id);
       if (el) el.addEventListener('change', function () {
         App.saveSettings({
           transport: $('transport').value,
           mqttUrl: $('mqttUrl').value.trim(),
+          mqttUrl2: $('mqttUrl2').value.trim(),
           mqttTopic: $('mqttTopic').value.trim(),
           mqttUser: $('mqttUser').value.trim()
         });

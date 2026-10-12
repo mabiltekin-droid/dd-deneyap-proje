@@ -9,7 +9,7 @@
 
   const App = (window.App = window.App || {});
 
-  App.VERSION = '2.5.4';
+  App.VERSION = '2.6.0';
   App.STORAGE_KEY = 'deneyap.settings.v2';
 
   App.DEFAULTS = {
@@ -27,6 +27,9 @@
        Bu ayarlar firmware'deki MQTT_HOST / MQTT_USER / MQTT_PASS /
        MQTT_TOPIC değerleriyle AYNI olmalı. */
     mqttUrl: 'wss://broker.emqx.io:8084/mqtt',  /* yayıncının WebSocket adresi */
+    mqttUrl2: 'wss://broker.hivemq.com:8884/mqtt', /* yedek yayıncı: firmware'deki
+        MQTT_HOST_FALLBACK ile AYNI broker'a işaret eder. Birincil erişilemezse
+        panel yedeğe geçer, birincil düzelince kendiliğinden ona döner. */
     mqttUser: '',
     mqttPass: '',
     mqttTopic: 'deneyap/kart1',    /* firmware'deki MQTT_TOPIC ile aynı olmalı */
@@ -48,7 +51,17 @@
     autoControl: true, // otomatik fan, servo ve güvenlik müdahalesi
     theme: 'dark',     // 'dark' | 'amoled' | 'light' | 'system'
     soundEnabled: true,// Web Audio API sesli geri bildirim
-    vibrateEnabled: true // Haptik titreşim desteği
+    vibrateEnabled: true, // Haptik titreşim desteği
+    aiVoice: true,     // Tarayıcı konuşma sentezi (Web Speech) ile Türkçe sesli uyarı/anons
+
+    /* --- Yeni donanım özelliklerinin yerel aynası (cihaz NVS ile senkron) ---
+       Bu değerler cihazda tutulur; panel yalnızca son bilinen hâli yansıtır. */
+    vibEnabled: true,     // titreşim/sarsıntı algılama
+    vibAlarm: true,       // titreşim => tam alarm (siren + aktüatör + Telegram)
+    vibUseDigital: true,  // dijital DO girişi kullanılsın
+    vibUseAnalog: false,  // analog AO girişi kullanılsın (4 pinli modül)
+    vibTg: true,          // titreşimde Telegram bildirimi
+    sndVolume: 70         // cihaz hoparlör ses seviyesi (0..100)
   };
 
   App.GAS_FS_MAX = 10000; // Sensör tam skalası (10.000 PPM)
@@ -305,6 +318,43 @@
     if (settings.vibrateEnabled && navigator.vibrate) {
       try { navigator.vibrate(ms || 15); } catch (e) { /* yoksay */ }
     }
+  };
+
+  /* ------------------------------------------------- AI sesli anons (TTS) --
+     Tarayıcının konuşma sentezi (Web Speech API) ile Türkçe sesli uyarı.
+     "AI ile sesli" gereksinimini karşılar; cihazın kendi hoparlörü ise
+     firmware tarafında siren/ton çalar. aiVoice kapalıysa hiç konuşmaz. */
+  let voiceMuted = false;
+  App.voice = {
+    available: function () {
+      return typeof window !== 'undefined' && 'speechSynthesis' in window &&
+             typeof window.SpeechSynthesisUtterance === 'function';
+    },
+    _last: { text: '', ts: 0 },
+    speak: function (text, opts) {
+      if (!settings.aiVoice) return;
+      if (voiceMuted && !(opts && opts.force)) return;
+      if (!App.voice.available()) return;
+      const t = String(text || '').trim();
+      if (!t) return;
+      const now = Date.now();
+      /* Aynı cümleyi 12 sn içinde tekrar söyleme (bildirim spam'ini önler). */
+      if (t === App.voice._last.text && now - App.voice._last.ts < 12000) return;
+      App.voice._last = { text: t, ts: now };
+      try {
+        const u = new SpeechSynthesisUtterance(t);
+        u.lang = 'tr-TR';
+        u.rate = 1.02;
+        u.pitch = 1.0;
+        u.volume = 1.0;
+        window.speechSynthesis.speak(u);
+      } catch (e) { /* yoksay */ }
+    },
+    stop: function () {
+      try { if (App.voice.available()) window.speechSynthesis.cancel(); } catch (e) { /* yoksay */ }
+    },
+    mute: function (m) { voiceMuted = !!m; if (voiceMuted) App.voice.stop(); },
+    isMuted: function () { return voiceMuted; }
   };
 
   /* ---------------------------------- 3D Card Tilt, Glare & Parallaks */

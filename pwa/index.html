@@ -406,6 +406,40 @@
             <span id="rainMode">otomatik kapama: aktif</span>
           </div>
         </article>
+
+        <!-- Titreşim / Sarsıntı &amp; Kurcalama Sensörü Kartı -->
+        <article class="card tilt-card panoramic-card" id="vibCard" data-state="unknown">
+          <div class="card-head">
+            <div class="head-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M2 12h3l2.5-7 4 15 2.5-9 2 3h6"/>
+              </svg>
+              <h3>Sarsıntı &amp; Kurcalama Sensörü</h3>
+            </div>
+            <span class="chip" id="vibChip" data-state="unknown">—</span>
+          </div>
+
+          <div class="rain-showcase-box">
+            <div class="rain-visual-icon" aria-hidden="true">
+              <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M8 32h6l5-16 10 34 6-24 5 8h16" stroke="var(--primary)" />
+                <circle cx="32" cy="32" r="26" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="3 6" opacity="0.6"/>
+              </svg>
+            </div>
+            <div class="rain-data-block">
+              <p class="value"><span id="vibValue">—</span></p>
+              <p class="rain-desc">SW-420 / 801S sarsıntı algılama (dijital DO + analog AO)</p>
+              <div class="mini-bar-wrap" style="margin-top:0.6rem;">
+                <div class="mini-bar-fill" id="vibFill"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card-foot">
+            <span id="vibRaw">ham: —</span>
+            <span id="vibMode">sarsıntı izleme: aktif</span>
+          </div>
+        </article>
       </div>
     </section>
 
@@ -476,17 +510,45 @@
             </div>
           </div>
 
-          <!-- Buzzer -->
+          <!-- Hoparlör & Siren (I2S MAX98357A) -->
+          <div class="ctrl-group span-2">
+            <div class="ctrl-header">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M11 5 6 9H2v6h4l5 4z"/>
+                <path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14"/>
+              </svg>
+              <span class="ctrl-label">Hoparlör &amp; Siren (I2S)</span>
+            </div>
+            <div class="btn-row">
+              <button class="btn" type="button" data-device="sound" data-action="toggle">
+                <span id="soundState">SESSİZ</span>
+              </button>
+              <button class="btn sm warn" type="button" data-device="sound" data-action="siren">Siren Çal</button>
+              <button class="btn sm" type="button" data-device="sound" data-action="test">Test Tonu</button>
+              <button class="btn sm ghost" type="button" data-device="sound" data-action="beep">Kısa Bip</button>
+            </div>
+            <div class="servo-angle-box">
+              <div class="servo-angle-row">
+                <input type="range" min="0" max="100" value="70" class="servo-slider" id="sndVolume" aria-label="Hoparlör ses seviyesi">
+                <span class="servo-angle-val" id="sndVolumeVal">70%</span>
+              </div>
+              <span class="hint" id="sndModeInfo"></span>
+            </div>
+          </div>
+
+          <!-- Titreşim / Sarsıntı Sensörü Kontrolü -->
           <div class="ctrl-group">
             <div class="ctrl-header">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                <path d="M2 12h3l2.5-7 4 15 2.5-9 2 3h6"/>
               </svg>
-              <span class="ctrl-label">Sesli Alarm (Buzzer)</span>
+              <span class="ctrl-label">Titreşim Sensörü</span>
             </div>
-            <button class="btn" type="button" data-device="buzzer" data-action="toggle">
-              <span id="buzzerState">KAPALI</span>
+            <button class="btn" type="button" data-device="vibration" data-action="toggle">
+              <span id="vibEnableState">AÇIK</span>
+            </button>
+            <button class="btn sm ghost" type="button" data-device="vibration" data-action="test" style="margin-top:0.45rem;">
+              Alarmı Simüle Et
             </button>
           </div>
 
@@ -565,6 +627,13 @@
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
               </svg>
               5 Saniyelik Alarm &amp; Tahliye Simülasyonunu Başlat
+            </button>
+            <button class="btn" type="button" data-device="gas" data-action="recalibrate">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+              Gaz Sensörü Tabanını Yeniden Kalibre Et
             </button>
           </div>
         </div>

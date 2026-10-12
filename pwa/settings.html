@@ -350,6 +350,20 @@
 
           <div class="field-row">
             <div class="field">
+              <label for="mqttUrl2">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M4 7a16 16 0 0 1 16 0M7 11a11 11 0 0 1 10 0M10 15a6 6 0 0 1 4 0"/><circle cx="12" cy="19" r="1"/>
+                </svg>
+                Yedek Yayıncı Adresi (isteğe bağlı)
+              </label>
+              <input type="url" id="mqttUrl2" name="mqttUrl2" inputmode="url" autocomplete="off"
+                     placeholder="wss://broker.hivemq.com:8884/mqtt" spellcheck="false">
+              <p class="help">Birincil yayıncı erişilemezse panele kullanılır; firmware <code>MQTT_HOST_FALLBACK</code> ile aynı olmalı. Boş = yedek yok.</p>
+            </div>
+          </div>
+
+          <div class="field-row">
+            <div class="field">
               <label for="mqttUser">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
@@ -507,7 +521,83 @@
                 <small>Destekleyen mobil cihazlarda dokunsal titreşim geri bildirimi sağlar.</small>
               </span>
             </label>
+
+            <!-- Sarsıntı / Titreşim Sensörü -->
+            <label class="switch">
+              <input type="checkbox" id="vibEnabled" name="vibEnabled">
+              <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+              <span class="switch-body">
+                <strong>Sarsıntı / Kurcalama Algılama</strong>
+                <small>Titreşim sensörü (SW-420 / 801S) tetiklendiğinde olay üretir.</small>
+              </span>
+            </label>
+
+            <!-- Sarsıntıda Tam Alarm -->
+            <label class="switch">
+              <input type="checkbox" id="vibAlarm" name="vibAlarm">
+              <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+              <span class="switch-body">
+                <strong>Sarsıntıda Tam Alarm</strong>
+                <small>Siren çalar, pencereyi kapatır, su motorunu kilitler ve bildirim gönderir.</small>
+              </span>
+            </label>
+
+            <!-- Titreşim — Dijital Giriş -->
+            <label class="switch">
+              <input type="checkbox" id="vibUseDigital" name="vibUseDigital">
+              <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+              <span class="switch-body">
+                <strong>Titreşim — Dijital Giriş (DO)</strong>
+                <small>Modülün dijital çıkışını kullanır (yaygın 3 pinli SW-420). Önerilir.</small>
+              </span>
+            </label>
+
+            <!-- Titreşim — Analog Giriş -->
+            <label class="switch">
+              <input type="checkbox" id="vibUseAnalog" name="vibUseAnalog">
+              <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+              <span class="switch-body">
+                <strong>Titreşim — Analog Giriş (AO)</strong>
+                <small>4 pinli modüllerde analog çıkışı da kullanır; dijital yoksa açın.</small>
+              </span>
+            </label>
+
+            <!-- Sarsıntıda Telegram -->
+            <label class="switch">
+              <input type="checkbox" id="vibTg" name="vibTg">
+              <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+              <span class="switch-body">
+                <strong>Sarsıntıda Telegram Bildirimi</strong>
+                <small>Titreşim alarmında Telegram üzerinden anlık mesaj gönderir.</small>
+              </span>
+            </label>
+
+            <!-- AI Sesli Uyarı -->
+            <label class="switch">
+              <input type="checkbox" id="aiVoice" name="aiVoice">
+              <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+              <span class="switch-body">
+                <strong>AI Sesli Uyarı (Türkçe Anons)</strong>
+                <small>Tarayıcının konuşma senteziyle tehlikeleri ve önlemleri sesli anlatır.</small>
+              </span>
+            </label>
           </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label for="sndVolume">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M11 5 6 9H2v6h4l5 4z"/>
+                  <path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14"/>
+                </svg>
+                Cihaz Hoparlör Ses Seviyesi (%)
+              </label>
+              <input type="number" id="sndVolume" name="sndVolume" min="0" max="100" step="5" inputmode="numeric">
+            </div>
+          </div>
+          <p class="help">
+            Sesli alarm cihazın I2S hoparlöründen (MAX98357A) çıkar; 0 = sessiz. Sarsıntı ve gaz alarmları bu ses seviyesini kullanır.
+          </p>
         </div>
       </section>
 

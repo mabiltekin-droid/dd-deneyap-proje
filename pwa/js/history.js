@@ -62,6 +62,7 @@
     if (s.state === 'danger') state = 2;
     else if (s.state === 'warning') state = 1;
     if (s.gasFault && state === 0) state = 3;
+    if (s.vib && state === 0) state = 2;   /* sarsıntı/kurcalama da tehlike bandı */
 
     let flags = 0;
     if (s.fan) flags |= 1;
@@ -71,6 +72,7 @@
     if (Number(s.blind) > 30) flags |= 16;
     if (s.flood) flags |= 32;
     if (s.auto) flags |= 64;
+    if (s.vib) flags |= 128;   /* firmware historyPush ile aynı bit */
 
     arr.push({
       e: now,
