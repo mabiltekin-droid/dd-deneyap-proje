@@ -38,12 +38,19 @@
     token: '',         // config.h içinde API_TOKEN tanımlıysa gerekli
     pollMs: 2000,      // http taşımasında yoklama periyodu (ms); mqtt'te itme kullanılır
 
-    /* --- Supabase (hesaplar, roller, cihaz mülkiyeti) ---
-       Bu iki değer GİZLİ DEĞİLDİR: "publishable" anahtar yalnızca
-       RLS politikalarıyla korunan tablolara erişir. service_role anahtarı
-       asla buraya yazılmaz. Şema için bkz. supabase/schema.sql */
-    sbUrl: 'https://zinchrmvfdbbvhwhrcly.supabase.co',
-    sbKey: 'sb_publishable_hIJx397mqbvbebU5t_lgmg_8bKIWagS',
+    /* --- Firebase (hesaplar, roller, cihaz mülkiyeti) ---
+       Firebase Console > Proje Ayarları > Genel > "Web uygulaması" config objesi.
+       Bu değerler GİZLİ DEĞİLDİR: Firebase config public'tir, güvenlik
+       Firestore Rules ile sağlanır. */
+    fbConfig: {
+      apiKey: "AIzaSyDxnQQRqJQTc2071ILIt3s1U0GgVPAjc8I",
+      authDomain: "ddproje-9f594.firebaseapp.com",
+      projectId: "ddproje-9f594",
+      storageBucket: "ddproje-9f594.firebasestorage.app",
+      messagingSenderId: "849622636824",
+      appId: "1:849622636824:web:55771068b6f8ffb76e266d",
+      measurementId: "G-0JYK3RJ89B"
+    },
 
     gasWarn: 250,      // donanım eşikleriyle senkronize
     gasDanger: 400,
@@ -61,7 +68,14 @@
     vibUseDigital: true,  // dijital DO girişi kullanılsın
     vibUseAnalog: false,  // analog AO girişi kullanılsın (4 pinli modül)
     vibTg: true,          // titreşimde Telegram bildirimi
-    sndVolume: 70         // cihaz hoparlör ses seviyesi (0..100)
+    sndVolume: 70,         // cihaz hoparlör ses seviyesi (0..100)
+
+    /* Alev sensörü (IR Flame) */
+    flameEnabled: true,
+    flameAlarm: true,
+    flameUseDigital: true,
+    flameUseAnalog: false,
+    flameTg: true
   };
 
   App.GAS_FS_MAX = 10000; // Sensör tam skalası (10.000 PPM)

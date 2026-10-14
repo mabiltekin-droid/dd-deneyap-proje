@@ -1,0 +1,27 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "profiles",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "created_at", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "device_bindings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "bound_at", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "device_bindings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "owner_id", "order": "ASCENDING" },
+        { "fieldPath": "bound_at", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

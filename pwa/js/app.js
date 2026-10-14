@@ -29,7 +29,7 @@
   let pumpArmed = false;
   let pumpArmTimer = null;
   let sndVolumeActive = false;
-  let prevAlarm = { danger: false, warn: false, flood: false, vib: false };
+  let prevAlarm = { danger: false, warn: false, flood: false, vib: false, flame: false };
 
   /* Canlı Uptime Takibi (Cihaz sorguları arasında saniye saniye artar) */
   let baseUptimeMs = 0;
@@ -401,6 +401,7 @@
     const warn = state === 'warning';
     const flood = !!(data && data.flood);
     const vib = !!(data && data.vib);
+    const flame = !!(data && data.flame);
 
     if (danger && !prevAlarm.danger) {
       App.voice.speak('Dikkat! Gaz kaçağı algılandı. Tahliye fanı çalıştırıldı, su motoru kilitlendi ve pencere kapatıldı. Gaz vanasını kapatıp ortamı havalandırın.', { force: true });
@@ -413,7 +414,10 @@
     if (vib && !prevAlarm.vib) {
       App.voice.speak('Sarsıntı veya kurcalama algılandı. Siren çalıyor ve pencere kapatıldı. Evdeki durumu kontrol edin.', { force: true });
     }
-    prevAlarm = { danger: danger, warn: warn, flood: flood, vib: vib };
+    if (flame && !prevAlarm.flame) {
+      App.voice.speak('Alev algılandı. Siren çalıyor ve önlemler devreye girdi. Yangın güvenliğinizi kontrol edin.', { force: true });
+    }
+    prevAlarm = { danger: danger, warn: warn, flood: flood, vib: vib, flame: flame };
   }
 
   function renderSystem(data, state) {
@@ -617,7 +621,10 @@
     let label = W_STATE[st];
 
     /* Sel, gazdan bağımsız ve daha acildir. */
-    if (data && data.vib && st !== 'offline') {
+    if (data && data.flame && st !== 'offline') {
+      st = 'danger';
+      label = 'ALEV ALARMI';
+    } else if (data && data.vib && st !== 'offline') {
       st = 'danger';
       label = 'SARSINTI / KURCALAMA';
     } else if (data && data.flood && st !== 'offline') {
@@ -801,6 +808,11 @@
         if (action === 'test') App.toast('Titreşim alarmı simüle edildi', { kind: 'warn' });
         else if (action === 'clear') App.toast('Titreşim olayı temizlendi', { kind: 'ok' });
         else App.toast('Titreşim sensörü ' + (action === 'on' ? 'açıldı' : action === 'off' ? 'kapatıldı' : 'güncellendi'), { kind: 'ok' });
+      }
+      if (device === 'flame' || device === 'fire') {
+        if (action === 'test') App.toast('Alev alarmı simüle edildi', { kind: 'warn' });
+        else if (action === 'clear') App.toast('Alev olayı temizlendi', { kind: 'ok' });
+        else App.toast('Alev sensörü ' + (action === 'on' ? 'açıldı' : action === 'off' ? 'kapatıldı' : 'güncellendi'), { kind: 'ok' });
       }
     } catch (err) {
       /* Cihazın kendisi reddetti (HTTP 4xx/5xx ya da MQTT cmdErr) ile

@@ -73,6 +73,7 @@
     if (s.flood) flags |= 32;
     if (s.auto) flags |= 64;
     if (s.vib) flags |= 128;   /* firmware historyPush ile aynı bit */
+    if (s.flame) flags |= 256; /* alev alarmı */
 
     arr.push({
       e: now,
