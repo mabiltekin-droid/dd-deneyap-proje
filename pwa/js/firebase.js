@@ -128,10 +128,20 @@
       // Firebase refresh token ile yenileme (internal API)
       const user = auth.currentUser;
       if (user) {
+        // E-posta doğrulanmış mı kontrol et
+        if (!user.emailVerified) {
+          // Kullanıcı doğrulama yapmış olabilir, token'ı yenileyip tekrar kontrol et
+          await user.reload();
+          if (!user.emailVerified) {
+            await auth.signOut();
+            save(null);
+            return null;
+          }
+        }
         const token = await user.getIdToken(true);
         const sess = {
           access_token: token,
-          refresh_token: s.refresh_token, // Firebase'de ayrı refresh token yok, session cookie kullanılır
+          refresh_token: s.refresh_token,
           expires_at: Math.floor(Date.now() / 1000) + 3600,
           user: {
             id: user.uid,
@@ -254,6 +264,15 @@
     signIn: async function (email, password) {
       ensureFirebase();
       const cred = await auth.signInWithEmailAndPassword(email.trim(), password);
+      
+      // E-posta doğrulanmış mı?
+      if (!cred.user.emailVerified) {
+        await auth.signOut();
+        const e = new Error('E-posta doğrulanmamış. Gelen kutunuzdaki bağlantıyı onaylayın.');
+        e.code = 'auth/email-not-verified';
+        throw toError(e);
+      }
+      
       const token = await cred.user.getIdToken();
       return saveSession(cred.user, token);
     },
@@ -261,16 +280,22 @@
     signUp: async function (email, password, data) {
       ensureFirebase();
       const cred = await auth.createUserWithEmailAndPassword(email.trim(), password);
-      const token = await cred.user.getIdToken();
       
-      // İlk kullanıcı mı kontrol et
+      // İlk kullanıcı mı kontrol et (profil oluşturulmadan önce)
       const existing = await listProfiles();
       const isFirst = existing.length === 0;
       const role = isFirst ? 'admin' : 'user';
       
+      // Profil oluştur (email_verified olmadan da oluşturulabilir, rules'da create izni var)
       await createProfile(cred.user, role, data?.display_name);
       
-      return saveSession(cred.user, token);
+      // Doğrulama e-postası gönder
+      await cred.user.sendEmailVerification();
+      
+      // Oturum açma - kullanıcı doğrulama yapınca giriş yapacak
+      await auth.signOut();
+      
+      return { pending: true, user: { id: cred.user.uid, email: cred.user.email } };
     },
 
     signOut: async function () {
@@ -444,6 +469,19 @@
 
     isSetupMissing: function (e) { 
       return !!(e && (e.code === 'permission-denied' || e.code === 'not_found')); 
+    },
+
+    // Doğrulama e-postasını yeniden gönder
+    resendVerificationEmail: async function () {
+      ensureFirebase();
+      const user = auth.currentUser;
+      if (!user) {
+        const e = new Error('Oturum bulunamadı. Giriş yapın.');
+        e.code = 'auth/no-user';
+        throw toError(e);
+      }
+      await user.sendEmailVerification();
+      return true;
     }
   };
 

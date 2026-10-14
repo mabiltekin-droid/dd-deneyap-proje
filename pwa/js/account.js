@@ -65,6 +65,9 @@
       setResult(e.human || e.message, 'err');
     });
 
+    // Doğrulama e-postası yeniden gönder butonunu göster/gizle
+    updateResendVerificationButton(snap);
+
     /* Oturum/kimlik değişince sahiplik kutusu ve Bağla/Serbest bırak
        butonları da yeniden hesaplanır. loadDevice yalnızca cihaz kimliği
        değiştiğinde çalışıyordu — bu yüzden giriş yapılınca "Cihazı Bağla"
@@ -73,6 +76,27 @@
     if (lastDeviceId) {
       App.Auth.listBindings().catch(function () {}).then(paintOwnership);
     }
+  }
+
+  // Kullanıcı girişi yapılmamış ama Firebase'de emailVerified=false olan kullanıcı varsa butonu göster
+  function updateResendVerificationButton(snap) {
+    const row = $('resendVerificationRow');
+    if (!row) return;
+    
+    if (snap.signedIn) {
+      row.hidden = true;
+      return;
+    }
+    
+    // Firebase auth.currentUser kontrolü (async)
+    if (typeof firebase !== 'undefined' && firebase.auth) {
+      const user = firebase.auth().currentUser;
+      if (user && !user.emailVerified) {
+        row.hidden = false;
+        return;
+      }
+    }
+    row.hidden = true;
   }
 
   /* ------------------------------------------------ kullanıcı listesi ----- */
@@ -186,6 +210,23 @@
   async function doSignOut() {
     try { await App.Auth.signOut(); } catch (e) { /* yoksay */ }
     setResult('Çıkış yapıldı.', 'ok');
+  }
+
+  async function doResendVerification() {
+    busy = true;
+    $('resendVerificationBtn').disabled = true;
+    setResult('Doğrulama e-postası gönderiliyor…');
+    try {
+      await App.Auth.resendVerificationEmail();
+      setResult('Doğrulama e-postası gönderildi. Gelen kutunuzu kontrol edin.', 'ok');
+      App.sound && App.sound.chime();
+      App.haptic && App.haptic(30);
+    } catch (e) {
+      setResult(e.human || e.message, 'err');
+    } finally {
+      busy = false;
+      $('resendVerificationBtn').disabled = false;
+    }
   }
 
   async function doCreateUser() {
@@ -323,6 +364,7 @@
     $('createUserBtn').addEventListener('click', doCreateUser);
     $('claimBtn').addEventListener('click', doClaim);
     $('releaseBtn').addEventListener('click', doRelease);
+    $('resendVerificationBtn').addEventListener('click', doResendVerification);
 
     /* Enter ile giriş */
     ['authEmail', 'authPass'].forEach(function (id) {

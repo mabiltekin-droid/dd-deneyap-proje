@@ -224,6 +224,11 @@
       const b = App.Auth.bindingOf(deviceId);
       if (!b) return true;
       return b.owner_id === state.session.user.id || App.Auth.isAdmin();
+    },
+
+    // Doğrulama e-postasını yeniden gönder
+    resendVerificationEmail: async function () {
+      return FB().resendVerificationEmail();
     }
   };
 
