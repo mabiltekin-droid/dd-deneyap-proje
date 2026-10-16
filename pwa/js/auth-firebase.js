@@ -75,6 +75,43 @@
     state.deviceInfo = null;
   }
 
+  /* ------------------------------------------- kalıcı sahiplik hafızası ----
+     Bir hesap bir cihazı bağladığında bu bağ, hesap oturumu kapansa bile
+     tarayıcıda saklanır. Böylece kullanıcı çıkış yapsa da cihaz "onun"
+     kalır (görünür + kumanda edilebilir); başka biri göremez.
+     Anahtar: deviceId → { uid, email, label, at }                        */
+  const OWN_KEY = 'deneyap.device_owners';
+
+  function loadOwners() {
+    try {
+      const raw = localStorage.getItem(OWN_KEY);
+      const m = raw ? JSON.parse(raw) : {};
+      return (m && typeof m === 'object') ? m : {};
+    } catch (e) { return {}; }
+  }
+
+  function saveOwners(map) {
+    try { localStorage.setItem(OWN_KEY, JSON.stringify(map)); } catch (e) { /* yoksay */ }
+  }
+
+  function rememberOwner(deviceId, uid, email, label) {
+    if (!deviceId || !uid) return;
+    const m = loadOwners();
+    m[deviceId] = { uid: uid, email: email || '', label: label || '', at: Date.now() };
+    saveOwners(m);
+  }
+
+  function forgetOwner(deviceId) {
+    if (!deviceId) return;
+    const m = loadOwners();
+    if (m[deviceId]) { delete m[deviceId]; saveOwners(m); }
+  }
+
+  function localOwner(deviceId) {
+    if (!deviceId) return null;
+    return loadOwners()[deviceId] || null;
+  }
+
   /* ------------------------------------------------------- oturum ---------- */
 
   async function refreshProfile() {
@@ -370,6 +407,7 @@
     //  'other'         → başkasına bağlı (ben admin'im)
     //  'pending_other' → başkasına bağlı, bağlantı kesme talebi var (ben admin'im)
     //  'hidden'        → başkasına bağlı, göremem (admin değilim)
+    //  'local_mine'    → oturum yok ama tarayıcıda kalıcı sahiplik kaydı var
     //  'anon'          → oturum yok
     //  'error'         → okunamadı
     checkDevice: async function (deviceId) {
@@ -377,25 +415,39 @@
       if (!deviceId) { state.deviceInfo = { state: 'none' }; return state.deviceInfo; }
 
       const me = state.session && state.session.user;
+      const local = localOwner(deviceId);
       let res;
+
       if (!me) {
-        res = { state: 'anon' };
+        // Oturum yok: tarayıcıda kalıcı sahiplik kaydı varsa cihaz "bizim".
+        res = local ? { state: 'local_mine', local: local } : { state: 'anon' };
       } else {
         try {
           const b = await FB().getBinding(deviceId);
           const admin = App.Auth.isAdmin();
           if (!b) {
+            // Cihaz gerçekten boşta → eski yerel kaydı temizle.
+            if (local && local.uid === me.id) forgetOwner(deviceId);
             res = { state: 'free' };
           } else if (b.owner_id === me.id) {
+            // Sahibiyiz → yerel hafızayı tazele.
+            rememberOwner(deviceId, me.id, me.email, b.label);
             res = { state: b.status === 'release_pending' ? 'mine_pending' : 'mine', binding: b };
           } else if (admin) {
             res = { state: b.status === 'release_pending' ? 'pending_other' : 'other', binding: b };
+          } else if (local && local.uid === me.id) {
+            // Sunucu okumaya izin vermedi ama kayıt bu hesaba ait → sahibi say.
+            res = { state: 'mine', binding: { device_id: deviceId, owner_id: me.id, label: local.label }, local_fallback: true };
           } else {
             // Bağlı + sahibi/admin değiliz → görünmez.
             res = { state: 'hidden' };
           }
         } catch (e) {
-          res = { state: isPermDenied(e) ? 'hidden' : 'error', error: e };
+          if (local && local.uid === me.id) {
+            res = { state: 'mine', binding: { device_id: deviceId, owner_id: me.id, label: local.label }, local_fallback: true };
+          } else {
+            res = { state: isPermDenied(e) ? 'hidden' : 'error', error: e };
+          }
         }
       }
 
@@ -403,6 +455,7 @@
       switch (res.state) {
         case 'free': access = 'free'; break;
         case 'mine': access = 'granted'; break;
+        case 'local_mine': access = 'granted'; break;
         case 'other':
         case 'pending_other': access = App.Auth.isAdmin() ? 'granted' : 'denied'; break;
         case 'anon': access = 'anon'; break;
@@ -459,6 +512,7 @@
       }
 
       try { await FB().addAuditLog('bind_device', deviceId, { owner: owner }); } catch (e) { /* yoksay */ }
+      if (owner === me.id) rememberOwner(deviceId, me.id, me.email, label || '');
       await App.Auth.listBindings();
       await App.Auth.checkDevice(deviceId);
       emit();
@@ -486,6 +540,7 @@
     // Onayla (admin) → cihaz serbest kalır, artık başka bir hesap bağlanabilir.
     approveRelease: async function (deviceId) {
       await FB().approveRelease(deviceId);
+      forgetOwner(deviceId);
       try { await FB().addAuditLog('device_release_approved', deviceId, null); } catch (e) { /* yoksay */ }
       await App.Auth.listBindings();
       await App.Auth.checkDevice(deviceId);
@@ -504,6 +559,7 @@
     // Zorla serbest bırak (admin) → sahibinden bağımsız.
     freeDevice: async function (deviceId) {
       await FB().approveRelease(deviceId);
+      forgetOwner(deviceId);
       try { await FB().addAuditLog('device_force_free', deviceId, null); } catch (e) { /* yoksay */ }
       await App.Auth.listBindings();
       await App.Auth.checkDevice(deviceId);
@@ -514,6 +570,8 @@
     reassignDevice: async function (deviceId, ownerId) {
       const me = state.session && state.session.user;
       await FB().reassignBinding(deviceId, ownerId, me && me.id);
+      if (me && ownerId === me.id) rememberOwner(deviceId, me.id, me.email, '');
+      else forgetOwner(deviceId);
       try { await FB().addAuditLog('device_reassign', deviceId, { owner: ownerId }); } catch (e) { /* yoksay */ }
       await App.Auth.listBindings();
       await App.Auth.checkDevice(deviceId);

@@ -312,6 +312,11 @@
         owner = 'Gizli';
         stateText = 'Bağlı cihazı görmek ve yönetmek için giriş yapın.';
         break;
+      case 'local_mine':
+        owner = 'Siz';
+        stateText = 'Bu tarayıcıda hesabınıza bağlı — çıkış yapsanız da cihaz sizin' +
+          (deviceStatus.local && deviceStatus.local.email ? ' (' + deviceStatus.local.email + ')' : '');
+        break;
       case 'free':
         owner = 'Bağlı değil (boşta)';
         stateText = snap.signedIn
