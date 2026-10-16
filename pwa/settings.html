@@ -291,6 +291,45 @@
               başka bir hesaba bağlayabilirsiniz.
             </p>
           </div>
+
+          <!-- ---- Admin: Cihaz Aktivasyon Kodları ---- -->
+          <div id="adminCodes">
+            <div class="admin-head">
+              <span class="chip" data-state="normal">ADMIN</span>
+              <span>Cihaz Aktivasyon Kodları</span>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="codeDeviceId">Cihaz Kimliği</label>
+                <input type="text" id="codeDeviceId" autocomplete="off" spellcheck="false" placeholder="ör. DK-1A2B">
+              </div>
+              <div class="field">
+                <label for="codeValue">Aktivasyon Kodu</label>
+                <input type="text" id="codeValue" autocomplete="off" spellcheck="false" placeholder="boş = otomatik üret">
+              </div>
+            </div>
+            <div class="btn-row">
+              <button class="btn primary" type="button" id="saveCodeBtn">Kodu Kaydet</button>
+              <button class="btn ghost" type="button" id="genCodeBtn">Rastgele Kod Üret</button>
+            </div>
+            <div class="user-table-wrap">
+              <table class="user-table" id="codeTable">
+                <thead>
+                  <tr><th>Cihaz</th><th>Kod</th><th>Etiket</th><th>İşlem</th></tr>
+                </thead>
+                <tbody id="codeTableBody">
+                  <tr><td colspan="4">Yükleniyor…</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="help">
+              Aktivasyon kodu <strong>cihazın kendi parolasıdır</strong>. Bu kodları
+              <strong>yalnızca admin görebilir</strong>; kullanıcılar cihazı bağlamak için
+              kodu girmek zorundadır. Kod girildiğinde cihaz otomatik olarak o kişiye bağlanır
+              ve yalnızca o kişide (ve adminde) görünür. Cihazı kullanıcıya vermeden önce
+              buradan bir kod tanımlayın ve kodu kullanıcıya iletin.
+            </p>
+          </div>
         </div>
 
         <!-- ---- Cihaz Mülkiyeti ---- -->
@@ -313,16 +352,22 @@
               <span class="kv-data" id="ownState">—</span>
             </div>
           </div>
+          <div class="field" id="claimCodeRow" hidden>
+            <label for="claimCodeInput">Aktivasyon Kodu (cihazın parolası)</label>
+            <input type="text" id="claimCodeInput" autocomplete="off" spellcheck="false"
+                   placeholder="cihazla birlikte verilen kod">
+          </div>
           <div class="btn-row">
-            <button class="btn primary" type="button" id="claimBtn">Cihazı Hesabıma Bağla</button>
+            <button class="btn primary" type="button" id="claimBtn">Kodu Gir ve Bağla</button>
             <button class="btn ghost" type="button" id="releaseBtn">Bağlantıyı Kes (admin onayı)</button>
             <button class="btn ghost" type="button" id="cancelReleaseBtn" hidden>Talebi Geri Al</button>
           </div>
           <p class="help">
             Cihaz kimliği kartın efuse MAC'inden üretilir. Bir cihaz bir hesaba bağlandığında
-            <strong>admin dışında kimse onu göremez veya bağlayamaz</strong>. Sahibi bağlantıyı
-            keserse cihaz kilitli kalır; <strong>bir admin onaylayınca</strong> serbest kalır ve
-            başka bir hesap bağlanabilir. Bağlanmamış bir cihazı ilk bağlayan sahibi olur.
+            <strong>admin dışında kimse onu göremez veya bağlayamaz</strong>. Cihazı bağlamak için
+            <strong>cihazın aktivasyon kodunu</strong> girmeniz gerekir; kod doğruysa cihaz otomatik
+            olarak size bağlanır ve yalnızca sizde görünür. Başka hesaplar ve giriş yapmamış kişiler
+            için cihaz <strong>hiç yokmuş gibi</strong> görünür.
             <br><br>
             Cihaz bağlandığı hesapta <strong>kalıcıdır</strong>: sahibi oturumu kapatsa bile
             bu tarayıcıda cihaz onun kalır (görünür ve kullanılabilir); başka hesaplar göremez.

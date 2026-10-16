@@ -30,6 +30,23 @@ service cloud.firestore {
     function deviceOwner(id) { return deviceData(id).owner_id; }
     function deviceReleased(id) { return deviceData(id).status == 'release_pending'; }
 
+    // Aktivasyon kodu yardimcilari.
+    // device_codes dokumanini YALNIZCA admin okuyabilir; asagidaki get()
+    // cagrilari sunucu tarafinda calistigi icin kurallar degeri gorebilir,
+    // istemci ise goremez.
+    function codeExists(id) {
+      return exists(/databases/$(database)/documents/device_codes/$(id));
+    }
+    function codeData(id) {
+      return get(/databases/$(database)/documents/device_codes/$(id)).data;
+    }
+    function unlockExists(id) {
+      return exists(/databases/$(database)/documents/device_unlocks/$(id));
+    }
+    function unlockUid(id) {
+      return get(/databases/$(database)/documents/device_unlocks/$(id)).data.uid;
+    }
+
     // ================================================================
     // PROFILES - kullanici profilleri (doc ID = uid)
     // ================================================================
@@ -75,10 +92,16 @@ service cloud.firestore {
       allow list: if signedIn() && (isAdmin() || resource.data.owner_id == uid());
 
       // Bagla: yalnizca BOSTA bir cihazi kendi adina, 'active' durumuyla.
+      // Sahibi olabilmek icin cihazin AKTIVASYON KODUNU dogru girmis olmasi
+      // gerekir (device_unlocks kaydi). Admin kod olmadan atayabilir.
       allow create: if signedIn()
                     && !deviceExists(deviceId)
                     && request.resource.data.owner_id == uid()
-                    && request.resource.data.status == 'active';
+                    && request.resource.data.status == 'active'
+                    && (
+                      isAdmin()
+                      || (unlockExists(deviceId) && unlockUid(deviceId) == uid())
+                    );
 
       // Guncelle:
       //  * admin  -> her sey (onay, yeniden atama, serbest birakma)
@@ -99,6 +122,37 @@ service cloud.firestore {
 
       // Silme = baglanti kesme onayi -> cihazi serbest birakir. Yalnizca admin.
       allow delete: if isAdmin();
+    }
+
+    // ================================================================
+    // DEVICE_CODES - cihaz aktivasyon kodlari (cihazin kendi parolasi)
+    //
+    //  * Duz metin kodu SAKLANIR ama YALNIZCA ADMIN okuyabilir/yazabilir.
+    //  * Normal kullanicilar bu kodlari HICBIR SEKILDE goremez; baglanti
+    //    kurallari (device_bindings.create) kodu sunucu tarafinda karsilastirir.
+    // ================================================================
+    match /device_codes/{deviceId} {
+      allow read, write: if isAdmin();
+    }
+
+    // ================================================================
+    // DEVICE_UNLOCKS - kod girisiyle olusan gecici dogrulama kaydi.
+    //
+    //  * Icerisinde duz metin kod bulundugu icin HIC KIMSE okuyamaz.
+    //  * Olusturma: yalnizca ilgili cihazin dogru ve aktif koduyla.
+    //  * device_bindings.create kurali bu kaydin varligina/uid'sine bakar.
+    //  * Baglama tamamlaninca istemci kaydi siler.
+    // ================================================================
+    match /device_unlocks/{deviceId} {
+      allow get, list: if false;
+
+      allow create, update: if signedIn()
+        && request.resource.data.uid == uid()
+        && codeExists(deviceId)
+        && codeData(deviceId).active == true
+        && request.resource.data.code == codeData(deviceId).code;
+
+      allow delete: if signedIn() && (resource.data.uid == uid() || isAdmin());
     }
 
     // ================================================================

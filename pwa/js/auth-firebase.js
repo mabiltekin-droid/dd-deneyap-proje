@@ -486,6 +486,15 @@
       return false;           // oturum var ama doğrulanmadı: güvenli tarafta kal
     },
 
+    // Cihaz bu kullanıcıya GÖRÜNÜR mü?
+    // Başka bir hesaba bağlı cihaz; farklı hesapta ya da giriş yapılmamış
+    // durumda YOK sayılır. Yalnızca sahibi/admin (ve boştaki cihaz) görünür.
+    canView: function (deviceId) {
+      if (!deviceId) return false;
+      const a = state.deviceAccess && state.deviceAccess[deviceId];
+      return a === 'granted' || a === 'free';
+    },
+
     // Yalnızca BOŞTA bir cihaz "bağlanabilir" sayılır.
     canClaim: function (deviceId) {
       if (!state.session) return false;
@@ -513,6 +522,33 @@
 
       try { await FB().addAuditLog('bind_device', deviceId, { owner: owner }); } catch (e) { /* yoksay */ }
       if (owner === me.id) rememberOwner(deviceId, me.id, me.email, label || '');
+      await App.Auth.listBindings();
+      await App.Auth.checkDevice(deviceId);
+      emit();
+    },
+
+    // Aktivasyon koduyla bağlan: kod Firestore kurallarında sunucu tarafında
+    // doğrulanır (düz metin asla istemciye dönmez), sonra cihaz bağlanır.
+    activateDevice: async function (deviceId, code) {
+      const me = state.session && state.session.user;
+      if (!me) throw err('Giriş yapmalısınız.', 'Bu işlem için giriş yapmalısınız.');
+      code = String(code || '').trim();
+      if (!code) throw err('Kod boş.', 'Lütfen cihazın aktivasyon kodunu girin.');
+
+      const st = await App.Auth.checkDevice(deviceId);
+      if (st.state !== 'free') throw err('Cihaz bağlı.', bindingBlockedText(st));
+
+      try {
+        await FB().unlockDevice(deviceId, code, me.id);
+        await FB().bindDevice(deviceId, me.id, '');
+      } catch (e) {
+        throw err(e.human || e.message, 'Kod yanlış ya da cihaz bağlanamadı. Kodu kontrol edin.');
+      } finally {
+        try { await FB().clearUnlock(deviceId); } catch (e) { /* yoksay */ }
+      }
+
+      try { await FB().addAuditLog('bind_device', deviceId, { owner: me.id, via: 'code' }); } catch (e) { /* yoksay */ }
+      rememberOwner(deviceId, me.id, me.email, '');
       await App.Auth.listBindings();
       await App.Auth.checkDevice(deviceId);
       emit();
@@ -581,6 +617,29 @@
     // Bekleyen bağlantı kesme talepleri (admin paneli).
     pendingReleases: function () {
       return (state.bindings || []).filter(function (b) { return b.status === 'release_pending'; });
+    },
+
+    /* ============================================== AKTİVASYON KODLARI ==== */
+
+    // Admin: tanımlı cihaz aktivasyon kodlarını listeler (yalnızca admin okur).
+    listDeviceCodes: async function () {
+      if (!App.Auth.isAdmin()) throw err('Yetki yok.', 'Bu listeyi yalnızca admin görebilir.');
+      return FB().listDeviceCodes();
+    },
+
+    // Admin: bir cihaz için aktivasyon kodu tanımlar/günceller.
+    setDeviceCode: async function (deviceId, code, label) {
+      const me = state.session && state.session.user;
+      if (!App.Auth.isAdmin()) throw err('Yetki yok.', 'Yalnızca admin kod tanımlayabilir.');
+      const c = await FB().setDeviceCode(deviceId, code, label, me && me.id);
+      try { await FB().addAuditLog('set_device_code', deviceId, { label: label || '' }); } catch (e) { /* yoksay */ }
+      return c;
+    },
+
+    deleteDeviceCode: async function (deviceId) {
+      if (!App.Auth.isAdmin()) throw err('Yetki yok.', 'Yalnızca admin silebilir.');
+      await FB().deleteDeviceCode(deviceId);
+      try { await FB().addAuditLog('delete_device_code', deviceId, null); } catch (e) { /* yoksay */ }
     },
 
     // Doğrulama e-postasını yeniden gönder (oturum yoksa e-posta+şifre ile)

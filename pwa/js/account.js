@@ -354,11 +354,14 @@
     const claim = $('claimBtn');
     const release = $('releaseBtn');
     const cancel = $('cancelReleaseBtn');
-    const adminOther = snap.isAdmin && st === 'other';
+    const codeRow = $('claimCodeRow');
+    const adminAssign = snap.isAdmin && (st === 'free' || st === 'other');
 
-    claim.hidden = !snap.signedIn || (st !== 'free' && !adminOther);
-    claim.disabled = !(App.Auth.canClaim(lastDeviceId) || adminOther);
-    claim.textContent = adminOther ? 'Bu Cihazı Bana Ata' : 'Cihazı Hesabıma Bağla';
+    if (codeRow) codeRow.hidden = !(snap.signedIn && st === 'free' && !snap.isAdmin);
+
+    claim.hidden = !snap.signedIn || (st !== 'free' && !adminAssign);
+    claim.disabled = !(App.Auth.canClaim(lastDeviceId) || adminAssign);
+    claim.textContent = adminAssign ? 'Bu Cihazı Bana Ata' : 'Kodu Gir ve Bağla';
 
     release.hidden = !(st === 'mine');
     release.disabled = false;
@@ -391,10 +394,33 @@
   async function doClaim() {
     if (!lastDeviceId) return;
     if (!App.Auth.signedIn()) return setResult('Önce giriş yapın.', 'err');
-    setResult('Cihaz bağlanıyor…');
+
+    const snap = App.Auth.snapshot();
+    const st = deviceStatus && deviceStatus.state;
+
+    /* Admin, boştaki veya başka hesaba bağlı cihazı kod olmadan kendine atayabilir. */
+    if (snap.isAdmin && (st === 'free' || st === 'other')) {
+      setResult('Cihaz size atanıyor…');
+      try {
+        await App.Auth.bindDevice(lastDeviceId, snap.user.id, '');
+        setResult(lastDeviceId + ' cihazı hesabınıza bağlandı.', 'ok');
+        await loadDevice();
+        App.haptic && App.haptic(40);
+      } catch (e) {
+        setResult('Bağlanamadı: ' + (e.human || e.message), 'err');
+      }
+      return;
+    }
+
+    /* Normal bağlanma: cihazın aktivasyon kodunu doğrula. */
+    const codeEl = $('claimCodeInput');
+    const code = (codeEl && codeEl.value || '').trim();
+    if (!code) return setResult('Lütfen cihazın aktivasyon kodunu girin.', 'err');
+
+    setResult('Kod doğrulanıyor ve cihaz bağlanıyor…');
     try {
-      const snap = App.Auth.snapshot();
-      await App.Auth.bindDevice(lastDeviceId, snap.user.id, '');
+      await App.Auth.activateDevice(lastDeviceId, code);
+      if (codeEl) codeEl.value = '';
       setResult(lastDeviceId + ' cihazı hesabınıza bağlandı.', 'ok');
       await loadDevice();
       App.haptic && App.haptic(40);
@@ -446,8 +472,15 @@
     const wrap = $('adminDevices');
     if (!body || !wrap) return;
     const snap = App.Auth.snapshot();
-    if (!snap.isAdmin) { wrap.hidden = true; return; }
+    if (!snap.isAdmin) {
+      wrap.hidden = true;
+      const codesWrap = $('adminCodes');
+      if (codesWrap) codesWrap.hidden = true;
+      return;
+    }
     wrap.hidden = false;
+
+    renderCodeTable().catch(function () { /* yoksay */ });
 
     if (!deviceUsers.length) {
       try { deviceUsers = await App.Auth.listProfiles(); } catch (e) { /* yoksay */ }
@@ -521,6 +554,83 @@
     } finally { sel.value = ''; }
   }
 
+  /* ------------------------------------- admin: aktivasyon kodları -------- */
+
+  let deviceCodes = [];
+
+  function randomActivationCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let out = '';
+    for (let i = 0; i < 10; i++) out += chars.charAt(Math.floor(Math.random() * chars.length));
+    return out;
+  }
+
+  async function renderCodeTable() {
+    const body = $('codeTableBody');
+    const wrap = $('adminCodes');
+    if (!body || !wrap) return;
+    const snap = App.Auth.snapshot();
+    if (!snap.isAdmin) { wrap.hidden = true; return; }
+    wrap.hidden = false;
+
+    try { deviceCodes = await App.Auth.listDeviceCodes(); }
+    catch (e) { deviceCodes = deviceCodes || []; }
+
+    if (!deviceCodes.length) {
+      body.innerHTML = '<tr><td colspan="4">Tanımlı kod yok. Yukarıdan cihaz kimliği ile kod ekleyin.</td></tr>';
+      return;
+    }
+
+    deviceCodes.sort(function (a, b) {
+      return String(a.device_id).localeCompare(String(b.device_id));
+    });
+
+    body.innerHTML = deviceCodes.map(function (c) {
+      return '<tr data-code-dev="' + esc(c.device_id) + '">' +
+        '<td class="d-id">' + esc(c.device_id) + '</td>' +
+        '<td class="d-code"><code>' + esc(c.code) + '</code></td>' +
+        '<td class="d-label">' + esc(c.label || '-') + '</td>' +
+        '<td class="d-act"><button type="button" class="btn sm ghost c-del">Sil</button></td>' +
+        '</tr>';
+    }).join('');
+  }
+
+  async function doSaveCode() {
+    const idEl = $('codeDeviceId');
+    const codeEl = $('codeValue');
+    const id = ((idEl && idEl.value) || '').trim();
+    if (!id) return setResult('Cihaz kimliği gerekli.', 'err');
+    let code = ((codeEl && codeEl.value) || '').trim();
+    if (!code) code = randomActivationCode();
+
+    setResult('Kod kaydediliyor…');
+    try {
+      await App.Auth.setDeviceCode(id, code, '');
+      if (codeEl) codeEl.value = '';
+      if (idEl) idEl.value = '';
+      setResult('Kod kaydedildi → ' + id + ' : ' + code + '  (kodu kullanıcıya iletin)', 'ok');
+      await renderCodeTable();
+    } catch (e) {
+      setResult('Kaydedilemedi: ' + (e.human || e.message), 'err');
+    }
+  }
+
+  async function onCodeAction(e) {
+    const tr = e.target.closest('tr[data-code-dev]');
+    if (!tr || !e.target.classList.contains('c-del')) return;
+    const dev = tr.dataset.codeDev;
+    if (!confirm(dev + ' için tanımlı aktivasyon kodu silinsin mi?\n\n' +
+                 'Bu cihaz kod olmadan yeni bir hesaba bağlanamaz. Mevcut bağlantı devam eder.')) return;
+    setResult('Kod siliniyor…');
+    try {
+      await App.Auth.deleteDeviceCode(dev);
+      setResult('Kod silindi.', 'ok');
+      await renderCodeTable();
+    } catch (x) {
+      setResult('Silinemedi: ' + (x.human || x.message), 'err');
+    }
+  }
+
   /* -------------------------------------------------------- init --------- */
 
   let boundCard = null;   /* hangi #accountCard düğümüne bağlandık */
@@ -564,6 +674,17 @@
       });
       $('deviceTableBody').addEventListener('change', function (e) {
         if (e.target.classList.contains('assign-select') && !busy) onAssignChange(e.target);
+      });
+    }
+
+    if ($('saveCodeBtn')) $('saveCodeBtn').addEventListener('click', doSaveCode);
+    if ($('genCodeBtn')) $('genCodeBtn').addEventListener('click', function () {
+      const el = $('codeValue');
+      if (el) el.value = randomActivationCode();
+    });
+    if ($('codeTableBody')) {
+      $('codeTableBody').addEventListener('click', function (e) {
+        if (e.target.closest('button') && !busy) onCodeAction(e);
       });
     }
 

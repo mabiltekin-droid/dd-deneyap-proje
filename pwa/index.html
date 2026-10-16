@@ -270,6 +270,22 @@
 
   <!-- ANA İÇERİK: GENİŞ BANTLI SCROLLYTELLING BÖLÜMLERİ -->
   <div class="mission-main">
+    <!-- Erişiminiz olmayan (başka hesaba bağlı) veya giriş yapılmamış durumda
+         cihaz hiç yokmuş gibi bu boş ekran gösterilir. -->
+    <section id="noDevice" class="no-device" hidden aria-live="polite">
+      <div class="no-device-inner">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="2" y="3" width="20" height="14" rx="2"/>
+          <line x1="8" y1="21" x2="16" y2="21"/>
+          <line x1="12" y1="17" x2="12" y2="21"/>
+        </svg>
+        <h2 id="noDeviceTitle">Cihaz Yok</h2>
+        <p id="noDeviceMsg">Bağlı bir cihaz yalnızca sahibine ve admine görünür.</p>
+        <a class="btn ghost" href="./settings.html#accountCard">Ayarlar → Hesap &amp; Roller</a>
+      </div>
+    </section>
+
     <!-- Kritik Durum Banner'ı -->
     <div id="banner" class="banner" role="status" hidden></div>
 

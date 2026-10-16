@@ -180,12 +180,16 @@
 
   const COL_PROFILES = 'profiles';
   const COL_BINDINGS = 'device_bindings';
+  const COL_CODES = 'device_codes';
+  const COL_UNLOCKS = 'device_unlocks';
   const COL_LOGS = 'login_logs';
   const COL_INVITES = 'invites';
   const COL_AUDIT = 'audit_logs';
 
   function profilesRef() { return db.collection(COL_PROFILES); }
   function bindingsRef() { return db.collection(COL_BINDINGS); }
+  function codesRef() { return db.collection(COL_CODES); }
+  function unlocksRef() { return db.collection(COL_UNLOCKS); }
   function logsRef() { return db.collection(COL_LOGS); }
   function invitesRef() { return db.collection(COL_INVITES); }
   function auditRef() { return db.collection(COL_AUDIT); }
@@ -278,6 +282,47 @@
       released_by: null,
       released_at: null
     });
+  }
+
+  /* ------------------------------------------- Cihaz aktivasyon kodu ------- */
+
+  // Admin: tanimli tum aktivasyon kodlari. (Kural: yalnizca admin okur.)
+  async function listDeviceCodes() {
+    const snap = await codesRef().get();
+    return snap.docs.map(d => d.data());
+  }
+
+  // Admin: bir cihaz icin aktivasyon kodu tanimla/guncelle.
+  async function setDeviceCode(deviceId, code, label, byUid) {
+    await codesRef().doc(deviceId).set({
+      device_id: deviceId,
+      code: String(code || ''),
+      label: label || '',
+      active: true,
+      updated_at: firebase.firestore.FieldValue.serverTimestamp(),
+      updated_by: byUid || null
+    }, { merge: true });
+    return (await codesRef().doc(deviceId).get()).data();
+  }
+
+  async function deleteDeviceCode(deviceId) {
+    await codesRef().doc(deviceId).delete();
+  }
+
+  // Kullanici: girdigi kodu gecici olarak yaz → kural dogrular.
+  // Kod bu dokumanda tutulur ama OKUMA kurali kapalidir; yalnizca
+  // device_bindings.create kurali sunucu tarafinda okuyabilir.
+  async function unlockDevice(deviceId, code, uid) {
+    await unlocksRef().doc(deviceId).set({
+      device_id: deviceId,
+      uid: uid,
+      code: String(code || ''),
+      at: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  }
+
+  async function clearUnlock(deviceId) {
+    try { await unlocksRef().doc(deviceId).delete(); } catch (e) { /* yoksay */ }
   }
 
   /* -------------------------------------------------- Giriş logları ---------- */
@@ -774,6 +819,33 @@
         });
         return await getBinding(deviceId);
       } catch (e) { throw toError(e); }
+    },
+
+    /* ------------------------------------------- Aktivasyon kodlari ------ */
+
+    listDeviceCodes: async function () {
+      ensureFirebase();
+      try { return await listDeviceCodes(); } catch (e) { throw toError(e); }
+    },
+
+    setDeviceCode: async function (deviceId, code, label, byUid) {
+      ensureFirebase();
+      try { return await setDeviceCode(deviceId, code, label, byUid); } catch (e) { throw toError(e); }
+    },
+
+    deleteDeviceCode: async function (deviceId) {
+      ensureFirebase();
+      try { await deleteDeviceCode(deviceId); } catch (e) { throw toError(e); }
+    },
+
+    unlockDevice: async function (deviceId, code, uid) {
+      ensureFirebase();
+      try { await unlockDevice(deviceId, code, uid); } catch (e) { throw toError(e); }
+    },
+
+    clearUnlock: async function (deviceId) {
+      ensureFirebase();
+      try { await clearUnlock(deviceId); } catch (e) { /* yoksay */ }
     },
 
     /* ---------------------------------------------- Profil / hesap --------- */

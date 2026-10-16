@@ -572,9 +572,67 @@
     }).catch(function () { accessChecking = null; });
   }
 
+  /* --- Cihaz görünürlüğü --------------------------------------------------
+     Başka bir hesaba bağlı cihaz; farklı bir hesapta ya da oturum yokken
+     "hiç yokmuş" gibi gösterilir: telemetri, kumanda ve alarmlar gizlenir. */
+  const DEVICE_SECTIONS = ['homeWidget', 'telemetry', 'command-center', 'analytics', 'diagnostics'];
+
+  function deviceVisible(dev) {
+    if (!dev) return false;
+    if (App.Auth && typeof App.Auth.canView === 'function') return App.Auth.canView(dev);
+    return true;
+  }
+
+  function hideDeviceSections() {
+    DEVICE_SECTIONS.forEach(function (id) { const el = $(id); if (el) el.hidden = true; });
+    const b = $('banner'); if (b) b.hidden = true;
+    const hint = $('controlHint'); if (hint) hint.textContent = '';
+  }
+
+  function showDeviceSections() {
+    DEVICE_SECTIONS.forEach(function (id) { const el = $(id); if (el) el.hidden = false; });
+  }
+
+  function paintNoDevice(dev) {
+    hideDeviceSections();
+    setControlsEnabled(false);
+    if (App.setConnBadge) App.setConnBadge('connecting', 'Cihaz yok');
+
+    const nd = $('noDevice');
+    if (!nd) return;
+    nd.hidden = false;
+
+    const snap = (App.Auth && App.Auth.snapshot) ? App.Auth.snapshot() : {};
+    let msg;
+    if (!dev) {
+      msg = 'Cihaz bağlantısı bekleniyor…';
+    } else if (App.Auth && App.Auth.needsCheck && App.Auth.needsCheck(dev)) {
+      msg = 'Cihaz durumu kontrol ediliyor…';
+    } else if (!snap.signedIn) {
+      msg = 'Bağlı bir cihaz yalnızca sahibine ve admine görünür. ' +
+            'Kendi cihazınızı görmek için giriş yapın.';
+    } else {
+      msg = 'Bu cihaz başka bir hesaba bağlı olduğu için burada görünmüyor. ' +
+            'Kendinize ait bir cihazı bağlamak için Ayarlar → Hesap & Roller bölümünü kullanın.';
+    }
+    const msgEl = $('noDeviceMsg');
+    if (msgEl) msgEl.textContent = msg;
+  }
+
   function render(data) {
     lastData = data;
     lastUpdateTs = Date.now();
+    ensureDeviceAccess(data && data.dev);
+
+    /* Erişim yoksa hiçbir telemetri/kumanda/alarm gösterilmez. */
+    if (!deviceVisible(data && data.dev)) {
+      paintNoDevice(data && data.dev);
+      return;
+    }
+    const nd = $('noDevice');
+    if (nd) nd.hidden = true;
+    showDeviceSections();
+
     const state = gasStateOf(data);
     renderGas(data, state);
     renderRain(data);
@@ -587,7 +645,6 @@
     renderWidget(data, state);
     renderLockHint();
     setControlsEnabled(controlsAllowed());
-    ensureDeviceAccess(data && data.dev);
     announceAlarms(data, state);
 
     /* SCADA WebGL Shader Motoru & Telemetri Kara Kutusu */
@@ -999,16 +1056,20 @@
     if (!App.Auth) return;
 
     function paint(snap) {
-      if (!btn || !txt) return;
-      if (snap.setupRequired) { btn.dataset.state = ''; txt.textContent = 'Kurulum'; return; }
-      if (snap.isAdmin) { btn.dataset.state = 'admin'; txt.textContent = 'Admin'; return; }
-      if (snap.signedIn) {
-        btn.dataset.state = 'user';
-        txt.textContent = ((snap.user && snap.user.email) || 'Hesap').split('@')[0];
-        return;
+      if (btn && txt) {
+        if (snap.setupRequired) { btn.dataset.state = ''; txt.textContent = 'Kurulum'; }
+        else if (snap.isAdmin) { btn.dataset.state = 'admin'; txt.textContent = 'Admin'; }
+        else if (snap.signedIn) {
+          btn.dataset.state = 'user';
+          txt.textContent = ((snap.user && snap.user.email) || 'Hesap').split('@')[0];
+        } else {
+          btn.dataset.state = '';
+          txt.textContent = 'Hesap';
+        }
       }
-      btn.dataset.state = '';
-      txt.textContent = 'Hesap';
+      /* Oturum/rol değişince cihaz görünürlüğünü yeniden hesapla:
+         ör. admin çıkış yapınca başkasının cihazı anında gizlenir. */
+      if (lastData) render(lastData);
     }
 
     App.Auth.onChange(paint);
