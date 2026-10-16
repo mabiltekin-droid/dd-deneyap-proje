@@ -17,7 +17,7 @@
      • Yeni sürüm sayfayı zorla değiştirmez; panel "Yenile" bildirimi gösterir.
    ========================================================================== */
 
-const VERSION = '2.6.0';
+const VERSION = '2.7.0';
 const CACHE = 'deneyap-pwa-v' + VERSION;
 const SHELL = './index.html';
 const NETWORK_TIMEOUT = 4000;   // cihaz yanıt vermezse cache'e düş (ms)
@@ -42,6 +42,8 @@ const PRECACHE = [
   './js/firebase.js',
   './js/auth-firebase.js',
   './js/account.js',
+  './js/profile-ui.js',
+  './js/admin-invite-ui.js',
   './js/history.js',
   './manifest.json',
   './icons/favicon.svg',

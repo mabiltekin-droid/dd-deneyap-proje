@@ -1,8 +1,16 @@
 /* ==========================================================================
-   auth-firebase.js — Hesap, rol ve cihaz mülkiyeti (Firebase versiyonu)
-   
-   App.Auth API'si birebir supabase versiyonu (auth.js) ile aynı kalır.
-   Sadece iç implementasyon Firebase kullanır.
+   auth-firebase.js — Hesap, rol ve cihaz mülkiyeti (Firebase)
+
+   App.Auth: Uygulamanın tamamının kullandığı YÜKSEK SEVİYE hesap servisi.
+   Düşük seviye Firebase erişimi App.FB (firebase.js) üzerinden yapılır.
+
+   Katmanlar:
+     • App.FB   → Firebase Auth + Firestore ham işlemler (firebase.js)
+     • App.Auth → durum makinesi + rol + cihaz mülkiyeti (bu dosya)
+     • UI       → account.js, profile-ui.js, admin-invite-ui.js
+
+   Not: App.Auth zarftan (snapshot) beslenen bir dinleyici listesi tutar;
+   UI katmanları App.Auth.onChange(fn) ile abone olur.
    ========================================================================== */
 
 (function () {
@@ -26,6 +34,12 @@
     listeners.forEach(function (fn) {
       try { fn(App.Auth.snapshot()); } catch (e) { console.warn('[auth] dinleyici hatası', e); }
     });
+  }
+
+  function err(message, human) {
+    const e = new Error(message);
+    e.human = human || message;
+    return e;
   }
 
   /* ------------------------------------------------------- oturum ---------- */
@@ -99,13 +113,35 @@
       await refreshProfile();
       state.ready = true;
       emit();
+      // Giriş kaydı (audit) — başarısız olursa girişi engellemez
+      try {
+        await FB().addLoginLog({
+          userId: s.user.id, email: s.user.email,
+          success: true, action: 'login', userAgent: navigator.userAgent
+        });
+      } catch (e) { /* yoksay */ }
       return App.Auth.snapshot();
     },
 
     signUp: async function (email, password, displayName) {
       state.error = null;
-      const r = await FB().signUp(email, password, { display_name: displayName || '' });
+
+      // Davet kodu varsa rolü ondan al
+      let invite = null;
+      let code = null;
+      try {
+        code = localStorage.getItem('deneyap.invite');
+        if (code) invite = await FB().verifyInvite(code);
+      } catch (e) { invite = null; }
+
+      const r = await FB().signUp(email, password, {
+        display_name: displayName || '',
+        role: invite ? invite.role : null,
+        invite_code: invite ? code : null
+      });
+
       if (r && r.pending) {
+        try { localStorage.removeItem('deneyap.invite'); } catch (e) { /* yoksay */ }
         state.session = null;
         state.profile = null;
         emit();
@@ -118,6 +154,14 @@
     },
 
     signOut: async function () {
+      const uid = state.session && state.session.user && state.session.user.id;
+      if (uid) {
+        try {
+          await FB().addLoginLog({
+            userId: uid, success: true, action: 'logout', userAgent: navigator.userAgent
+          });
+        } catch (e) { /* yoksay */ }
+      }
       await FB().signOut();
       state.session = null;
       state.profile = null;
@@ -132,6 +176,45 @@
       await refreshProfile();
       emit();
       return App.Auth.snapshot();
+    },
+
+    /* ==================================================== PROFİL =========== */
+
+    updateProfile: async function (id, data) {
+      await FB().rest('profiles?id=eq.' + encodeURIComponent(id), {
+        method: 'PATCH',
+        prefer: 'return=representation',
+        body: data
+      });
+      if (state.session && state.session.user && state.session.user.id === id) {
+        await refreshProfile();
+      }
+      emit();
+      return state.profile;
+    },
+
+    updatePassword: async function (currentPassword, newPassword) {
+      return FB().updatePassword(currentPassword, newPassword);
+    },
+
+    updateEmail: async function (currentPassword, newEmail) {
+      await FB().updateEmail(currentPassword, newEmail);
+      // E-posta değişince yeni adres doğrulanmalı → oturumu kapat
+      await FB().signOut();
+      state.session = null;
+      state.profile = null;
+      state.bindings = null;
+      state.ready = true;
+      emit();
+      return true;
+    },
+
+    sendPasswordReset: async function (email) {
+      return FB().sendPasswordResetEmail(email);
+    },
+
+    getLoginLogs: async function (uid, limit) {
+      return FB().getLoginLogs(uid, limit);
     },
 
     /* =================================================== ADMIN ============ */
@@ -150,26 +233,46 @@
       if (state.session && state.session.user && state.session.user.id === id) {
         await refreshProfile();
       }
+      try { await FB().addAuditLog('set_role', id, { role: role }); } catch (e) { /* yoksay */ }
       emit();
     },
 
     removeProfile: async function (id) {
       await FB().rest('profiles?id=eq.' + encodeURIComponent(id), { method: 'DELETE' });
+      try { await FB().addAuditLog('block_user', id, null); } catch (e) { /* yoksay */ }
       emit();
     },
 
     createUser: async function (email, password, role, displayName) {
-      // Admin SDK gerektirir (client-side yapılamaz güvenli bir şekilde)
-      // Bu yüzden önce normal signup yap, sonra rol güncelle
-      const r = await FB().signUp(email, password, { display_name: displayName || '' });
-      const uid = r && r.user && r.user.id;
-      if (!uid) return r; // onay bekleniyor
-      
-      if (role === 'admin') {
-        try { await App.Auth.setRole(uid, 'admin'); } catch (e) { /* RLS izin vermediyse user kalır */ }
-      }
+      const me = state.session && state.session.user;
+      if (!me) throw err('Giriş yapmalısınız.', 'Bu işlem için giriş yapmalısınız.');
+      // İkincil Firebase uygulaması ile oluştur → mevcut admin oturumu KORUNUR
+      const r = await FB().adminCreateUser(email, password, role, displayName);
+      try { await FB().addAuditLog('create_user', r.user.id, { role: r.role, email: r.user.email }); } catch (e) { /* yoksay */ }
+      emit();
       return r;
     },
+
+    /* ================================================== DAVETLER ========== */
+
+    listInvites: async function () { return FB().listInvites(); },
+    verifyInvite: async function (code) { return FB().verifyInvite(code); },
+    consumeInvite: async function (code, uid) { return FB().consumeInvite(code, uid); },
+
+    createInvite: async function (email, role, createdBy) {
+      const inv = await FB().createInvite(email, role, createdBy);
+      try { await FB().addAuditLog('create_invite', inv.code, { role: role, email: email }); } catch (e) { /* yoksay */ }
+      return inv;
+    },
+
+    revokeInvite: async function (code) {
+      await FB().revokeInvite(code);
+      try { await FB().addAuditLog('revoke_invite', code, null); } catch (e) { /* yoksay */ }
+    },
+
+    /* ================================================== AUDIT ============= */
+
+    listAuditLogs: async function (limit) { return FB().listAuditLogs(limit); },
 
     /* ============================================== CİHAZ MÜLKİYETİ ======= */
 
@@ -192,7 +295,7 @@
 
     bindDevice: async function (deviceId, ownerId, label) {
       const me = state.session && state.session.user;
-      if (!me) throw Object.assign(new Error('Giriş yapmalısınız.'), { human: 'Giriş yapmalısınız.' });
+      if (!me) throw err('Giriş yapmalısınız.', 'Giriş yapmalısınız.');
       const owner = ownerId || me.id;
       await FB().rest('device_bindings', {
         method: 'POST',
@@ -232,9 +335,9 @@
     }
   };
 
-  // Auth state change callback from firebase.js
+  // Firebase auth state değişiminde (firebase.js tetikler) durumu tazele
   App.Auth._onAuthChange = function () {
-    init().catch(console.error);
+    init().catch(function (e) { console.warn('[auth] durum tazelenemedi', e); });
   };
 
 })();

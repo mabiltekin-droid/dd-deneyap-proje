@@ -754,6 +754,12 @@
         if (window.App && typeof window.App.initAccount === 'function') {
           window.App.initAccount();
         }
+        if (window.App && typeof window.App.initProfile === 'function') {
+          window.App.initProfile();
+        }
+        if (window.App && typeof window.App.initInvites === 'function') {
+          window.App.initInvites();
+        }
       } else {
         if (window.App && typeof window.App.initDashboard === 'function') {
           window.App.initDashboard();

@@ -180,9 +180,15 @@
 
   const COL_PROFILES = 'profiles';
   const COL_BINDINGS = 'device_bindings';
+  const COL_LOGS = 'login_logs';
+  const COL_INVITES = 'invites';
+  const COL_AUDIT = 'audit_logs';
 
   function profilesRef() { return db.collection(COL_PROFILES); }
   function bindingsRef() { return db.collection(COL_BINDINGS); }
+  function logsRef() { return db.collection(COL_LOGS); }
+  function invitesRef() { return db.collection(COL_INVITES); }
+  function auditRef() { return db.collection(COL_AUDIT); }
 
   /* Profiles collection: doc ID = user.uid */
   async function createProfile(user, role, displayName) {
@@ -249,6 +255,204 @@
     await bindingsRef().doc(deviceId).update(data);
   }
 
+  /* -------------------------------------------------- Giriş logları ---------- */
+
+  async function addLoginLog(log) {
+    const ref = await logsRef().add({
+      userId: (log && log.userId) || null,
+      email: (log && log.email) || null,
+      success: !!(log && log.success),
+      action: (log && log.action) || 'login',
+      userAgent: String((log && log.userAgent) || navigator.userAgent || '').slice(0, 300),
+      error: (log && log.error) || null,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    return ref.id;
+  }
+
+  async function getLoginLogs(uid, limit) {
+    const snap = await logsRef()
+      .where('userId', '==', uid)
+      .orderBy('timestamp', 'desc')
+      .limit(limit || 20)
+      .get();
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  }
+
+  /* -------------------------------------------------- Denetim (audit) -------- */
+
+  async function addAuditLog(action, target, detail) {
+    try {
+      const me = auth && auth.currentUser;
+      await auditRef().add({
+        action: action || 'unknown',
+        target: target || null,
+        detail: detail || null,
+        actor: me ? me.uid : null,
+        actor_email: me ? me.email : null,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    } catch (e) {
+      console.warn('[fb] audit log yazılamadı:', e && e.message);
+    }
+  }
+
+  async function listAuditLogs(limit) {
+    const snap = await auditRef().orderBy('timestamp', 'desc').limit(limit || 30).get();
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  }
+
+  /* -------------------------------------------------- Davetler --------------- */
+
+  function randomInviteCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let c = '';
+    for (let i = 0; i < 10; i++) c += chars[Math.floor(Math.random() * chars.length)];
+    return c;
+  }
+
+  async function createInvite(email, role, createdBy) {
+    const code = randomInviteCode();
+    const now = Date.now();
+    const expiresMs = now + 7 * 24 * 60 * 60 * 1000; // 7 gün
+    const data = {
+      code: code,
+      email: (email || '').toLowerCase(),
+      role: role === 'admin' ? 'admin' : 'user',
+      created_by: createdBy || null,
+      used: false,
+      used_by: null,
+      created_at: firebase.firestore.FieldValue.serverTimestamp(),
+      created_at_ms: now,
+      expires_at_ms: expiresMs
+    };
+    await invitesRef().doc(code).set(data);
+    return {
+      code: code,
+      email: data.email,
+      role: data.role,
+      created_by: data.created_by,
+      used: false,
+      used_by: null,
+      created_at: new Date(now).toISOString(),
+      expires_at: new Date(expiresMs).toISOString()
+    };
+  }
+
+  async function listInvites() {
+    const snap = await invitesRef().orderBy('created_at_ms', 'desc').limit(50).get();
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  }
+
+  async function verifyInvite(code) {
+    if (!code) return null;
+    const snap = await invitesRef().doc(code).get();
+    if (!snap.exists) return null;
+    const inv = snap.data();
+    if (inv.used) return null;
+    if (inv.expires_at_ms && Date.now() > inv.expires_at_ms) return null;
+    return inv;
+  }
+
+  async function consumeInvite(code, uid) {
+    if (!code) return false;
+    await invitesRef().doc(code).update({
+      used: true,
+      used_by: uid || null,
+      used_at: firebase.firestore.FieldValue.serverTimestamp(),
+      used_at_ms: Date.now()
+    });
+    return true;
+  }
+
+  async function revokeInvite(code) {
+    if (!code) return false;
+    await invitesRef().doc(code).delete();
+    return true;
+  }
+
+  /* -------------------------------------------------- Profil / hesap --------- */
+
+  async function createUserProfile(uid, email, role, displayName) {
+    await profilesRef().doc(uid).set({
+      id: uid,
+      email: (email || '').toLowerCase(),
+      role: role === 'admin' ? 'admin' : 'user',
+      display_name: displayName || (email || '').split('@')[0] || '',
+      avatar_url: '',
+      preferences: {},
+      created_at: firebase.firestore.FieldValue.serverTimestamp(),
+      last_seen_at: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+    return getProfile(uid);
+  }
+
+  // Admin tarafından kullanıcı oluşturma — İKİNCİL app ile, admin oturumu korunur.
+  async function adminCreateUser(email, password, role, displayName) {
+    ensureFirebase();
+    const cfg = getFirebaseConfig();
+    const name = 'dd-admin-create-' + Date.now();
+    const secondary = firebase.initializeApp(cfg, name);
+    try {
+      const secAuth = secondary.auth();
+      const cred = await secAuth.createUserWithEmailAndPassword(email.trim(), password);
+      const uid = cred.user.uid;
+      if (displayName) {
+        try { await cred.user.updateProfile({ displayName: displayName }); } catch (e) { /* yoksay */ }
+      }
+      try { await cred.user.sendEmailVerification(); } catch (e) { /* yoksay */ }
+      await secAuth.signOut();
+      // Profil dokümanı admin yetkisiyle (kurallar isAdmin'e izin verir)
+      await createUserProfile(uid, email.trim(), role, displayName);
+      return { pending: true, user: { id: uid, email: email.trim() }, role: role === 'admin' ? 'admin' : 'user' };
+    } catch (e) {
+      throw toError(e);
+    } finally {
+      try { await secondary.delete(); } catch (e) { /* yoksay */ }
+    }
+  }
+
+  async function reauth(currentPassword) {
+    const user = auth.currentUser;
+    if (!user) {
+      const e = new Error('Oturum bulunamadı.');
+      e.code = 'auth/no-user'; e.human = 'Oturum bulunamadı. Yeniden giriş yapın.';
+      throw e;
+    }
+    if (currentPassword) {
+      const cred = firebase.auth.EmailAuthProvider.credential(user.email, currentPassword);
+      await user.reauthenticateWithCredential(cred);
+    }
+    return user;
+  }
+
+  async function updatePassword(currentPassword, newPassword) {
+    ensureFirebase();
+    const user = await reauth(currentPassword);
+    try {
+      await user.updatePassword(newPassword);
+    } catch (e) { throw toError(e); }
+    return true;
+  }
+
+  async function updateEmail(currentPassword, newEmail) {
+    ensureFirebase();
+    const user = await reauth(currentPassword);
+    try {
+      await user.updateEmail(newEmail.trim());
+      try { await user.sendEmailVerification(); } catch (e) { /* yoksay */ }
+    } catch (e) { throw toError(e); }
+    return true;
+  }
+
+  async function sendPasswordResetEmail(email) {
+    ensureFirebase();
+    try {
+      await auth.sendPasswordResetEmail(email.trim());
+    } catch (e) { throw toError(e); }
+    return true;
+  }
+
   /* -------------------------------------------------- Dışa Açık API ---------- */
 
   App.FB = {
@@ -280,21 +484,28 @@
     signUp: async function (email, password, data) {
       ensureFirebase();
       const cred = await auth.createUserWithEmailAndPassword(email.trim(), password);
-      
-      // İlk kullanıcı mı kontrol et (profil oluşturulmadan önce)
-      const existing = await listProfiles();
-      const isFirst = existing.length === 0;
-      const role = isFirst ? 'admin' : 'user';
-      
-      // Profil oluştur (email_verified olmadan da oluşturulabilir, rules'da create izni var)
-      await createProfile(cred.user, role, data?.display_name);
-      
+
+      // İlk kullanıcı mı? (profil oluşturulmadan önce) — hata olursa 'user' varsay
+      let isFirst = false;
+      try { isFirst = (await listProfiles()).length === 0; }
+      catch (e) { isFirst = false; }
+      const desired = data && (data.role === 'admin' || data.role === 'user') ? data.role : null;
+      const role = desired || (isFirst ? 'admin' : 'user');
+
+      // Profil oluştur (e-posta doğrulanmadan da oluşturulabilir; kurallar izin verir)
+      await createProfile(cred.user, role, data && data.display_name);
+
+      // Davet kodunu, yeni kullanıcı oturumdayken tüket (kurallar used_by == uid ister)
+      if (data && data.invite_code) {
+        try { await consumeInvite(data.invite_code, cred.user.uid); } catch (e) { /* yoksay */ }
+      }
+
       // Doğrulama e-postası gönder
       await cred.user.sendEmailVerification();
-      
-      // Oturum açma - kullanıcı doğrulama yapınca giriş yapacak
+
+      // Oturumu kapat — kullanıcı doğrulama sonrası giriş yapacak
       await auth.signOut();
-      
+
       return { pending: true, user: { id: cred.user.uid, email: cred.user.email } };
     },
 
@@ -317,7 +528,10 @@
         await profilesRef().limit(1).get();
         return true;
       } catch (e) {
-        if (e.code === 'permission-denied') return false; // Kurallar yok
+        // permission-denied → Firestore VAR ve kurallar çalışıyor; yalnızca bu
+        // istek için yetki yok (ör. oturum kapalı). Kurulum sorunu değildir.
+        if (e.code === 'permission-denied') return true;
+        // Ağ / veritabanı erişilemez → kurulum eksik kabul et.
         return e.code !== 'network' && e.code !== 'unavailable';
       }
     },
@@ -468,7 +682,84 @@
     },
 
     isSetupMissing: function (e) { 
-      return !!(e && (e.code === 'permission-denied' || e.code === 'not_found')); 
+      // Yalnızca gerçek kurulum/erişim sorunları: veritabanı yok veya erişilemez.
+      // permission-denied yetki sorunudur (kurulum değil) → sayılmaz.
+      return !!(e && (e.code === 'not_found' || e.code === 'unavailable' || e.code === 'failed-precondition'));
+    },
+
+    /* ---------------------------------------------- Profil / hesap --------- */
+
+    updateProfile: async function (uid, data) {
+      ensureFirebase();
+      try { return await updateProfile(uid, data); }
+      catch (e) { throw toError(e); }
+    },
+
+    createUserProfile: async function (uid, email, role, displayName) {
+      ensureFirebase();
+      return createUserProfile(uid, email, role, displayName);
+    },
+
+    adminCreateUser: adminCreateUser,
+
+    updatePassword: updatePassword,
+    updateEmail: updateEmail,
+    sendPasswordResetEmail: sendPasswordResetEmail,
+
+    /* ---------------------------------------------- Giriş logları ---------- */
+
+    addLoginLog: async function (log) {
+      ensureFirebase();
+      try { return await addLoginLog(log); }
+      catch (e) { return null; }
+    },
+
+    getLoginLogs: async function (uid, limit) {
+      ensureFirebase();
+      try { return await getLoginLogs(uid, limit); }
+      catch (e) { throw toError(e); }
+    },
+
+    /* ---------------------------------------------- Denetim --------------- */
+
+    addAuditLog: addAuditLog,
+
+    listAuditLogs: async function (limit) {
+      ensureFirebase();
+      try { return await listAuditLogs(limit); }
+      catch (e) { throw toError(e); }
+    },
+
+    /* ---------------------------------------------- Davetler -------------- */
+
+    createInvite: async function (email, role, createdBy) {
+      ensureFirebase();
+      try { return await createInvite(email, role, createdBy); }
+      catch (e) { throw toError(e); }
+    },
+
+    listInvites: async function () {
+      ensureFirebase();
+      try { return await listInvites(); }
+      catch (e) { throw toError(e); }
+    },
+
+    verifyInvite: async function (code) {
+      ensureFirebase();
+      try { return await verifyInvite(code); }
+      catch (e) { return null; }
+    },
+
+    consumeInvite: async function (code, uid) {
+      ensureFirebase();
+      try { return await consumeInvite(code, uid); }
+      catch (e) { return false; }
+    },
+
+    revokeInvite: async function (code) {
+      ensureFirebase();
+      try { return await revokeInvite(code); }
+      catch (e) { throw toError(e); }
     },
 
     // Doğrulama e-postasını yeniden gönder

@@ -1,85 +1,120 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
+
     // ================================================================
     // YARDIMCI FONKSİYONLAR
     // ================================================================
-    
-    // Mevcut kullanıcının profilini getir
-    function getProfile(uid) {
-      return get(/databases/$(database)/documents/profiles/$(uid)).data;
+
+    function signedIn() { return request.auth != null; }
+    function uid() { return request.auth.uid; }
+
+    function getProfile(u) {
+      return get(/databases/$(database)/documents/profiles/$(u)).data;
     }
-    
-    // Kullanıcı admin mi?
-    function isAdmin(uid) {
-      let profile = getProfile(uid);
-      return profile != null && profile.role == 'admin';
+
+    // Mevcut kullanıcı admin mi? (profiles/{uid}.role == 'admin')
+    function isAdmin() {
+      return signedIn() && getProfile(uid()) != null && getProfile(uid()).role == 'admin';
     }
-    
-    // Kullanıcının kendi profiline mi erişiyor?
-    function isOwnProfile(uid) {
-      return request.auth != null && request.auth.uid == uid;
+
+    function isSelf(u) { return signedIn() && uid() == u; }
+
+    // Cihaz bağlama yardımcıları
+    function deviceExists(id) {
+      return exists(/databases/$(database)/documents/device_bindings/$(id));
     }
-    
-    // Cihaz sahibi mi?
-    function isDeviceOwner(deviceId) {
-      let binding = get(/databases/$(database)/documents/device_bindings/$(deviceId)).data;
-      return binding != null && binding.owner_id == request.auth.uid;
+    function deviceOwner(id) {
+      return get(/databases/$(database)/documents/device_bindings/$(id)).data.owner_id;
     }
-    
-    // Cihaz bağlı mı?
-    function isDeviceBound(deviceId) {
-      return exists(/databases/$(database)/documents/device_bindings/$(deviceId));
-    }
-    
+
     // ================================================================
-    // PROFILES KOLEKSİYONU
+    // PROFILES — kullanıcı profilleri (doc ID = uid)
     // ================================================================
     match /profiles/{userId} {
-      // Okuma: Kendi profili VEYA admin
-      allow read: if isOwnProfile(userId) || isAdmin(request.auth.uid);
-      
-      // Yazma (oluşturma): Sadece trigger (Cloud Function) veya admin
-      // Not: Client tarafında createProfile() admin tarafından çağrılır
-      allow create: if isAdmin(request.auth.uid);
-      
-      // Güncelleme: Sadece admin (rol değişikliği vb.)
-      allow update: if isAdmin(request.auth.uid);
-      
-      // Silme: Sadece admin
-      allow delete: if isAdmin(request.auth.uid);
+      // Giriş yapmış herkes okuyabilir (admin listesi, mülkiyet etiketi,
+      // ilk-kullanıcı tespiti ve kullanıcı adı gösterimi için gerekli).
+      allow read: if signedIn();
+
+      // Kendi profilini oluşturabilir (kayıt akışı). Rol beyanı sınırlı.
+      allow create: if isSelf(userId)
+                    && request.resource.data.id == userId
+                    && request.resource.data.role in ['user', 'admin'];
+
+      // Kendi profilini (ad, avatar, tercihler) veya admin herhangi birini güncelleyebilir.
+      allow update: if isSelf(userId) || isAdmin();
+
+      // Silme yalnızca admin.
+      allow delete: if isAdmin();
     }
-    
+
     // ================================================================
-    // DEVICE_BINDINGS KOLEKSİYONU
+    // DEVICE_BINDINGS — cihaz mülkiyeti (doc ID = device_id)
     // ================================================================
     match /device_bindings/{deviceId} {
-      // Okuma: Sahibi VEYA admin
-      allow read: if isDeviceOwner(deviceId) || isAdmin(request.auth.uid);
-      
-      // Bağlama (create): 
-      // - Cihaz henüz bağlı değilse: Giriş yapmış herkes kendi adına bağlayabilir
-      // - Cihaz zaten bağlıysa: Sadece sahibi VEYA admin (mülkiyet gaspı yok)
-      allow create: if request.auth != null && (
-        // Cihaz boşta -> herkes bağlayabilir
-        (!isDeviceBound(deviceId) && request.resource.data.owner_id == request.auth.uid) ||
-        // Cihaz bağlı -> sadece sahibi veya admin
-        (isDeviceBound(deviceId) && (isDeviceOwner(deviceId) || isAdmin(request.auth.uid)))
+      // Giriş yapmış herkes okuyabilir (panel sahiplik etiketini gösterir).
+      allow read: if signedIn();
+
+      // Bağlama:
+      //  • Cihaz boşta → kendi adına bağlayabilir.
+      //  • Cihaz bağlı  → yalnızca sahibi veya admin (mülkiyet gaspı engellenir).
+      allow create, update: if signedIn() && (
+        (!deviceExists(deviceId) && request.resource.data.owner_id == uid()) ||
+        (deviceExists(deviceId) && (deviceOwner(deviceId) == uid() || isAdmin()))
       );
-      
-      // Güncelleme: Sadece admin (mülkiyet devri sadece admin)
-      allow update: if isAdmin(request.auth.uid);
-      
-      // Silme: Sahibi VEYA admin
-      allow delete: if isDeviceOwner(deviceId) || isAdmin(request.auth.uid);
+
+      // Bağlantıyı kaldırma: sahibi veya admin.
+      allow delete: if signedIn() && (deviceOwner(deviceId) == uid() || isAdmin());
     }
-    
+
     // ================================================================
-    // GELECEK EKLEMELER İÇİN (diğer koleksiyonlar)
+    // LOGIN_LOGS — giriş/çıkış etkinlik kayıtları
     // ================================================================
-    // match /{document=**} {
-    //   allow read, write: if false; // Default deny
-    // }
+    match /login_logs/{logId} {
+      // Yalnızca kendi adına kayıt yazabilir.
+      allow create: if signedIn() && request.resource.data.userId == uid();
+      // Kendi kayıtlarını veya admin tümünü okuyabilir.
+      allow read: if signedIn() && (resource.data.userId == uid() || isAdmin());
+      allow update, delete: if isAdmin();
+    }
+
+    // ================================================================
+    // INVITES — davet kodları
+    // ================================================================
+    match /invites/{code} {
+      // Tek doküman okuma serbest: kayıt öncesi (henüz oturum yokken) kod doğrulanır.
+      allow get: if true;
+      // Liste/oluşturma/silme yalnızca admin.
+      allow list: if isAdmin();
+      allow create, delete: if isAdmin();
+
+      // Güncelleme: admin serbest; ayrıca kayıt olan kullanıcı KENDİ adına,
+      // yalnızca kullanılmamış bir daveti "kullanıldı" işaretleyebilir.
+      // Rol/kod/oluşturan alanları değiştirilemez (yetki yükseltmesi engellenir).
+      allow update: if isAdmin() || (
+        signedIn()
+        && resource.data.used == false
+        && request.resource.data.used == true
+        && request.resource.data.used_by == uid()
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.code == resource.data.code
+        && request.resource.data.created_by == resource.data.created_by
+      );
+    }
+
+    // ================================================================
+    // AUDIT_LOGS — yönetici işlem kayıtları
+    // ================================================================
+    match /audit_logs/{logId} {
+      allow read, create: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    // ================================================================
+    // Diğer her şey varsayılan olarak kapalı
+    // ================================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
   }
 }

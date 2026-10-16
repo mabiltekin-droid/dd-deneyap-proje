@@ -358,6 +358,15 @@
     if (boundCard === card) return;
     boundCard = card;
 
+    /* Davet bağlantısı (?invite=KOD) ile gelindiyse kodu sakla ve bilgilendir */
+    try {
+      const m = location.search.match(/[?&]invite=([A-Za-z0-9]+)/);
+      if (m && m[1]) {
+        localStorage.setItem('deneyap.invite', m[1]);
+        setResult('Davet kodu algılandı: ' + m[1] + ' — "Yeni Hesap Aç" ile katılın.', 'ok');
+      }
+    } catch (e) { /* yoksay */ }
+
     $('authSignInBtn').addEventListener('click', doSignIn);
     $('authSignUpBtn').addEventListener('click', doSignUp);
     $('authSignOutBtn').addEventListener('click', doSignOut);

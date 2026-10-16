@@ -4085,3 +4085,63 @@ main {
 [data-tier="low"] .emergency-glitch-canvas {
   display: none !important;
 }
+
+/* ============================================================
+   Hesap / Profil / Davet UI (auth + profile + admin invites)
+   ============================================================ */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.18rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  border: 1px solid var(--border, rgba(255,255,255,0.14));
+  background: rgba(255,255,255,0.05);
+  color: var(--text-dim, #aab);
+}
+.badge.ok { color: var(--accent, #3fd); }
+.badge.warn { color: var(--warn, #fb0); }
+.badge.err { color: var(--danger, #f55); }
+
+.result.err { color: var(--danger, #ff6b6b); }
+
+.profile-head-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1rem;
+  align-items: end;
+  margin-bottom: 1rem;
+}
+.avatar-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+.avatar-img {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--border, rgba(255,255,255,0.18));
+  background: rgba(255,255,255,0.04);
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+.avatar-img:hover { transform: scale(1.04); border-color: var(--accent, #3fd); }
+
+.auth-inline-form {
+  margin-top: 0.85rem;
+  padding: 0.9rem 1rem;
+  border: 1px dashed var(--border, rgba(255,255,255,0.16));
+  border-radius: 12px;
+  background: rgba(255,255,255,0.03);
+}
+
+@media (max-width: 560px) {
+  .profile-head-row { grid-template-columns: 1fr; justify-items: center; }
+}

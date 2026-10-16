@@ -65,6 +65,8 @@
     <nav class="header-nav settings-header-nav" aria-label="Ayar kategorileri">
       <div class="nav-liquid-bubble" aria-hidden="true"></div>
       <a href="#accountCard" class="nav-item active">Hesap &amp; Roller</a>
+      <a href="#profileCard" class="nav-item" id="navProfile" hidden>Profilim</a>
+      <a href="#inviteCard" class="nav-item" id="navInvites" hidden>Davetler</a>
       <a href="#connSection" class="nav-item">Cihaz &amp; Ağ</a>
       <a href="#thresholdSection" class="nav-item">Eşikler</a>
       <a href="#telegramSection" class="nav-item">Telegram</a>
@@ -127,7 +129,7 @@
       <div class="hero-badge">
         <span class="badge-pulse"></span>
         <span class="badge-text">DENEYAP KART // MERKEZİ YAPILANDIRMA STÜDYOSU</span>
-        <span class="badge-version">v2.5.2</span>
+        <span class="badge-version">v2.7.0</span>
       </div>
       <p class="studio-intro-sub">
         NVS flash kayıtları, MQTT bulut köprüsü, telemetri eşikleri ve alarm kuralları.
@@ -152,9 +154,9 @@
 
       <div class="panel-content">
         <div class="banner" id="authSetupBanner" hidden>
-          <strong>Veritabanı şeması henüz yüklenmedi.</strong><br>
-          <code>dd-deneyap-proje/supabase/schema.sql</code> dosyasını Supabase Dashboard →
-          SQL Editor'a yapıştırıp çalıştırın; bu bölüm kendiliğinden etkinleşir.
+          <strong>Firestore erişilemedi.</strong><br>
+          Firebase Console → Firestore'da veritabanını oluşturup <code>firestore.rules</code>
+          kurallarını yayınlayın; bu bölüm kendiliğinden etkinleşir.
         </div>
 
         <!-- ---- Giriş yapılmadı ---- -->
@@ -255,7 +257,8 @@
               <button class="btn primary" type="button" id="createUserBtn">Hesabı Oluştur</button>
             </div>
             <p class="help">
-              Supabase'de e-posta doğrulaması açıksa kullanıcı, kendisine gelen bağlantıya tıklamadan giriş yapamaz.
+              Yeni hesap, siz oturumunuzu kaybetmeden açılır. Kullanıcı, e-postasına gelen
+              doğrulama bağlantısına tıklamadan giriş yapamaz.
             </p>
           </div>
         </div>
@@ -292,9 +295,169 @@
       </div>
     </section>
 
+    <!-- ==================== PROFİLİM ==================== -->
+    <section class="config-panel" id="profileCard" hidden>
+      <div class="panel-header">
+        <span class="panel-tag">[CONFIG 02 // PROFİL &amp; GÜVENLİK]</span>
+        <div class="panel-title-row">
+          <div class="head-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+            </svg>
+            <h3>Profilim</h3>
+          </div>
+          <span class="chip" id="profileChip" data-state="normal">HESAP</span>
+        </div>
+        <p class="panel-desc">Görünen ad, avatar, e-posta ve şifre yönetimi; son giriş etkinlikleri.</p>
+      </div>
+
+      <div class="panel-content">
+        <div class="profile-head-row">
+          <div class="avatar-wrap">
+            <img id="avatarPreview" class="avatar-img" alt="Avatar" src="">
+            <button class="btn sm ghost" type="button" id="avatarPickBtn">Avatarı Değiştir</button>
+            <input type="file" id="avatarInput" accept="image/*" hidden>
+          </div>
+          <div class="field">
+            <label for="displayName">Görünen Ad</label>
+            <input type="text" id="displayName" maxlength="40" autocomplete="nickname" placeholder="Adınız">
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label for="profileEmail">E-posta</label>
+            <input type="email" id="profileEmail" readonly>
+          </div>
+          <div class="field">
+            <label>Doğrulama Durumu</label>
+            <span class="badge" id="emailVerifiedBadge">—</span>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn primary" type="button" id="saveProfileBtn">Profili Kaydet</button>
+          <button class="btn ghost" type="button" id="changeEmailBtn">E-postayı Değiştir</button>
+          <button class="btn ghost" type="button" id="changePasswordBtn">Şifreyi Değiştir</button>
+          <button class="btn ghost" type="button" id="sendResetBtn">Şifre Sıfırlama Bağlantısı</button>
+        </div>
+        <p class="result" id="profileResult" role="status" aria-live="polite"></p>
+
+        <!-- E-posta değiştir -->
+        <div class="auth-inline-form" id="changeEmailRow" hidden>
+          <div class="field-row">
+            <div class="field">
+              <label for="newEmailInput">Yeni E-posta</label>
+              <input type="email" id="newEmailInput" autocomplete="email" placeholder="yeni@eposta.com">
+            </div>
+            <div class="field">
+              <label for="emailCurrentPass">Mevcut Şifre</label>
+              <input type="password" id="emailCurrentPass" autocomplete="current-password" placeholder="••••••••">
+            </div>
+          </div>
+          <div class="btn-row">
+            <button class="btn primary" type="button" id="saveEmailBtn">E-postayı Güncelle</button>
+            <button class="btn ghost" type="button" id="cancelEmailBtn">Vazgeç</button>
+          </div>
+          <p class="help">Güvenlik için mevcut şifreniz istenir. Yeni adres doğrulanana kadar giriş yapamazsınız.</p>
+        </div>
+
+        <!-- Şifre değiştir -->
+        <div class="auth-inline-form" id="changePasswordRow" hidden>
+          <div class="field-row">
+            <div class="field">
+              <label for="currentPassword">Mevcut Şifre</label>
+              <input type="password" id="currentPassword" autocomplete="current-password" placeholder="••••••••">
+            </div>
+            <div class="field">
+              <label for="newPassword">Yeni Şifre</label>
+              <input type="password" id="newPassword" autocomplete="new-password" placeholder="en az 6 karakter">
+            </div>
+          </div>
+          <div class="field">
+            <label for="confirmPassword">Yeni Şifre (tekrar)</label>
+            <input type="password" id="confirmPassword" autocomplete="new-password" placeholder="••••••••">
+          </div>
+          <div class="btn-row">
+            <button class="btn primary" type="button" id="savePasswordBtn">Şifreyi Güncelle</button>
+            <button class="btn ghost" type="button" id="cancelPasswordBtn">Vazgeç</button>
+          </div>
+        </div>
+
+        <div class="admin-head" style="margin-top:1.25rem;">
+          <span class="chip" data-state="unknown">GÜVENLİK</span>
+          <span>Son Giriş Etkinlikleri</span>
+        </div>
+        <div class="user-table-wrap">
+          <table class="user-table">
+            <thead><tr><th>Zaman</th><th>Durum</th><th>Cihaz / Tarayıcı</th></tr></thead>
+            <tbody id="loginLogsList"><tr><td colspan="3">Yükleniyor…</td></tr></tbody>
+          </table>
+        </div>
+        <div class="btn-row">
+          <button class="btn ghost" type="button" id="signOutThisDeviceBtn">Bu Cihazdan Çıkış Yap</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== DAVETLER (ADMIN) ==================== -->
+    <section class="config-panel" id="inviteCard" hidden>
+      <div class="panel-header">
+        <span class="panel-tag">[CONFIG 03 // DAVET SİSTEMİ]</span>
+        <div class="panel-title-row">
+          <div class="head-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M9 12l2 2 4-4"/>
+            </svg>
+            <h3>Davetler</h3>
+          </div>
+          <span class="chip" id="pendingInvitesChip" data-state="normal">0 bekliyor</span>
+        </div>
+        <p class="panel-desc">Davet kodu üretin, paylaşın; kodla kayıt olan kullanıcı seçilen role atanır.</p>
+      </div>
+
+      <div class="panel-content">
+        <div class="field-row">
+          <div class="field">
+            <label for="inviteEmail">Davet Edilecek E-posta</label>
+            <input type="email" id="inviteEmail" autocomplete="off" inputmode="email" placeholder="ornek@eposta.com">
+          </div>
+          <div class="field">
+            <label for="inviteRole">Rol</label>
+            <select id="inviteRole">
+              <option value="user">Kullanıcı</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn primary" type="button" id="createInviteBtn">Davet Oluştur</button>
+        </div>
+        <p class="result" id="inviteResult" role="status" aria-live="polite"></p>
+
+        <div class="user-table-wrap">
+          <table class="user-table">
+            <thead><tr><th>Kod</th><th>E-posta</th><th>Rol</th><th>Oluşturma</th><th>Durum</th><th>İşlem</th></tr></thead>
+            <tbody id="invitesTableBody"><tr><td colspan="6">Yükleniyor…</td></tr></tbody>
+          </table>
+        </div>
+        <p class="help">Davet bağlantısı <code>?invite=KOD</code> biçimindedir; kodu paylaşın. Kod 7 gün geçerlidir.</p>
+
+        <div class="admin-head" style="margin-top:1.25rem;">
+          <span class="chip" data-state="unknown">KAYIT</span>
+          <span>Yönetici İşlem Kayıtları</span>
+        </div>
+        <div class="user-table-wrap">
+          <table class="user-table">
+            <thead><tr><th>Zaman</th><th>İşlem</th><th>Yapan</th><th>Hedef / Detay</th></tr></thead>
+            <tbody id="auditTableBody"><tr><td colspan="4">Yükleniyor…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
     <!-- FORM BAŞLANGICI -->
     <form id="settingsForm" novalidate>
-
       <!-- ==================== CİHAZ BAĞLANTISI ==================== -->
       <section class="config-panel" aria-labelledby="h-conn" id="connSection">
         <div class="panel-header">
@@ -871,5 +1034,7 @@
   <script src="./js/app.js"></script>
   <script src="./js/settings.js"></script>
   <script src="./js/account.js"></script>
+  <script src="./js/profile-ui.js"></script>
+  <script src="./js/admin-invite-ui.js"></script>
 </body>
 </html>
