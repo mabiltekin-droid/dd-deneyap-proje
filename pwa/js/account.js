@@ -79,24 +79,12 @@
   }
 
   // Kullanıcı girişi yapılmamış ama Firebase'de emailVerified=false olan kullanıcı varsa butonu göster
+  let showResend = false;
   function updateResendVerificationButton(snap) {
     const row = $('resendVerificationRow');
     if (!row) return;
-    
-    if (snap.signedIn) {
-      row.hidden = true;
-      return;
-    }
-    
-    // Firebase auth.currentUser kontrolü (async)
-    if (typeof firebase !== 'undefined' && firebase.auth) {
-      const user = firebase.auth().currentUser;
-      if (user && !user.emailVerified) {
-        row.hidden = false;
-        return;
-      }
-    }
-    row.hidden = true;
+    if (snap.signedIn) { showResend = false; }
+    row.hidden = !(showResend && !snap.signedIn);
   }
 
   /* ------------------------------------------------ kullanıcı listesi ----- */
@@ -175,6 +163,12 @@
       App.sound && App.sound.ok ? App.sound.ok() : (App.sound && App.sound.click());
       App.haptic && App.haptic(40);
     } catch (e) {
+      // Doğrulanmamış hesap → yeniden gönderme butonunu göster
+      if (e && e.code === 'auth/email-not-verified') {
+        showResend = true;
+        const row = $('resendVerificationRow');
+        if (row) row.hidden = false;
+      }
       setResult(e.human || e.message, 'err');
     } finally {
       busy = false;
@@ -213,12 +207,21 @@
   }
 
   async function doResendVerification() {
+    const email = $('authEmail').value.trim();
+    const pass = $('authPass').value;
+    if (!email || !pass) {
+      return setResult('Doğrulama e-postası için e-posta ve şifrenizi girin.', 'err');
+    }
     busy = true;
     $('resendVerificationBtn').disabled = true;
     setResult('Doğrulama e-postası gönderiliyor…');
     try {
-      await App.Auth.resendVerificationEmail();
-      setResult('Doğrulama e-postası gönderildi. Gelen kutunuzu kontrol edin.', 'ok');
+      const r = await App.Auth.resendVerificationEmail(email, pass);
+      if (r && r.emailVerified) {
+        setResult('Bu hesap zaten doğrulanmış. Giriş yapabilirsiniz.', 'ok');
+      } else {
+        setResult('Doğrulama e-postası gönderildi. Gelen kutunuzu (ve spam klasörünü) kontrol edin.', 'ok');
+      }
       App.sound && App.sound.chime();
       App.haptic && App.haptic(30);
     } catch (e) {
@@ -226,6 +229,24 @@
     } finally {
       busy = false;
       $('resendVerificationBtn').disabled = false;
+    }
+  }
+
+  async function doForgotPassword() {
+    const email = $('authEmail').value.trim();
+    if (!email) return setResult('Önce e-posta adresinizi girin.', 'err');
+    busy = true;
+    $('forgotPasswordBtn').disabled = true;
+    setResult('Sıfırlama bağlantısı gönderiliyor…');
+    try {
+      await App.Auth.sendPasswordReset(email);
+      setResult('Şifre sıfırlama bağlantısı gönderildi: ' + email, 'ok');
+      App.sound && App.sound.chime();
+    } catch (e) {
+      setResult('Gönderilemedi: ' + (e.human || e.message), 'err');
+    } finally {
+      busy = false;
+      $('forgotPasswordBtn').disabled = false;
     }
   }
 
@@ -370,6 +391,7 @@
     $('authSignInBtn').addEventListener('click', doSignIn);
     $('authSignUpBtn').addEventListener('click', doSignUp);
     $('authSignOutBtn').addEventListener('click', doSignOut);
+    $('forgotPasswordBtn').addEventListener('click', doForgotPassword);
     $('createUserBtn').addEventListener('click', doCreateUser);
     $('claimBtn').addEventListener('click', doClaim);
     $('releaseBtn').addEventListener('click', doRelease);

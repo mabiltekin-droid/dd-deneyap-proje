@@ -48,8 +48,26 @@
     if (!state.session) { state.profile = null; return null; }
     try {
       const p = await FB().profile();
-      if (p && p.__setupRequired) { state.setupRequired = true; state.profile = null; }
-      else { state.profile = p; state.setupRequired = false; }
+      if (p && p.__setupRequired) {
+        // Profil dokümanı yok (ör. kullanıcı verisini sildiyse) → yeniden oluştur.
+        try {
+          const created = await FB().ensureOwnProfile(
+            state.session.user.id,
+            state.session.user.email,
+            state.session.user.displayName
+          );
+          state.profile = created || null;
+          state.setupRequired = !created;
+          return state.profile;
+        } catch (e2) {
+          console.warn('[auth] profil oluşturulamadı', e2);
+          state.setupRequired = true;
+          state.profile = null;
+        }
+      } else {
+        state.profile = p;
+        state.setupRequired = false;
+      }
     } catch (e) {
       console.warn('[auth] profil okunamadı', e);
       state.error = e.human || e.message;
@@ -329,9 +347,9 @@
       return b.owner_id === state.session.user.id || App.Auth.isAdmin();
     },
 
-    // Doğrulama e-postasını yeniden gönder
-    resendVerificationEmail: async function () {
-      return FB().resendVerificationEmail();
+    // Doğrulama e-postasını yeniden gönder (oturum yoksa e-posta+şifre ile)
+    resendVerificationEmail: async function (email, password) {
+      return FB().resendVerificationEmail(email, password);
     }
   };
 

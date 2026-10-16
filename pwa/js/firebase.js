@@ -387,6 +387,17 @@
     return getProfile(uid);
   }
 
+  // Oturum açan kullanıcının profili yoksa yeniden oluşturur.
+  // (Kullanıcı Firestore verisini silse bile hesabı kurtarır.) İlk kullanıcı admin olur.
+  async function ensureOwnProfile(uid, email, displayName) {
+    const existing = await getProfile(uid);
+    if (existing) return existing;
+    let isFirst = false;
+    try { isFirst = (await listProfiles()).length === 0; }
+    catch (e) { isFirst = false; }
+    return createUserProfile(uid, email, isFirst ? 'admin' : 'user', displayName);
+  }
+
   // Admin tarafından kullanıcı oluşturma — İKİNCİL app ile, admin oturumu korunur.
   async function adminCreateUser(email, password, role, displayName) {
     ensureFirebase();
@@ -700,6 +711,11 @@
       return createUserProfile(uid, email, role, displayName);
     },
 
+    ensureOwnProfile: async function (uid, email, displayName) {
+      ensureFirebase();
+      return ensureOwnProfile(uid, email, displayName);
+    },
+
     adminCreateUser: adminCreateUser,
 
     updatePassword: updatePassword,
@@ -762,17 +778,45 @@
       catch (e) { throw toError(e); }
     },
 
-    // Doğrulama e-postasını yeniden gönder
-    resendVerificationEmail: async function () {
+    // Doğrulama e-postasını yeniden gönder.
+    //  • Oturum varsa: mevcut kullanıcıya gönderir.
+    //  • Oturum yoksa (doğrulanmamış kullanıcı giriş yapamadığı ve oturumu
+    //    kapatıldığı için): e-posta + şifre ile GEÇİCİ giriş yapıp gönderir,
+    //    ardından oturumu kapatır. Böylece "doğrulanmamış" kilitlenmesi çözülür.
+    resendVerificationEmail: async function (email, password) {
       ensureFirebase();
-      const user = auth.currentUser;
+      let user = auth.currentUser;
+      let tempSignIn = false;
+
       if (!user) {
-        const e = new Error('Oturum bulunamadı. Giriş yapın.');
-        e.code = 'auth/no-user';
-        throw toError(e);
+        if (!email || !password) {
+          const e = new Error('Oturum bulunamadı. E-posta ve şifrenizi girin.');
+          e.code = 'auth/no-user';
+          e.human = 'Doğrulama e-postası göndermek için e-posta ve şifrenizi girin.';
+          throw e;
+        }
+        try {
+          const cred = await auth.signInWithEmailAndPassword(String(email).trim(), password);
+          user = cred.user;
+          tempSignIn = true;
+        } catch (err) {
+          throw toError(err);
+        }
       }
-      await user.sendEmailVerification();
-      return true;
+
+      try {
+        if (user.emailVerified) {
+          if (tempSignIn) { try { await auth.signOut(); } catch (x) { /* yoksay */ } }
+          return { emailVerified: true };
+        }
+        await user.sendEmailVerification();
+      } catch (err) {
+        if (tempSignIn) { try { await auth.signOut(); } catch (x) { /* yoksay */ } }
+        throw toError(err);
+      }
+
+      if (tempSignIn) { try { await auth.signOut(); } catch (x) { /* yoksay */ } }
+      return { emailVerified: false };
     }
   };
 
