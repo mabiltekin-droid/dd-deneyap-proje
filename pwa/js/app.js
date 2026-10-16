@@ -558,6 +558,20 @@
     return true;
   }
 
+  /* Cihaz erişimi henüz doğrulanmadıysa (giriş/çıkış sonrası) yetkili
+     kontrolden geçir ve sonucu gelince ekranı yeniden çiz. */
+  let accessChecking = null;
+  function ensureDeviceAccess(dev) {
+    if (!dev || !App.Auth || !App.Auth.needsCheck || !App.Auth.checkDevice) return;
+    if (!App.Auth.needsCheck(dev)) return;
+    if (accessChecking === dev) return;
+    accessChecking = dev;
+    App.Auth.checkDevice(dev).then(function () {
+      accessChecking = null;
+      if (lastData && lastData.dev === dev) render(lastData);
+    }).catch(function () { accessChecking = null; });
+  }
+
   function render(data) {
     lastData = data;
     lastUpdateTs = Date.now();
@@ -573,6 +587,7 @@
     renderWidget(data, state);
     renderLockHint();
     setControlsEnabled(controlsAllowed());
+    ensureDeviceAccess(data && data.dev);
     announceAlarms(data, state);
 
     /* SCADA WebGL Shader Motoru & Telemetri Kara Kutusu */

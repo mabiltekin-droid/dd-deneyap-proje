@@ -24,6 +24,8 @@
     session: null,
     profile: null,
     bindings: null,
+    deviceAccess: {},   // deviceId -> 'free' | 'granted' | 'denied' | 'anon'
+    deviceInfo: null,   // son checkDevice sonucu
     setupRequired: false,
     error: null
   };
@@ -40,6 +42,37 @@
     const e = new Error(message);
     e.human = human || message;
     return e;
+  }
+
+  function isPermDenied(e) {
+    return !!(e && (e.code === 'permission-denied' || /permission/i.test(e.message || '')));
+  }
+
+  function millis(ts) {
+    if (!ts) return 0;
+    if (typeof ts.toMillis === 'function') return ts.toMillis();
+    if (typeof ts.seconds === 'number') return ts.seconds * 1000;
+    if (typeof ts === 'number') return ts;
+    const d = Date.parse(ts);
+    return isNaN(d) ? 0 : d;
+  }
+
+  // Cihaz bağlanamıyorken kullanıcıya gösterilecek açıklama.
+  function bindingBlockedText(st) {
+    switch (st && st.state) {
+      case 'mine': return 'Bu cihaz zaten sizin hesabınıza bağlı.';
+      case 'mine_pending': return 'Bu cihazın bağlantısı kesildi; admin onayı bekleniyor.';
+      case 'other': return 'Bu cihaz başka bir hesaba bağlı. Yalnızca sahibi veya admin işlem yapabilir.';
+      case 'pending_other': return 'Bu cihaz başka bir hesaba bağlı ve bağlantı kesme talebi admin onayında.';
+      case 'hidden': return 'Bu cihaz başka bir hesaba bağlı. Bağlı cihazları yalnızca sahibi veya admin görebilir.';
+      default: return 'Bu cihaz şu anda bağlanamaz.';
+    }
+  }
+
+  // Oturum değişince cihaz erişim önbelleğini geçersiz kıl.
+  function resetDeviceAccess() {
+    state.deviceAccess = {};
+    state.deviceInfo = null;
   }
 
   /* ------------------------------------------------------- oturum ---------- */
@@ -80,6 +113,7 @@
     try {
       state.session = await FB().ensureSession();
     } catch (e) { state.session = null; }
+    resetDeviceAccess();
     await refreshProfile();
     if (!state.session) {
       try { state.setupRequired = !(await FB().probeSetup()); }
@@ -128,6 +162,7 @@
       state.error = null;
       const s = await FB().signIn(email, password);
       state.session = s;
+      resetDeviceAccess();
       await refreshProfile();
       state.ready = true;
       emit();
@@ -162,6 +197,7 @@
         try { localStorage.removeItem('deneyap.invite'); } catch (e) { /* yoksay */ }
         state.session = null;
         state.profile = null;
+        resetDeviceAccess();
         emit();
         return { pending: true };
       }
@@ -184,6 +220,7 @@
       state.session = null;
       state.profile = null;
       state.bindings = null;
+      resetDeviceAccess();
       state.ready = true;
       emit();
       return App.Auth.snapshot();
@@ -222,6 +259,7 @@
       state.session = null;
       state.profile = null;
       state.bindings = null;
+      resetDeviceAccess();
       state.ready = true;
       emit();
       return true;
@@ -294,57 +332,197 @@
 
     /* ============================================== CİHAZ MÜLKİYETİ ======= */
 
+    // Admin: tüm bağlantılar | Kullanıcı: yalnızca kendi bağlantıları.
+    // (Sunucu kuralları da listeyi owner_id ile kısıtlar.)
     listBindings: async function () {
+      const me = state.session && state.session.user;
       try {
-        const rows = await FB().rest('device_bindings?select=*&order=bound_at.desc');
-        state.bindings = rows || [];
+        let rows;
+        if (!me) rows = [];
+        else if (App.Auth.isAdmin()) rows = await FB().listBindings();
+        else rows = await FB().listOwnBindings(me.id);
+        rows = (rows || []).slice().sort(function (a, b) {
+          return millis(b.bound_at) - millis(a.bound_at);
+        });
+        state.bindings = rows;
         state.setupRequired = false;
       } catch (e) {
         if (FB().isSetupMissing(e)) { state.setupRequired = true; state.bindings = []; }
-        else throw e;
+        else { state.bindings = state.bindings || []; }
       }
       return state.bindings;
     },
 
     bindingOf: function (deviceId) {
       if (!deviceId || !state.bindings) return null;
-      return state.bindings.find(function (b) { return b.device_id === deviceId; }) || null;
+      for (let i = 0; i < state.bindings.length; i++) {
+        if (state.bindings[i].device_id === deviceId) return state.bindings[i];
+      }
+      return null;
     },
 
+    // Bir cihazın durumunu YETKİLİ olarak sorgular ve erişim kararını önbelleğe
+    // alır. app.js her karede erişim soramayacağı için karar burada saklanır.
+    //
+    //  'free'          → boşta, bağlanabilir
+    //  'mine'          → bana bağlı
+    //  'mine_pending'  → bana bağlı, bağlantı kesme talebi admin onayında
+    //  'other'         → başkasına bağlı (ben admin'im)
+    //  'pending_other' → başkasına bağlı, bağlantı kesme talebi var (ben admin'im)
+    //  'hidden'        → başkasına bağlı, göremem (admin değilim)
+    //  'anon'          → oturum yok
+    //  'error'         → okunamadı
+    checkDevice: async function (deviceId) {
+      state.deviceAccess = state.deviceAccess || {};
+      if (!deviceId) { state.deviceInfo = { state: 'none' }; return state.deviceInfo; }
+
+      const me = state.session && state.session.user;
+      let res;
+      if (!me) {
+        res = { state: 'anon' };
+      } else {
+        try {
+          const b = await FB().getBinding(deviceId);
+          const admin = App.Auth.isAdmin();
+          if (!b) {
+            res = { state: 'free' };
+          } else if (b.owner_id === me.id) {
+            res = { state: b.status === 'release_pending' ? 'mine_pending' : 'mine', binding: b };
+          } else if (admin) {
+            res = { state: b.status === 'release_pending' ? 'pending_other' : 'other', binding: b };
+          } else {
+            // Bağlı + sahibi/admin değiliz → görünmez.
+            res = { state: 'hidden' };
+          }
+        } catch (e) {
+          res = { state: isPermDenied(e) ? 'hidden' : 'error', error: e };
+        }
+      }
+
+      let access;
+      switch (res.state) {
+        case 'free': access = 'free'; break;
+        case 'mine': access = 'granted'; break;
+        case 'other':
+        case 'pending_other': access = App.Auth.isAdmin() ? 'granted' : 'denied'; break;
+        case 'anon': access = 'anon'; break;
+        default: access = 'denied';
+      }
+      state.deviceAccess[deviceId] = access;
+      state.deviceInfo = res;
+      return res;
+    },
+
+    deviceAccess: function (deviceId) {
+      return (state.deviceAccess && state.deviceAccess[deviceId]) || null;
+    },
+
+    needsCheck: function (deviceId) {
+      if (!deviceId) return false;
+      return !(state.deviceAccess && state.deviceAccess[deviceId]);
+    },
+
+    // Cihaza kumanda edilebilir mi? (app.js her karede çağırır → senkron)
+    canControl: function (deviceId) {
+      const a = state.deviceAccess && state.deviceAccess[deviceId];
+      if (a === 'granted' || a === 'free') return true;
+      if (a === 'denied') return false;
+      // Henüz doğrulanmadı
+      const me = state.session && state.session.user;
+      if (!me) return true;   // oturum yok: eski davranış korunur
+      return false;           // oturum var ama doğrulanmadı: güvenli tarafta kal
+    },
+
+    // Yalnızca BOŞTA bir cihaz "bağlanabilir" sayılır.
+    canClaim: function (deviceId) {
+      if (!state.session) return false;
+      return (state.deviceAccess && state.deviceAccess[deviceId]) === 'free';
+    },
+
+    // Cihazı kendi hesabıma bağla (boşta ise) veya admin olarak yeniden ata.
     bindDevice: async function (deviceId, ownerId, label) {
       const me = state.session && state.session.user;
       if (!me) throw err('Giriş yapmalısınız.', 'Giriş yapmalısınız.');
       const owner = ownerId || me.id;
-      await FB().rest('device_bindings', {
-        method: 'POST',
-        prefer: 'resolution=merge-duplicates,return=representation',
-        body: { device_id: deviceId, owner_id: owner, label: label || '', bound_by: me.id }
-      });
+
+      const st = await App.Auth.checkDevice(deviceId);
+      const admin = App.Auth.isAdmin();
+      if (!(st.state === 'free' || (admin && (st.state === 'other' || st.state === 'pending_other')))) {
+        throw err('Cihaz bağlı.', bindingBlockedText(st));
+      }
+
+      try {
+        if (st.state === 'free') await FB().bindDevice(deviceId, owner, label || '', me.id);
+        else await FB().reassignBinding(deviceId, owner, me.id);
+      } catch (e) {
+        throw err(e.human || e.message, bindingBlockedText(st));
+      }
+
+      try { await FB().addAuditLog('bind_device', deviceId, { owner: owner }); } catch (e) { /* yoksay */ }
       await App.Auth.listBindings();
+      await App.Auth.checkDevice(deviceId);
       emit();
     },
 
-    unbindDevice: async function (deviceId) {
-      await FB().rest('device_bindings?device_id=eq.' + encodeURIComponent(deviceId), {
-        method: 'DELETE'
-      });
-      await App.Auth.listBindings();
-      emit();
-    },
-
-    canControl: function (deviceId) {
-      const b = App.Auth.bindingOf(deviceId);
-      if (!b) return true;
+    // Bağlantıyı kes (sahibi) → cihaz kilitli kalır, admin onayı bekler.
+    requestRelease: async function (deviceId) {
       const me = state.session && state.session.user;
-      if (!me) return false;
-      return b.owner_id === me.id || App.Auth.isAdmin();
+      if (!me) throw err('Giriş yapmalısınız.', 'Giriş yapmalısınız.');
+      await FB().requestRelease(deviceId, me.id);
+      try { await FB().addAuditLog('device_release_request', deviceId, null); } catch (e) { /* yoksay */ }
+      await App.Auth.listBindings();
+      await App.Auth.checkDevice(deviceId);
+      emit();
     },
 
-    canClaim: function (deviceId) {
-      if (!state.session) return false;
-      const b = App.Auth.bindingOf(deviceId);
-      if (!b) return true;
-      return b.owner_id === state.session.user.id || App.Auth.isAdmin();
+    // Talebi geri al (sahibi) → bağlantı yeniden aktif.
+    cancelRelease: async function (deviceId) {
+      await FB().cancelRelease(deviceId);
+      await App.Auth.listBindings();
+      await App.Auth.checkDevice(deviceId);
+      emit();
+    },
+
+    // Onayla (admin) → cihaz serbest kalır, artık başka bir hesap bağlanabilir.
+    approveRelease: async function (deviceId) {
+      await FB().approveRelease(deviceId);
+      try { await FB().addAuditLog('device_release_approved', deviceId, null); } catch (e) { /* yoksay */ }
+      await App.Auth.listBindings();
+      await App.Auth.checkDevice(deviceId);
+      emit();
+    },
+
+    // Reddet (admin) → bağlantı kesme iptal, yeniden aktif.
+    rejectRelease: async function (deviceId) {
+      await FB().cancelRelease(deviceId);
+      try { await FB().addAuditLog('device_release_rejected', deviceId, null); } catch (e) { /* yoksay */ }
+      await App.Auth.listBindings();
+      await App.Auth.checkDevice(deviceId);
+      emit();
+    },
+
+    // Zorla serbest bırak (admin) → sahibinden bağımsız.
+    freeDevice: async function (deviceId) {
+      await FB().approveRelease(deviceId);
+      try { await FB().addAuditLog('device_force_free', deviceId, null); } catch (e) { /* yoksay */ }
+      await App.Auth.listBindings();
+      await App.Auth.checkDevice(deviceId);
+      emit();
+    },
+
+    // Admin: cihazı doğrudan başka bir hesaba ata (hesap değiştirme).
+    reassignDevice: async function (deviceId, ownerId) {
+      const me = state.session && state.session.user;
+      await FB().reassignBinding(deviceId, ownerId, me && me.id);
+      try { await FB().addAuditLog('device_reassign', deviceId, { owner: ownerId }); } catch (e) { /* yoksay */ }
+      await App.Auth.listBindings();
+      await App.Auth.checkDevice(deviceId);
+      emit();
+    },
+
+    // Bekleyen bağlantı kesme talepleri (admin paneli).
+    pendingReleases: function () {
+      return (state.bindings || []).filter(function (b) { return b.status === 'release_pending'; });
     },
 
     // Doğrulama e-postasını yeniden gönder (oturum yoksa e-posta+şifre ile)

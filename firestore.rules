@@ -3,7 +3,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // ================================================================
-    // YARDIMCI FONKSİYONLAR
+    // YARDIMCI FONKSIYONLAR
     // ================================================================
 
     function signedIn() { return request.auth != null; }
@@ -13,84 +13,118 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/profiles/$(u)).data;
     }
 
-    // Mevcut kullanıcı admin mi? (profiles/{uid}.role == 'admin')
+    // Mevcut kullanici admin mi? (profiles/{uid}.role == 'admin')
     function isAdmin() {
       return signedIn() && getProfile(uid()) != null && getProfile(uid()).role == 'admin';
     }
 
     function isSelf(u) { return signedIn() && uid() == u; }
 
-    // Cihaz bağlama yardımcıları
+    // Cihaz baglama yardimcilari
     function deviceExists(id) {
       return exists(/databases/$(database)/documents/device_bindings/$(id));
     }
-    function deviceOwner(id) {
-      return get(/databases/$(database)/documents/device_bindings/$(id)).data.owner_id;
+    function deviceData(id) {
+      return get(/databases/$(database)/documents/device_bindings/$(id)).data;
     }
+    function deviceOwner(id) { return deviceData(id).owner_id; }
+    function deviceReleased(id) { return deviceData(id).status == 'release_pending'; }
 
     // ================================================================
-    // PROFILES — kullanıcı profilleri (doc ID = uid)
+    // PROFILES - kullanici profilleri (doc ID = uid)
     // ================================================================
     match /profiles/{userId} {
-      // Giriş yapmış herkes okuyabilir (admin listesi, mülkiyet etiketi,
-      // ilk-kullanıcı tespiti ve kullanıcı adı gösterimi için gerekli).
+      // Giris yapmis herkes okuyabilir (admin listesi, mulkiyet etiketi,
+      // ilk-kullanici tespiti ve kullanici adi gosterimi icin gerekli).
       allow read: if signedIn();
 
-      // Kendi profilini oluşturabilir (kayıt akışı). Rol beyanı sınırlı.
+      // Kendi profilini olusturabilir (kayit akisi). Rol beyani sinirli.
       allow create: if isSelf(userId)
                     && request.resource.data.id == userId
                     && request.resource.data.role in ['user', 'admin'];
 
-      // Kendi profilini (ad, avatar, tercihler) veya admin herhangi birini güncelleyebilir.
+      // Kendi profilini veya admin herhangi birini guncelleyebilir.
       allow update: if isSelf(userId) || isAdmin();
 
-      // Silme yalnızca admin.
+      // Silme yalnizca admin.
       allow delete: if isAdmin();
     }
 
     // ================================================================
-    // DEVICE_BINDINGS — cihaz mülkiyeti (doc ID = device_id)
+    // DEVICE_BINDINGS - cihaz mulkiyeti (doc ID = device_id)
+    //
+    //  * Cihaz BOSTA ise (dokuman yok): giris yapmis herkes "get" ile
+    //    yoklugunu dogrulayabilir ve ilk baglayan sahibi olur.
+    //  * Cihaz BAGLI ise: yalnizca SAHIBI ve ADMIN gorebilir.
+    //    Admin disindaki hic kimse bagli cihazi GOREMEZ veya BAGLAYAMAZ.
+    //  * Baglantiyi kesme: sahibi status'u 'release_pending' yapar ve
+    //    cihaz KILITLI kalir. Yalnizca ADMIN onaylarsa (dokumani silerse)
+    //    cihaz serbest kalir; ancak o zaman baska bir hesap baglanabilir.
     // ================================================================
     match /device_bindings/{deviceId} {
-      // Giriş yapmış herkes okuyabilir (panel sahiplik etiketini gösterir).
-      allow read: if signedIn();
 
-      // Bağlama:
-      //  • Cihaz boşta → kendi adına bağlayabilir.
-      //  • Cihaz bağlı  → yalnızca sahibi veya admin (mülkiyet gaspı engellenir).
-      allow create, update: if signedIn() && (
-        (!deviceExists(deviceId) && request.resource.data.owner_id == uid()) ||
-        (deviceExists(deviceId) && (deviceOwner(deviceId) == uid() || isAdmin()))
+      // Tek dokuman okuma: bosta VEYA sahibi VEYA admin.
+      allow get: if signedIn() && (
+        !deviceExists(deviceId)
+        || deviceOwner(deviceId) == uid()
+        || isAdmin()
       );
 
-      // Bağlantıyı kaldırma: sahibi veya admin.
-      allow delete: if signedIn() && (deviceOwner(deviceId) == uid() || isAdmin());
+      // Liste: admin tumunu; kullanici yalnizca KENDI kayitlarini gorur.
+      // (Istemci sorgusu owner_id == uid ile kisitlanmalidir.)
+      allow list: if signedIn() && (isAdmin() || resource.data.owner_id == uid());
+
+      // Bagla: yalnizca BOSTA bir cihazi kendi adina, 'active' durumuyla.
+      allow create: if signedIn()
+                    && !deviceExists(deviceId)
+                    && request.resource.data.owner_id == uid()
+                    && request.resource.data.status == 'active';
+
+      // Guncelle:
+      //  * admin  -> her sey (onay, yeniden atama, serbest birakma)
+      //  * sahibi -> YALNIZCA active <-> release_pending gecisi yapabilir
+      //  * baskasi -> KESINLIKLE HAYIR
+      allow update: if signedIn() && (
+        isAdmin()
+        || (
+          deviceExists(deviceId)
+          && deviceOwner(deviceId) == uid()
+          && request.resource.data.owner_id == uid()
+          && (
+            (!deviceReleased(deviceId) && request.resource.data.status == 'release_pending')
+            || (deviceReleased(deviceId) && request.resource.data.status == 'active')
+          )
+        )
+      );
+
+      // Silme = baglanti kesme onayi -> cihazi serbest birakir. Yalnizca admin.
+      allow delete: if isAdmin();
     }
 
     // ================================================================
-    // LOGIN_LOGS — giriş/çıkış etkinlik kayıtları
+    // LOGIN_LOGS - giris/cikis etkinlik kayitlari
     // ================================================================
     match /login_logs/{logId} {
-      // Yalnızca kendi adına kayıt yazabilir.
+      // Yalnizca kendi adina kayit yazabilir.
       allow create: if signedIn() && request.resource.data.userId == uid();
-      // Kendi kayıtlarını veya admin tümünü okuyabilir.
+      // Kendi kayitlarini veya admin tumunu okuyabilir.
       allow read: if signedIn() && (resource.data.userId == uid() || isAdmin());
       allow update, delete: if isAdmin();
     }
 
     // ================================================================
-    // INVITES — davet kodları
+    // INVITES - davet kodlari
     // ================================================================
     match /invites/{code} {
-      // Tek doküman okuma serbest: kayıt öncesi (henüz oturum yokken) kod doğrulanır.
+      // Tek dokuman okuma serbest: kayit oncesi (henuz oturum yokken) dogrulanir.
       allow get: if true;
-      // Liste/oluşturma/silme yalnızca admin.
+      // Liste/olusturma/silme yalnizca admin.
       allow list: if isAdmin();
       allow create, delete: if isAdmin();
 
-      // Güncelleme: admin serbest; ayrıca kayıt olan kullanıcı KENDİ adına,
-      // yalnızca kullanılmamış bir daveti "kullanıldı" işaretleyebilir.
-      // Rol/kod/oluşturan alanları değiştirilemez (yetki yükseltmesi engellenir).
+      // Guncelleme: admin serbest; ayrica kayit olan kullanici KENDI adina,
+      // yalnizca kullanilmamis bir daveti "kullanildi" isaretleyebilir.
+      // Rol/kod/olusturan alanlari degistirilemez (yetki yukseltmesi engellenir).
       allow update: if isAdmin() || (
         signedIn()
         && resource.data.used == false
@@ -103,7 +137,7 @@ service cloud.firestore {
     }
 
     // ================================================================
-    // AUDIT_LOGS — yönetici işlem kayıtları
+    // AUDIT_LOGS - yonetici islem kayitlari
     // ================================================================
     match /audit_logs/{logId} {
       allow read, create: if isAdmin();
@@ -111,7 +145,7 @@ service cloud.firestore {
     }
 
     // ================================================================
-    // Diğer her şey varsayılan olarak kapalı
+    // Diger her sey varsayilan olarak kapali
     // ================================================================
     match /{document=**} {
       allow read, write: if false;

@@ -242,6 +242,7 @@
       device_id: deviceId,
       owner_id: ownerId,
       label: label || '',
+      status: 'active',
       bound_at: firebase.firestore.FieldValue.serverTimestamp(),
       bound_by: boundBy
     }, { merge: true });
@@ -253,6 +254,30 @@
 
   async function updateBinding(deviceId, data) {
     await bindingsRef().doc(deviceId).update(data);
+  }
+
+  // Kullanicinin YALNIZCA kendi cihaz baglantilari (kural: owner_id == uid).
+  async function listOwnBindings(uid) {
+    const snap = await bindingsRef().where('owner_id', '==', uid).get();
+    return snap.docs.map(d => d.data());
+  }
+
+  // Baglantiyi kesme talebi (sahibi) -> admin onayina duser.
+  async function requestRelease(deviceId, byUid) {
+    await bindingsRef().doc(deviceId).update({
+      status: 'release_pending',
+      released_by: byUid || null,
+      released_at: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  }
+
+  // Talebi geri al / reddet -> baglanti yeniden aktif.
+  async function cancelRelease(deviceId) {
+    await bindingsRef().doc(deviceId).update({
+      status: 'active',
+      released_by: null,
+      released_at: null
+    });
   }
 
   /* -------------------------------------------------- Giriş logları ---------- */
@@ -696,6 +721,59 @@
       // Yalnızca gerçek kurulum/erişim sorunları: veritabanı yok veya erişilemez.
       // permission-denied yetki sorunudur (kurulum değil) → sayılmaz.
       return !!(e && (e.code === 'not_found' || e.code === 'unavailable' || e.code === 'failed-precondition'));
+    },
+
+    /* ---------------------------------------------- Cihaz mülkiyeti ------ */
+
+    listBindings: async function () {
+      ensureFirebase();
+      try { return await listBindings(); } catch (e) { throw toError(e); }
+    },
+
+    listOwnBindings: async function (uid) {
+      ensureFirebase();
+      try { return await listOwnBindings(uid); } catch (e) { throw toError(e); }
+    },
+
+    getBinding: async function (deviceId) {
+      ensureFirebase();
+      try { return await getBinding(deviceId); } catch (e) { throw toError(e); }
+    },
+
+    bindDevice: async function (deviceId, ownerId, label, boundBy) {
+      ensureFirebase();
+      try { await setBinding(deviceId, ownerId, label, boundBy); return await getBinding(deviceId); }
+      catch (e) { throw toError(e); }
+    },
+
+    requestRelease: async function (deviceId, byUid) {
+      ensureFirebase();
+      try { return await requestRelease(deviceId, byUid); } catch (e) { throw toError(e); }
+    },
+
+    cancelRelease: async function (deviceId) {
+      ensureFirebase();
+      try { return await cancelRelease(deviceId); } catch (e) { throw toError(e); }
+    },
+
+    // Onay = cihazi serbest birak (dokumani sil) → yeni hesap baglanabilir.
+    approveRelease: async function (deviceId) {
+      ensureFirebase();
+      try { return await deleteBinding(deviceId); } catch (e) { throw toError(e); }
+    },
+
+    // Admin: cihazi belirli bir hesaba ata (hesap degistirme).
+    reassignBinding: async function (deviceId, ownerId, byUid) {
+      ensureFirebase();
+      try {
+        await updateBinding(deviceId, {
+          owner_id: ownerId,
+          status: 'active',
+          bound_by: byUid || null,
+          bound_at: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        return await getBinding(deviceId);
+      } catch (e) { throw toError(e); }
     },
 
     /* ---------------------------------------------- Profil / hesap --------- */

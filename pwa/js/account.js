@@ -68,14 +68,16 @@
     // Doğrulama e-postası yeniden gönder butonunu göster/gizle
     updateResendVerificationButton(snap);
 
-    /* Oturum/kimlik değişince sahiplik kutusu ve Bağla/Serbest bırak
-       butonları da yeniden hesaplanır. loadDevice yalnızca cihaz kimliği
-       değiştiğinde çalışıyordu — bu yüzden giriş yapılınca "Cihazı Bağla"
-       pasif kalabiliyordu. */
-    paintOwnership();
+    /* Oturum/kimlik değişince cihaz durumunu yeniden doğrula (yetki
+       değişmiş olabilir) ve sahiplik kutusunu/butonları güncelle. */
     if (lastDeviceId) {
-      App.Auth.listBindings().catch(function () {}).then(paintOwnership);
+      App.Auth.checkDevice(lastDeviceId)
+        .then(function () { paintOwnership(); })
+        .catch(function () { paintOwnership(); });
+    } else {
+      paintOwnership();
     }
+    renderDeviceTable();
   }
 
   // Kullanıcı girişi yapılmamış ama Firebase'de emailVerified=false olan kullanıcı varsa butonu göster
@@ -282,6 +284,7 @@
   /* ------------------------------------------------- cihaz mülkiyeti ----- */
 
   let lastDeviceId = null;
+  let deviceStatus = null;   // App.Auth.checkDevice() sonucu
 
   /* Sahiplik kutusu + Bağla/Serbest bırak butonlarını çizer.
      loadDevice() cihaz kimliği değişince, paintOwnership() oturum/kimlik
@@ -294,29 +297,71 @@
     box.hidden = false;
     $('ownDevId').textContent = lastDeviceId;
 
-    const b = App.Auth.bindingOf(lastDeviceId);
     const snap = App.Auth.snapshot();
+    const st = (deviceStatus && deviceStatus.state) || 'unknown';
+    const b = deviceStatus && deviceStatus.binding;
+    const ownerLabel = b && b.owner_id
+      ? (snap.user && b.owner_id === snap.user.id ? 'Siz' : (b.label || b.owner_id.slice(0, 8) + '...'))
+      : '-';
 
-    if (!b) {
-      $('ownOwner').textContent = 'Bağlı değil (boşta)';
-      $('ownState').textContent = snap.signedIn
-        ? 'Herkes görebilir — ilk bağlayan sahip olur'
-        : 'Herkes görebilir (giriş yaparak bağlayabilirsiniz)';
-    } else {
-      const isMe = snap.user && b.owner_id === snap.user.id;
-      $('ownOwner').textContent = isMe ? 'Siz' :
-        (b.label || b.owner_id.slice(0, 8) + '…') + (snap.isAdmin ? ' (admin)' : '');
-      $('ownState').textContent = (isMe || snap.isAdmin)
-        ? 'Serbest — komut gönderebilirsiniz'
-        : 'KİLİTLİ — bu hesap komut gönderemez';
+    let owner = '-';
+    let stateText = '-';
+
+    switch (st) {
+      case 'anon':
+        owner = 'Gizli';
+        stateText = 'Bağlı cihazı görmek ve yönetmek için giriş yapın.';
+        break;
+      case 'free':
+        owner = 'Bağlı değil (boşta)';
+        stateText = snap.signedIn
+          ? 'Boşta — ilk bağlayan sahip olur'
+          : 'Boşta (giriş yaparak bağlanabilirsiniz)';
+        break;
+      case 'mine':
+        owner = 'Siz';
+        stateText = 'Bağlı — komut gönderebilirsiniz';
+        break;
+      case 'mine_pending':
+        owner = 'Siz';
+        stateText = 'Bağlantı kesildi — admin onayı bekleniyor';
+        break;
+      case 'other':
+        owner = ownerLabel + ' (başka hesap)';
+        stateText = 'Admin erişimi — kumanda edebilirsiniz';
+        break;
+      case 'pending_other':
+        owner = ownerLabel + ' (başka hesap)';
+        stateText = 'Bağlantı kesme talebi — onayınız bekleniyor';
+        break;
+      case 'hidden':
+        owner = '[GİZLİ]';
+        stateText = 'Başka bir hesaba bağlı — yalnızca sahibi ve admin görebilir';
+        break;
+      default:
+        owner = '-';
+        stateText = 'Durum okunamadı';
     }
+
+    $('ownOwner').textContent = owner;
+    $('ownState').textContent = stateText;
 
     const claim = $('claimBtn');
     const release = $('releaseBtn');
-    claim.disabled = !App.Auth.canClaim(lastDeviceId);
-    claim.hidden = !!b && !App.Auth.canClaim(lastDeviceId);
-    release.disabled = !b || !(snap.isAdmin || (snap.user && b && b.owner_id === snap.user.id));
-    release.hidden = !b;
+    const cancel = $('cancelReleaseBtn');
+    const adminOther = snap.isAdmin && st === 'other';
+
+    claim.hidden = !snap.signedIn || (st !== 'free' && !adminOther);
+    claim.disabled = !(App.Auth.canClaim(lastDeviceId) || adminOther);
+    claim.textContent = adminOther ? 'Bu Cihazı Bana Ata' : 'Cihazı Hesabıma Bağla';
+
+    release.hidden = !(st === 'mine');
+    release.disabled = false;
+
+    if (cancel) {
+      cancel.hidden = !(st === 'mine_pending');
+      cancel.disabled = false;
+    }
   }
 
   async function loadDevice() {
@@ -325,11 +370,17 @@
     let s = null;
     try { s = await App.api.status(); } catch (e) { s = null; }
     const dev = s && s.dev;
-    lastDeviceId = dev || lastDeviceId;
+    if (dev && dev !== lastDeviceId) { lastDeviceId = dev; deviceStatus = null; }
     if (!lastDeviceId) { box.hidden = true; return; }
 
-    await App.Auth.listBindings().catch(function () {});
+    try {
+      await App.Auth.listBindings();
+      deviceStatus = await App.Auth.checkDevice(lastDeviceId);
+    } catch (e) {
+      deviceStatus = { state: 'error', error: e };
+    }
     paintOwnership();
+    renderDeviceTable();
   }
 
   async function doClaim() {
@@ -349,16 +400,120 @@
 
   async function doRelease() {
     if (!lastDeviceId) return;
-    if (!confirm(lastDeviceId + ' cihazının bağlaması kaldırılsın mı?\n\n' +
-                 'Cihaz yeniden herkese açık hale gelir.')) return;
-    setResult('Bağlantı kaldırılıyor…');
+    if (!confirm(lastDeviceId + ' cihazının bağlantısı kesilsin mi?\n\n' +
+                 'Cihaz kilitli kalır ve ancak bir admin ONAYLAYINCA yeniden ' +
+                 'başka bir hesaba bağlanabilir.')) return;
+    setResult('Bağlantı kesme talebi gönderiliyor…');
     try {
-      await App.Auth.unbindDevice(lastDeviceId);
-      setResult('Bağlama kaldırıldı.', 'ok');
+      await App.Auth.requestRelease(lastDeviceId);
+      setResult('Bağlantı kesildi. Admin onayı bekleniyor.', 'ok');
       await loadDevice();
     } catch (e) {
-      setResult('Kaldırılamadı: ' + (e.human || e.message), 'err');
+      setResult('Kesilemedi: ' + (e.human || e.message), 'err');
     }
+  }
+
+  async function doCancelRelease() {
+    if (!lastDeviceId) return;
+    setResult('Talep geri alınıyor…');
+    try {
+      await App.Auth.cancelRelease(lastDeviceId);
+      setResult('Talep geri alındı; bağlantı yeniden aktif.', 'ok');
+      await loadDevice();
+    } catch (e) {
+      setResult('Geri alınamadı: ' + (e.human || e.message), 'err');
+    }
+  }
+
+  /* ------------------------------------------- admin: cihaz bağlantıları -- */
+
+  let deviceUsers = [];
+
+  function ownerEmail(uid) {
+    for (let i = 0; i < deviceUsers.length; i++) {
+      if (deviceUsers[i].id === uid) return deviceUsers[i].email;
+    }
+    return uid ? uid.slice(0, 8) + '...' : '-';
+  }
+
+  async function renderDeviceTable() {
+    const body = $('deviceTableBody');
+    const wrap = $('adminDevices');
+    if (!body || !wrap) return;
+    const snap = App.Auth.snapshot();
+    if (!snap.isAdmin) { wrap.hidden = true; return; }
+    wrap.hidden = false;
+
+    if (!deviceUsers.length) {
+      try { deviceUsers = await App.Auth.listProfiles(); } catch (e) { /* yoksay */ }
+    }
+    let rows = [];
+    try { rows = await App.Auth.listBindings(); } catch (e) { rows = []; }
+
+    if (!rows.length) {
+      body.innerHTML = '<tr><td colspan="4">Bağlı cihaz yok.</td></tr>';
+      return;
+    }
+
+    const opts = deviceUsers.map(function (u) {
+      return '<option value="' + esc(u.id) + '">' + esc(u.email) + '</option>';
+    }).join('');
+
+    body.innerHTML = rows.map(function (b) {
+      const pending = b.status === 'release_pending';
+      const actions = pending
+        ? '<button type="button" class="btn sm d-approve">Onayla</button>' +
+          '<button type="button" class="btn sm ghost d-reject">Reddet</button>'
+        : '<button type="button" class="btn sm ghost d-free">Serbest Bırak</button>';
+      return '<tr data-dev="' + esc(b.device_id) + '">' +
+        '<td class="d-id">' + esc(b.device_id) + '</td>' +
+        '<td class="d-owner">' + esc(ownerEmail(b.owner_id)) + '</td>' +
+        '<td class="d-state">' + (pending ? 'Bağlantı kesme talebi' : 'Bağlı') + '</td>' +
+        '<td class="d-act">' + actions +
+          '<select class="assign-select" title="Hesaba ata"><option value="">Ata…</option>' +
+          opts + '</select></td>' +
+        '</tr>';
+    }).join('');
+  }
+
+  async function onDeviceAction(e) {
+    const tr = e.target.closest('tr[data-dev]');
+    if (!tr) return;
+    const dev = tr.dataset.dev;
+
+    if (e.target.classList.contains('d-approve')) {
+      if (!confirm(dev + ' için bağlantı kesme onaylansın mı?\n\nCihaz serbest bırakılır ve başka bir hesap bağlanabilir.')) return;
+      setResult('Onaylanıyor…');
+      try { await App.Auth.approveRelease(dev); setResult('Onaylandı; cihaz serbest.', 'ok'); await loadDevice(); }
+      catch (x) { setResult('Onaylanamadı: ' + (x.human || x.message), 'err'); }
+
+    } else if (e.target.classList.contains('d-reject')) {
+      setResult('Reddediliyor…');
+      try { await App.Auth.rejectRelease(dev); setResult('Talep reddedildi; bağlantı aktif.', 'ok'); await loadDevice(); }
+      catch (x) { setResult('Reddedilemedi: ' + (x.human || x.message), 'err'); }
+
+    } else if (e.target.classList.contains('d-free')) {
+      if (!confirm(dev + ' cihazı zorla serbest bırakılsın mı?\n\nSahibinin bağlantısı silinir.')) return;
+      setResult('Serbest bırakılıyor…');
+      try { await App.Auth.freeDevice(dev); setResult('Cihaz serbest bırakıldı.', 'ok'); await loadDevice(); }
+      catch (x) { setResult('Bırakılamadı: ' + (x.human || x.message), 'err'); }
+    }
+  }
+
+  async function onAssignChange(sel) {
+    const tr = sel.closest('tr[data-dev]');
+    if (!tr || !sel.value) return;
+    const dev = tr.dataset.dev;
+    const email = sel.options[sel.selectedIndex].textContent;
+    if (!confirm(dev + ' cihazı ' + email + ' hesabına atansın mı?')) { sel.value = ''; return; }
+    setResult('Atanıyor…');
+    try {
+      await App.Auth.reassignDevice(dev, sel.value);
+      setResult('Cihaz atandı: ' + email, 'ok');
+      await loadDevice();
+    } catch (x) {
+      setResult('Atanamadı: ' + (x.human || x.message), 'err');
+    } finally { sel.value = ''; }
   }
 
   /* -------------------------------------------------------- init --------- */
@@ -396,6 +551,16 @@
     $('claimBtn').addEventListener('click', doClaim);
     $('releaseBtn').addEventListener('click', doRelease);
     $('resendVerificationBtn').addEventListener('click', doResendVerification);
+    if ($('cancelReleaseBtn')) $('cancelReleaseBtn').addEventListener('click', doCancelRelease);
+
+    if ($('deviceTableBody')) {
+      $('deviceTableBody').addEventListener('click', function (e) {
+        if (e.target.closest('button') && !busy) onDeviceAction(e);
+      });
+      $('deviceTableBody').addEventListener('change', function (e) {
+        if (e.target.classList.contains('assign-select') && !busy) onAssignChange(e.target);
+      });
+    }
 
     /* Enter ile giriş */
     ['authEmail', 'authPass'].forEach(function (id) {

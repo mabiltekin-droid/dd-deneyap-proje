@@ -267,6 +267,30 @@
               doğrulama bağlantısına tıklamadan giriş yapamaz.
             </p>
           </div>
+
+          <!-- ---- Admin: Cihaz Bağlantıları ---- -->
+          <div id="adminDevices">
+            <div class="admin-head">
+              <span class="chip" data-state="normal">ADMIN</span>
+              <span>Cihaz Bağlantıları</span>
+            </div>
+            <div class="user-table-wrap">
+              <table class="user-table" id="deviceTable">
+                <thead>
+                  <tr><th>Cihaz</th><th>Sahip</th><th>Durum</th><th>İşlem</th></tr>
+                </thead>
+                <tbody id="deviceTableBody">
+                  <tr><td colspan="4">Yükleniyor…</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="help">
+              Bağlı cihazları yalnızca sahibi ve admin görebilir. <strong>Onayla</strong>, bağlantı
+              kesme talebini kabul edip cihazı serbest bırakır (başka hesap bağlanabilir);
+              <strong>Reddet</strong> talebi iptal eder. <strong>Ata</strong> ile cihazı doğrudan
+              başka bir hesaba bağlayabilirsiniz.
+            </p>
+          </div>
         </div>
 
         <!-- ---- Cihaz Mülkiyeti ---- -->
@@ -291,11 +315,14 @@
           </div>
           <div class="btn-row">
             <button class="btn primary" type="button" id="claimBtn">Cihazı Hesabıma Bağla</button>
-            <button class="btn ghost" type="button" id="releaseBtn">Bağlantıyı Kaldır</button>
+            <button class="btn ghost" type="button" id="releaseBtn">Bağlantıyı Kes (admin onayı)</button>
+            <button class="btn ghost" type="button" id="cancelReleaseBtn" hidden>Talebi Geri Al</button>
           </div>
           <p class="help">
-            Cihaz kimliği kartın efuse MAC'inden üretilir. Bir kez bağlandığında <strong>yalnızca sahibi veya admin</strong>
-            kumanda gönderebilir; bağlanmamış bir cihazı ilk bağlayan kişi sahibi olur.
+            Cihaz kimliği kartın efuse MAC'inden üretilir. Bir cihaz bir hesaba bağlandığında
+            <strong>admin dışında kimse onu göremez veya bağlayamaz</strong>. Sahibi bağlantıyı
+            keserse cihaz kilitli kalır; <strong>bir admin onaylayınca</strong> serbest kalır ve
+            başka bir hesap bağlanabilir. Bağlanmamış bir cihazı ilk bağlayan sahibi olur.
           </p>
         </div>
       </div>
