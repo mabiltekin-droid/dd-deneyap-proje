@@ -139,7 +139,9 @@
     } catch (e) { return ''; }
   }
 
-  function draw(pts) {
+  let activeScrubberPoint = null;
+
+  function draw(pts, activePt) {
     const cv = $('histCanvas');
     if (!cv) return;
     const ctx = cv.getContext('2d');
@@ -264,6 +266,95 @@
       const e = t0 + (span * k) / ticks;
       ctx.fillText(fmtClock(e), padL + (iw * k) / ticks, padT + ih + 12);
     }
+
+    /* --- Dokunmatik Parmak Gezintisi / Scrubber Overlay (Crosshair & HUD) --- */
+    if (activePt) {
+      const x = Math.max(padL, Math.min(padL + iw, X(activePt.e)));
+      const yg = Math.max(padT, Math.min(padT + ih, Yg(activePt.p)));
+      const yr = Math.max(padT, Math.min(padT + ih, Yr(activePt.r)));
+
+      ctx.save();
+
+      // 1. Düşey kılcal çizgi (crosshair line)
+      ctx.beginPath();
+      ctx.setLineDash([3, 3]);
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.75)';
+      ctx.lineWidth = 1.2;
+      ctx.moveTo(x, padT);
+      ctx.lineTo(x, padT + ih);
+      ctx.stroke();
+
+      // 2. Eğriler üzerindeki vurgu noktaları
+      // Yağmur noktası
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.arc(x, yr, 4, 0, Math.PI * 2);
+      ctx.fillStyle = cRain;
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Gaz noktası
+      ctx.beginPath();
+      ctx.arc(x, yg, 5.5, 0, Math.PI * 2);
+      const ptColor = (activePt.s === 2) ? cDanger : (activePt.s === 1 ? cWarn : cGas);
+      ctx.fillStyle = ptColor;
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // 3. HUD Bilgi Kartı (Tooltip Box)
+      const timeStr = fmtClock(activePt.e);
+      const dateStr = new Date(activePt.e).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+      const gasStr = 'Gaz: ' + activePt.p + ' PPM';
+      const rainStr = 'Yağmur: %' + activePt.r + (activePt.r > 20 ? ' (Islak)' : ' (Kuru)');
+      const stateStr = activePt.s === 2 ? 'TEHLİKE' : (activePt.s === 1 ? 'UYARI' : (activePt.s === 3 ? 'ARIZA' : 'GÜVENDE'));
+
+      const boxW = 144;
+      const boxH = 68;
+      // Dokunulan nokta sağ yarıdaysa sola, sol yarıdaysa sağa yerleştir
+      let boxX = (x > padL + iw / 2) ? (x - boxW - 14) : (x + 14);
+      let boxY = Math.max(padT + 4, Math.min(padT + ih - boxH - 4, yg - boxH / 2));
+
+      ctx.fillStyle = 'rgba(10, 15, 26, 0.94)';
+      ctx.strokeStyle = hexA(ptColor, 0.65);
+      ctx.lineWidth = 1.2;
+      if (typeof ctx.roundRect === 'function') {
+        ctx.beginPath();
+        ctx.roundRect(boxX, boxY, boxW, boxH, 8);
+        ctx.fill();
+        ctx.stroke();
+      } else {
+        ctx.fillRect(boxX, boxY, boxW, boxH);
+        ctx.strokeRect(boxX, boxY, boxW, boxH);
+      }
+
+      // HUD Metinleri
+      ctx.font = 'bold 10px ' + (cssVar('--font-mono', 'monospace') || 'monospace');
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+
+      // Başlık: Tarih & Saat
+      ctx.fillStyle = cText;
+      ctx.fillText(dateStr + ' ' + timeStr, boxX + 8, boxY + 7);
+
+      // Durum rozeti metni sağ üst
+      ctx.textAlign = 'right';
+      ctx.fillStyle = ptColor;
+      ctx.fillText(stateStr, boxX + boxW - 8, boxY + 7);
+
+      // Değer satırları
+      ctx.textAlign = 'left';
+      ctx.fillStyle = ptColor;
+      ctx.fillText('• ' + gasStr, boxX + 8, boxY + 26);
+
+      ctx.fillStyle = cRain;
+      ctx.fillText('• ' + rainStr, boxX + 8, boxY + 44);
+
+      ctx.restore();
+    }
   }
 
   function hexA(c, a) {
@@ -366,17 +457,91 @@
 
     lastPts = pts;
     paintMetrics(pts, spanMin * 60000, src);
-    draw(pts);
+    draw(pts, activeScrubberPoint);
     busy = false;
   }
 
   let lastPts = [];
   let eventsBound = false;
 
+  /* ---------------------- Dokunmatik Parmak Gezintisi (Touch Scrubber) --- */
+
+  function findNearestPoint(clientX) {
+    if (!lastPts || !lastPts.length) return null;
+    const cv = $('histCanvas');
+    if (!cv) return null;
+    const rect = cv.getBoundingClientRect();
+    const xInCanvas = clientX - rect.left;
+    const padL = 46, padR = 34;
+    const iw = rect.width - padL - padR;
+    if (iw <= 0) return null;
+
+    const t0 = lastPts[0].e, t1 = lastPts[lastPts.length - 1].e;
+    const span = Math.max(1, t1 - t0);
+    const clampedX = Math.max(padL, Math.min(padL + iw, xInCanvas));
+    const targetEpoch = t0 + ((clampedX - padL) / iw) * span;
+
+    let closest = lastPts[0];
+    let minDiff = Math.abs(closest.e - targetEpoch);
+    for (let i = 1; i < lastPts.length; i++) {
+      const diff = Math.abs(lastPts[i].e - targetEpoch);
+      if (diff < minDiff) {
+        minDiff = diff;
+        closest = lastPts[i];
+      }
+    }
+    return closest;
+  }
+
+  function setupTouchScrubber() {
+    const cv = $('histCanvas');
+    if (!cv || cv._scrubberBound) return;
+    cv._scrubberBound = true;
+    cv.style.touchAction = 'pan-y';
+
+    function onPointerMove(e) {
+      if (!lastPts || !lastPts.length) return;
+      activeScrubberPoint = findNearestPoint(e.clientX);
+      if (activeScrubberPoint) {
+        draw(lastPts, activeScrubberPoint);
+      }
+    }
+
+    function onPointerEnd() {
+      if (activeScrubberPoint !== null) {
+        activeScrubberPoint = null;
+        if (lastPts && lastPts.length) {
+          draw(lastPts, null);
+        }
+      }
+    }
+
+    cv.addEventListener('pointerdown', function (e) {
+      try { cv.setPointerCapture(e.pointerId); } catch (err) {}
+      onPointerMove(e);
+    }, { passive: true });
+
+    cv.addEventListener('pointermove', function (e) {
+      if (e.buttons > 0 || e.pointerType === 'mouse' || e.pointerType === 'pen' || activeScrubberPoint !== null) {
+        onPointerMove(e);
+      }
+    }, { passive: true });
+
+    cv.addEventListener('pointerup', function (e) {
+      try { cv.releasePointerCapture(e.pointerId); } catch (err) {}
+      onPointerEnd();
+    }, { passive: true });
+
+    cv.addEventListener('pointercancel', onPointerEnd, { passive: true });
+    cv.addEventListener('pointerleave', onPointerEnd, { passive: true });
+  }
+
   /* ----------------------------------------------------------- init ------ */
 
   function init() {
     if (!$('historyCard')) return;
+
+    setupTouchScrubber();
 
     const rangeBtns = document.querySelectorAll('.hist-range [data-span]');
     rangeBtns.forEach(function (b) {
@@ -408,11 +573,20 @@
         if (!document.hidden && $('historyCard')) load(false);
       });
 
+      /* 150ms debounced resize ve orientationchange ile DPR & rAF yeniden boyutlandırma */
       let rt = null;
-      window.addEventListener('resize', function () {
+      function handleResize() {
         clearTimeout(rt);
-        rt = setTimeout(function () { if (lastPts.length && $('historyCard')) draw(lastPts); }, 180);
-      });
+        rt = setTimeout(function () {
+          if ($('historyCard')) {
+            requestAnimationFrame(function () {
+              if (lastPts.length) draw(lastPts, activeScrubberPoint);
+            });
+          }
+        }, 150);
+      }
+      window.addEventListener('resize', handleResize, { passive: true });
+      window.addEventListener('orientationchange', handleResize, { passive: true });
     }
 
     load(false);

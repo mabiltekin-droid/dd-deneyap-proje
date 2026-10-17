@@ -9,8 +9,17 @@
 
   const App = (window.App = window.App || {});
 
-  App.VERSION = '2.14.3';
+  App.VERSION = '2.15.0';
   App.STORAGE_KEY = 'deneyap.settings.v2';
+
+  /* Evrensel Ortam Tespiti: Standalone PWA / Normal Web ayrımı */
+  App.isStandalone = (function () {
+    return (window.matchMedia && (
+             window.matchMedia('(display-mode: standalone)').matches ||
+             window.matchMedia('(display-mode: window-controls-overlay)').matches
+           )) ||
+           navigator.standalone === true; // iOS Safari PWA
+  })();
 
   App.DEFAULTS = {
     /* --- Taşıma (transport) seçimi ---
@@ -693,15 +702,25 @@
     const btn = document.getElementById(btnId || 'pwaInstallBtn');
     if (!btn) return;
 
+    if (App.isStandalone) {
+      btn.hidden = true;
+      btn.style.display = 'none';
+      return;
+    }
+
     window.addEventListener('beforeinstallprompt', function (e) {
       e.preventDefault();
       window.__pwaDeferredPrompt = e;
+      btn.hidden = false;
+      btn.style.display = '';
       btn.classList.add('has-prompt');
     });
 
     window.addEventListener('appinstalled', function () {
       window.__pwaDeferredPrompt = null;
       btn.classList.remove('has-prompt');
+      btn.hidden = true;
+      btn.style.display = 'none';
       App.toast('Ev Koruma başarıyla yüklendi! 🎉', { kind: 'ok' });
     });
 
@@ -716,6 +735,8 @@
           const choice = await promptEvent.userChoice;
           if (choice && choice.outcome === 'accepted') {
             App.toast('Uygulama yükleniyor...', { kind: 'ok' });
+            btn.hidden = true;
+            btn.style.display = 'none';
           }
         } catch (err) {
           console.warn('[pwa] seçim hatası:', err);
@@ -725,8 +746,9 @@
         return;
       }
 
-      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-      if (isStandalone) {
+      if (App.isStandalone) {
+        btn.hidden = true;
+        btn.style.display = 'none';
         App.toast('Uygulama zaten cihazınızda kurulu ve bağımsız çalışıyor.', { kind: 'ok' });
         return;
       }

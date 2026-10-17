@@ -326,6 +326,13 @@ header {
   gap: 0.65rem;
 }
 
+@media (display-mode: standalone), (display-mode: window-controls-overlay) {
+  #pwaInstallBtn,
+  .pwa-install-btn {
+    display: none !important;
+  }
+}
+
 .pwa-install-btn {
   display: inline-flex;
   align-items: center;
@@ -1994,7 +2001,35 @@ main {
   border-top: 1px solid var(--border);
   padding-bottom: env(safe-area-inset-bottom);
   box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+  transition: transform 0.25s ease, opacity 0.2s ease;
 }
+
+/* Sanal Klavye Açıldığında Alt Çubuğun Otomatik Gizlenmesi */
+.bottom-nav.nav-hidden-keyboard {
+  transform: translateY(120%) !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: transform 0.25s ease, opacity 0.2s ease !important;
+}
+
+/* Dokunmatik Grafik Parmak Gezintisi (Dikey kaydırma engellenmezken yatay scrubber hassas çalışır) */
+#histCanvas,
+.hist-canvas {
+  touch-action: pan-y;
+}
+
+/* Çift ekranlı veya katlanabilir cihazlarda menteşe boşluğu uyumluluğu */
+@media (horizontal-viewport-segments: 2) {
+  .mission-main,
+  .settings-studio-main,
+  .page-container,
+  .mission-control-page,
+  .settings-studio-page {
+    padding-left: max(1.5rem, env(viewport-segment-left 0 0));
+    padding-right: max(1.5rem, env(viewport-segment-right 0 0));
+  }
+}
+
 
 .bottom-nav a {
   flex: 1;
