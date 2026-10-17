@@ -19,6 +19,12 @@ public/
 .opencode/session/
 *.log
 
+# ---------------------------------------------------------------- firebase
+# Firebase CLI önbelleği / yerel emülatör verisi (proje kaynağı değil)
+.firebase/
+firebase-debug.log
+serviceAccountKey*.json
+
 # Python araçları (mqtt-pub.py vb.) çalıştırılınca oluşan önbellek
 __pycache__/
 *.pyc

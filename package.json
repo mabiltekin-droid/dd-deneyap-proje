@@ -8,7 +8,11 @@
     "dev": "node tools/dev-server.js",
     "check": "node tools/check-js.js",
     "build": "node tools/build-web.js",
-    "icons": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/make-icons.ps1"
+    "icons": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/make-icons.ps1",
+    "deploy:rules": "npx --yes firebase-tools deploy --only firestore:rules",
+    "deploy:indexes": "npx --yes firebase-tools deploy --only firestore:indexes",
+    "deploy:firestore": "npx --yes firebase-tools deploy --only firestore",
+    "firestore:list": "npx --yes firebase-tools firestore:indexes"
   },
   "engines": {
     "node": ">=18"
