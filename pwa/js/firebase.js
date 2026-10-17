@@ -312,6 +312,12 @@
     await codesRef().doc(deviceId).delete();
   }
 
+  // Admin: tek cihazin aktivasyon kodu (yoksa null). Teshis icin kullanilir.
+  async function getDeviceCode(deviceId) {
+    const snap = await codesRef().doc(deviceId).get();
+    return snap.exists ? snap.data() : null;
+  }
+
   // Kullanici: girdigi kodu gecici olarak yaz → kural dogrular.
   // Kod bu dokumanda tutulur ama OKUMA kurali kapalidir; yalnizca
   // device_bindings.create kurali sunucu tarafinda okuyabilir.
@@ -998,6 +1004,11 @@
     setDeviceCode: async function (deviceId, code, label, byUid) {
       ensureFirebase();
       try { return await setDeviceCode(deviceId, code, label, byUid); } catch (e) { throw toError(e); }
+    },
+
+    getDeviceCode: async function (deviceId) {
+      ensureFirebase();
+      try { return await getDeviceCode(deviceId); } catch (e) { throw toError(e); }
     },
 
     deleteDeviceCode: async function (deviceId) {

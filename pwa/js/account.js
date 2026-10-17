@@ -422,6 +422,10 @@
     } catch (e) {
       deviceStatus = { state: 'error', error: e };
     }
+    /* Admin kod formunda "Cihaz Kimliği" boşsa otomatik doldur. Böylece kod
+       yanlış bir kimlikle kaydedilmez (yazım hatası → "kod yanlış" hatası). */
+    const codeIdEl = $('codeDeviceId');
+    if (codeIdEl && !codeIdEl.value.trim()) codeIdEl.value = lastDeviceId;
     paintOwnership();
     renderDeviceTable();
   }
@@ -640,10 +644,14 @@
 
     setResult('Kod kaydediliyor…');
     try {
-      await App.Auth.setDeviceCode(id, code, '');
+      const c = await App.Auth.setDeviceCode(id, code, '');
       if (codeEl) codeEl.value = '';
       if (idEl) idEl.value = '';
-      setResult('Kod kaydedildi → ' + id + ' : ' + code + '  (kodu kullanıcıya iletin)', 'ok');
+      const kayitli = String((c && c.code != null) ? c.code : code);
+      const aktif = !!(c && c.active === true);
+      setResult('Kod kaydedildi → ' + id + ' : ' + kayitli +
+                (aktif ? '  (aktif)' : '  (DİKKAT: pasif kaydedildi!)') +
+                '  — kodu kullanıcıya iletin', aktif ? 'ok' : 'err');
       await renderCodeTable();
     } catch (e) {
       setResult('Kaydedilemedi: ' + (e.human || e.message), 'err');

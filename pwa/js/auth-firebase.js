@@ -69,6 +69,43 @@
     }
   }
 
+  /* Bağlama başarısız olduğunda KESİN nedeni söyle.
+     Kod doğrulaması Firestore kurallarında SUNUCU tarafında yapılır; bu yüzden
+     istemci "kod yanlış" ile "kod tanımlı değil"i normalde ayırt EDEMEZ.
+     Admin kodu okuyabildiği için kesin nedeni söyleyebiliriz. */
+  async function activationHelp(deviceId, code) {
+    if (App.Auth.isAdmin && App.Auth.isAdmin()) {
+      let doc = null;
+      try { doc = await FB().getDeviceCode(deviceId); } catch (e) { doc = null; }
+      if (!doc) {
+        return 'Bu cihaz için aktivasyon kodu TANIMLI DEĞİL (' + deviceId + '). ' +
+               'Ayarlar → Hesap & Roller → “Cihaz Aktivasyon Kodları” bölümünden ' +
+               deviceId + ' kimliğiyle kod ekleyin.';
+      }
+      if (doc.active !== true) {
+        return 'Kayıtlı kod PASİF görünüyor (active alanı true değil). ' +
+               'Kodu yeniden kaydedin.';
+      }
+      if (typeof doc.code !== 'string') {
+        return 'Kayıtlı kod METİN değil (' + (typeof doc.code) + ' olarak kaydedilmiş). ' +
+               'Güvenlik kuralı metin karşılaştırdığı için kod hiçbir zaman eşleşmez. ' +
+               'Kodu panelden (Ayarlar → Hesap & Roller → “Cihaz Aktivasyon Kodları”) ' +
+               'yeniden kaydedin.';
+      }
+      if (String(doc.code) !== String(code)) {
+        return 'Kod eşleşmiyor. Kayıtlı kod: “' + String(doc.code) +
+               '” — girdiğiniz: “' + String(code) + '”.';
+      }
+      return 'Kod doğru görünüyor ama bağlama reddedildi. Firestore güvenlik ' +
+             'kuralları güncel olmayabilir (npm run deploy:rules).';
+    }
+    return 'Kod doğrulanamadı. Olası nedenler: (1) ' + deviceId +
+           ' için aktivasyon kodu henüz TANIMLI DEĞİL, (2) kod yanlış, ' +
+           '(3) kod pasif. Yöneticiden ' + deviceId + ' kimliğiyle bir kod ' +
+           'tanımlamasını isteyin (Ayarlar → Hesap & Roller → ' +
+           '“Cihaz Aktivasyon Kodları”).';
+  }
+
   // Oturum değişince cihaz erişim önbelleğini geçersiz kıl.
   function resetDeviceAccess() {
     state.deviceAccess = {};
@@ -640,14 +677,26 @@
       const st = await App.Auth.checkDevice(deviceId);
       if (st.state !== 'free') throw err('Cihaz bağlı.', bindingBlockedText(st));
 
+      /* 1) Kodu sunucu tarafında doğrula (geçici device_unlocks kaydı).
+         Kurallar kodu karşılaştırır; eşleşmezse yazma reddedilir. */
       try {
         await FB().unlockDevice(deviceId, code, me.id);
+      } catch (e) {
+        const help = await activationHelp(deviceId, code);
+        try { await FB().clearUnlock(deviceId); } catch (e2) { /* yoksay */ }
+        throw err(e.human || e.message, help);
+      }
+
+      /* 2) Kodu doğrulandı → cihazı bağla ve geçici kaydı temizle. */
+      try {
         await FB().bindDevice(deviceId, me.id, '');
       } catch (e) {
-        throw err(e.human || e.message, 'Kod yanlış ya da cihaz bağlanamadı. Kodu kontrol edin.');
-      } finally {
-        try { await FB().clearUnlock(deviceId); } catch (e) { /* yoksay */ }
+        try { await FB().clearUnlock(deviceId); } catch (e2) { /* yoksay */ }
+        throw err(e.human || e.message,
+          'Kod doğrulandı ancak cihaz bağlanamadı. Cihaz bu sırada başkası ' +
+          'tarafından bağlanmış olabilir. Sayfayı yenileyip tekrar deneyin.');
       }
+      try { await FB().clearUnlock(deviceId); } catch (e2) { /* yoksay */ }
 
       try { await FB().addAuditLog('bind_device', deviceId, { owner: me.id, via: 'code' }); } catch (e) { /* yoksay */ }
       rememberOwner(deviceId, me.id, me.email, '');
