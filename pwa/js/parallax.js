@@ -61,8 +61,11 @@
   function initLenis(tier) {
     destroyLenis();
 
-    if (tier === 'low' || isReducedMotion() || typeof window.Lenis === 'undefined') {
-      return null;
+    var isTouchOrMobile = ('ontouchstart' in window) ||
+                          (navigator.maxTouchPoints > 0) ||
+                          (window.matchMedia && window.matchMedia('(max-width: 980px)').matches);
+    if (isTouchOrMobile || tier === 'low' || isReducedMotion() || typeof window.Lenis === 'undefined') {
+      return null; // Mobilde tamamen yerel (native) akıcı kaydırmaya bırak
     }
 
     try {
@@ -442,10 +445,11 @@
       window.gsap.registerPlugin(window.ScrollTrigger);
 
       var isUltra = (tier === 'ultra');
+      var isMobile = window.matchMedia && window.matchMedia('(max-width: 980px)').matches;
       var hero = document.getElementById('hero');
 
-      /* 1. SİNEMATİK 4-KATMANLI HERO PARALLAX KOREOGRAFİSİ (Varsa) */
-      if (hero) {
+      /* 1. SİNEMATİK 4-KATMANLI HERO PARALLAX KOREOGRAFİSİ (Varsa ve masaüstü ise) */
+      if (hero && !isMobile) {
         var layer1 = hero.querySelector('[data-parallax-layer="1"]');
         var layer2 = hero.querySelector('[data-parallax-layer="2"]');
         var layer3 = hero.querySelector('[data-parallax-layer="3"]');
@@ -533,6 +537,13 @@
             layer4.style.transform = 'none';
           }
         }
+      } else if (hero) {
+        var heroLayers = hero.querySelectorAll('[data-parallax-layer]');
+        heroLayers.forEach(function (l) {
+          l.style.transform = 'none';
+          l.style.filter = 'none';
+          l.style.opacity = '';
+        });
       }
 
       /* 2. BÖLÜM VE KONFİGÜRASYON PANELLERİ İÇİN GİRİŞ ANİMASYONLARI */

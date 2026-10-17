@@ -242,6 +242,24 @@
     return audioCtx;
   }
 
+  function unlockAudio() {
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+    // iOS Safari SpeechSynthesis hazırlığı (boş utterance)
+    if (window.speechSynthesis && window.speechSynthesis.speak) {
+      try {
+        const silent = new SpeechSynthesisUtterance('');
+        silent.volume = 0;
+        window.speechSynthesis.speak(silent);
+      } catch (e) {}
+    }
+    window.removeEventListener('pointerdown', unlockAudio);
+    window.removeEventListener('touchstart', unlockAudio);
+  }
+  window.addEventListener('pointerdown', unlockAudio, { passive: true });
+  window.addEventListener('touchstart', unlockAudio, { passive: true });
+
   App.sound = {
     click: function () {
       if (!settings.soundEnabled) return;
@@ -340,7 +358,14 @@
 
   App.haptic = function (ms) {
     if (settings.vibrateEnabled && navigator.vibrate) {
-      try { navigator.vibrate(ms || 15); } catch (e) { /* yoksay */ }
+      try { navigator.vibrate(ms || 15); } catch (e) {}
+    } else if (settings.vibrateEnabled) {
+      // iOS Safari için görsel haptik fallback (aktif butona hafif pulse)
+      const activeEl = document.activeElement;
+      if (activeEl && activeEl.classList && !activeEl.classList.contains('haptic-pulse')) {
+        activeEl.classList.add('haptic-pulse');
+        setTimeout(function () { activeEl.classList.remove('haptic-pulse'); }, 180);
+      }
     }
   };
 
@@ -384,6 +409,12 @@
   /* ---------------------------------- 3D Card Tilt, Glare & Parallaks */
 
   App.init3DTilt = function () {
+    const hasCoarsePointer = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+    const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+    if (hasCoarsePointer || isTouch) {
+      return; // Dokunmatik ekranlarda kart tilt olaylarını hiç bağlama
+    }
+
     const reducedMotion = window.matchMedia &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reducedMotion) return;
