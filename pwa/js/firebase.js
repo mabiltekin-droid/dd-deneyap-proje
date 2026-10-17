@@ -169,6 +169,7 @@
       user: {
         id: firebaseUser.uid,
         email: firebaseUser.email,
+        displayName: firebaseUser.displayName || null,
         created_at: firebaseUser.metadata.creationTime
       }
     };
@@ -514,13 +515,18 @@
 
   // Oturum açan kullanıcının profili yoksa yeniden oluşturur.
   // (Kullanıcı Firestore verisini silse bile hesabı kurtarır.) İlk kullanıcı admin olur.
-  async function ensureOwnProfile(uid, email, displayName) {
+  // `role` verilirse (ör. davet kodu) o rol kullanılır.
+  async function ensureOwnProfile(uid, email, displayName, role) {
     const existing = await getProfile(uid);
     if (existing) return existing;
-    let isFirst = false;
-    try { isFirst = (await listProfiles()).length === 0; }
-    catch (e) { isFirst = false; }
-    return createUserProfile(uid, email, isFirst ? 'admin' : 'user', displayName);
+    let desired = (role === 'admin' || role === 'user') ? role : null;
+    if (!desired) {
+      let isFirst = false;
+      try { isFirst = (await listProfiles()).length === 0; }
+      catch (e) { isFirst = false; }
+      desired = isFirst ? 'admin' : 'user';
+    }
+    return createUserProfile(uid, email, desired, displayName);
   }
 
   // Admin tarafından kullanıcı oluşturma — İKİNCİL app ile, admin oturumu korunur.
@@ -589,6 +595,49 @@
     return true;
   }
 
+  /* Google ile oturum açma (popup; engellenirse tam sayfa yönlendirme).
+     Google hesapları e-postası doğrulanmış gelir; ayrıca doğrulama gerekmez. */
+  function googleHuman(err) {
+    const code = err && err.code;
+    if (code === 'auth/operation-not-allowed')
+      return 'Google ile giriş kapalı. Firebase Console > Authentication > Sign-in method > Google seçeneğini etkinleştirin.';
+    if (code === 'auth/unauthorized-domain')
+      return 'Bu alan adı yetkili değil. Console > Authentication > Settings > Authorized domains listesine ekleyin.';
+    if (code === 'auth/account-exists-with-different-credential')
+      return 'Bu e-posta şifre ile kayıtlı. Önce e-posta + şifre ile giriş yapın.';
+    if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request')
+      return 'Google girişi iptal edildi.';
+    return human(err);
+  }
+
+  async function signInWithGoogle() {
+    ensureFirebase();
+    const provider = new firebase.auth.GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+
+    let cred = null;
+    try {
+      cred = await auth.signInWithPopup(provider);
+    } catch (e) {
+      const code = e && e.code;
+      if (code === 'auth/popup-blocked' ||
+          code === 'auth/operation-not-supported-in-this-environment') {
+        // Açılır pencere engellendi/desteklenmiyor → tam sayfa yönlendirme akışı.
+        // Dönüşte onAuthStateChanged oturumu kendiliğinden kaydeder.
+        await auth.signInWithRedirect(provider);
+        return { redirect: true };
+      }
+      const err = new Error((e && e.message) || 'Google girişi başarısız.');
+      err.code = code || 'unknown';
+      err.human = googleHuman(e);
+      throw err;
+    }
+
+    const user = cred.user;
+    const token = await user.getIdToken();
+    return saveSession(user, token);
+  }
+
   /* -------------------------------------------------- Dışa Açık API ---------- */
 
   App.FB = {
@@ -616,6 +665,8 @@
       const token = await cred.user.getIdToken();
       return saveSession(cred.user, token);
     },
+
+    signInWithGoogle: signInWithGoogle,
 
     signUp: async function (email, password, data) {
       ensureFirebase();

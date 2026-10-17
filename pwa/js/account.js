@@ -203,6 +203,32 @@
     }
   }
 
+  async function doGoogleSignIn() {
+    busy = true;
+    const btn = $('googleSignInBtn');
+    if (btn) btn.disabled = true;
+    setResult('Google ile giriş yapılıyor…');
+    try {
+      const r = await App.Auth.signInWithGoogle();
+      if (r && r.redirect) {
+        setResult('Google sayfasına yönlendiriliyorsunuz…');
+        return;
+      }
+      setResult('Giriş başarılı.', 'ok');
+      App.sound && App.sound.ok ? App.sound.ok() : (App.sound && App.sound.click());
+      App.haptic && App.haptic(40);
+    } catch (e) {
+      if (e && e.code === 'auth/popup-closed-by-user') {
+        setResult('Google girişi iptal edildi.', 'err');
+      } else {
+        setResult(e.human || e.message, 'err');
+      }
+    } finally {
+      busy = false;
+      if (btn) btn.disabled = false;
+    }
+  }
+
   async function doSignOut() {
     try { await App.Auth.signOut(); } catch (e) { /* yoksay */ }
     setResult('Çıkış yapıldı.', 'ok');
@@ -660,6 +686,7 @@
 
     $('authSignInBtn').addEventListener('click', doSignIn);
     $('authSignUpBtn').addEventListener('click', doSignUp);
+    if ($('googleSignInBtn')) $('googleSignInBtn').addEventListener('click', doGoogleSignIn);
     $('authSignOutBtn').addEventListener('click', doSignOut);
     $('forgotPasswordBtn').addEventListener('click', doForgotPassword);
     $('createUserBtn').addEventListener('click', doCreateUser);

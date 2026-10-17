@@ -213,6 +213,43 @@
       return App.Auth.snapshot();
     },
 
+    signInWithGoogle: async function () {
+      state.error = null;
+      const r = await FB().signInWithGoogle();
+      if (r && r.redirect) return { redirect: true };
+      state.session = r;
+      resetDeviceAccess();
+
+      // Davet kodu (varsa): profil yoksa davet rolüyle oluştur ve kodu tüket.
+      let code = null;
+      try { code = localStorage.getItem('deneyap.invite'); } catch (e) { /* yoksay */ }
+      if (code) {
+        let invite = null;
+        try { invite = await FB().verifyInvite(code); } catch (e) { invite = null; }
+        if (invite) {
+          try {
+            const existing = await FB().profile();
+            if (existing && existing.__setupRequired) {
+              await FB().ensureOwnProfile(r.user.id, r.user.email, r.user.displayName, invite.role);
+            }
+            await FB().consumeInvite(code, r.user.id);
+            localStorage.removeItem('deneyap.invite');
+          } catch (e) { /* yoksay */ }
+        }
+      }
+
+      await refreshProfile();
+      state.ready = true;
+      emit();
+      try {
+        await FB().addLoginLog({
+          userId: r.user.id, email: r.user.email,
+          success: true, action: 'login_google', userAgent: navigator.userAgent
+        });
+      } catch (e) { /* yoksay */ }
+      return App.Auth.snapshot();
+    },
+
     signUp: async function (email, password, displayName) {
       state.error = null;
 

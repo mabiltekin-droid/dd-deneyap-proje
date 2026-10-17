@@ -13,9 +13,27 @@ ancak canlı projeye ayrıca **yayınlanmaları** gerekir.
 
 1. **Firestore Database** oluşturulmuş olmalı (Native mode).
 2. **Authentication → Sign-in method → Email/Password** etkin olmalı.
-3. (İsteğe bağlı) E-posta doğrulama şablonlarını Türkçeleştir.
+3. **Authentication → Sign-in method → Google** etkin olmalı (aşağıya bakın).
+4. (İsteğe bağlı) E-posta doğrulama şablonlarını Türkçeleştir.
 
-Bu iki adım tamamlanmadan panel oturum açamaz.
+Bu adımlar tamamlanmadan panel oturum açamaz.
+
+### 0.1) Google ile girişi açma
+
+1. Firebase Console → **Authentication** → **Sign-in method** → **Google** → **Enable**.
+2. **Proje destek e-postası** (support email) seçin. İlk kez açarken Google OAuth
+   onay ekranı otomatik oluşturulur.
+3. **Authentication → Settings → Authorized domains** listesine üretim alan adını
+   ekleyin (ör. `ddproje.vercel.app`). `localhost` ve
+   `ddproje-9f594.firebaseapp.com` zaten varsayılan olarak yetkilidir.
+4. Panelde **Ayarlar → Hesap & Roller → “Google ile Devam Et”** butonu görünür.
+
+> • Google ile **ilk giriş yapan** hesap (profil hiç yoksa) **otomatik ADMIN** olur.
+> • `?invite=KOD` bağlantısıyla gelip Google ile giren kullanıcı, davetin rolünü alır.
+> • Google hesapları e-posta doğrulanmış kabul edilir; ayrı doğrulama adımı yoktur.
+> • Aynı e-posta şifre ile de kayıtlıysa Google girişi
+>   `auth/account-exists-with-different-credential` verir → önce e-posta+şifre
+>   ile giriş yapılmalıdır.
 
 ---
 

@@ -4646,3 +4646,51 @@ main {
   .ev-item { animation: none; }
   .voice-btn.listening { animation: none; }
 }
+
+/* --------------------------------------------- Google ile Giriş ------- */
+.auth-or {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1rem 0 0.85rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.auth-or::before,
+.auth-or::after {
+  content: '';
+  flex: 1 1 auto;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.28;
+}
+
+.btn.google {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  background: #ffffff;
+  color: #1f2937;
+  border-color: rgba(15, 23, 42, 0.12);
+  font-weight: 700;
+}
+
+.btn.google:hover:not(:disabled) {
+  background: #f1f5f9;
+}
+
+.btn.google:active:not(:disabled) {
+  background: #e2e8f0;
+}
+
+.btn.google .google-g {
+  width: 1.1em;
+  height: 1.1em;
+  flex: 0 0 auto;
+}
