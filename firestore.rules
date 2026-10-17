@@ -14,8 +14,14 @@ service cloud.firestore {
     }
 
     // Mevcut kullanici admin mi? (profiles/{uid}.role == 'admin')
+    // NOT: get() dokuman YOKKEN HATA verir. Bu yuzden once exists() ile
+    // kontrol edilir. Aksi halde 'isAdmin() || ...' bicimindeki kurallarda
+    // hata olusup TUM kural reddedilir; profil dokumani eksik olan bir
+    // kullanici hicbir sey yapamaz (or. cihaz baglayamaz) hale gelir.
     function isAdmin() {
-      return signedIn() && getProfile(uid()) != null && getProfile(uid()).role == 'admin';
+      return signedIn()
+          && exists(/databases/$(database)/documents/profiles/$(uid()))
+          && getProfile(uid()).role == 'admin';
     }
 
     function isSelf(u) { return signedIn() && uid() == u; }
@@ -99,8 +105,8 @@ service cloud.firestore {
                     && request.resource.data.owner_id == uid()
                     && request.resource.data.status == 'active'
                     && (
-                      isAdmin()
-                      || (unlockExists(deviceId) && unlockUid(deviceId) == uid())
+                      (unlockExists(deviceId) && unlockUid(deviceId) == uid())
+                      || isAdmin()
                     );
 
       // Guncelle:
@@ -108,8 +114,7 @@ service cloud.firestore {
       //  * sahibi -> YALNIZCA active <-> release_pending gecisi yapabilir
       //  * baskasi -> KESINLIKLE HAYIR
       allow update: if signedIn() && (
-        isAdmin()
-        || (
+        (
           deviceExists(deviceId)
           && deviceOwner(deviceId) == uid()
           && request.resource.data.owner_id == uid()
@@ -118,6 +123,7 @@ service cloud.firestore {
             || (deviceReleased(deviceId) && request.resource.data.status == 'active')
           )
         )
+        || isAdmin()
       );
 
       // Silme = baglanti kesme onayi -> cihazi serbest birakir. Yalnizca admin.

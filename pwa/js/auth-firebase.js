@@ -106,6 +106,33 @@
            '“Cihaz Aktivasyon Kodları”).';
   }
 
+  /* Kod DOĞRU ama cihaz bağlanamadı: nedeni ayırt et.
+     - Ağ hatası (unavailable/timeout) → internet
+     - Cihaz bu sırada başkasına bağlanmış → admin ataması gerekir
+     - Sunucu reddi (permission-denied) → kurallar/eski kural veya eksik profil */
+  async function bindFailureHelp(deviceId, e) {
+    const k = String((e && e.code) || '');
+    if (k === 'unavailable' || k === 'deadline-exceeded' ||
+        /unavailable|network|timeout|internet|fetch/i.test((e && e.message) || '')) {
+      return 'Kodunuz DOĞRU, ancak bağlantı kesildiği için cihaz bağlanamadı. ' +
+             'İnternet bağlantısını kontrol edip tekrar deneyin. ' +
+             '(Ağ hatası: ' + (k || 'bağlantı') + ')';
+    }
+    let durum = null;
+    try {
+      const st = await App.Auth.checkDevice(deviceId);
+      durum = st && st.state;
+    } catch (e2) { durum = null; }
+    if (durum && durum !== 'free') {
+      return 'Kodunuz DOĞRU, ancak cihaz bu sırada başkası tarafından ' +
+             'bağlanmış. Yöneticiden cihazı size atamasını isteyin.';
+    }
+    return 'Kodunuz DOĞRU, ancak cihaz bağlanamadı (sunucu reddi: ' +
+           (k || 'bilinmeyen') + '). Nedenleri: Firestore güvenlik kuralları ' +
+           'güncel değil ya da hesap profiliniz eksik. Sayfayı yenileyip ' +
+           'tekrar deneyin; sürerse yöneticinize bildirin.';
+  }
+
   // Oturum değişince cihaz erişim önbelleğini geçersiz kıl.
   function resetDeviceAccess() {
     state.deviceAccess = {};
@@ -688,13 +715,15 @@
       }
 
       /* 2) Kodu doğrulandı → cihazı bağla ve geçici kaydı temizle. */
+      /* Profil dokümanı eksikse kurallardaki isAdmin() hata verip bağlamayı
+         reddedebilir; önce profili garanti altına al. */
+      if (!state.profile) { try { await refreshProfile(); } catch (e2) { /* yoksay */ } }
       try {
         await FB().bindDevice(deviceId, me.id, '');
       } catch (e) {
+        const help = await bindFailureHelp(deviceId, e);
         try { await FB().clearUnlock(deviceId); } catch (e2) { /* yoksay */ }
-        throw err(e.human || e.message,
-          'Kod doğrulandı ancak cihaz bağlanamadı. Cihaz bu sırada başkası ' +
-          'tarafından bağlanmış olabilir. Sayfayı yenileyip tekrar deneyin.');
+        throw err(e.human || e.message, help);
       }
       try { await FB().clearUnlock(deviceId); } catch (e2) { /* yoksay */ }
 
