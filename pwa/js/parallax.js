@@ -116,17 +116,22 @@
     }
     targetPos = Math.max(0, Math.round(targetPos));
 
+    var dur = typeof duration === 'number' ? duration : 0.85;
+
     if (isReducedMotion()) {
-      window.scrollTo(0, targetPos);
+      if (lenisInstance && typeof lenisInstance.scrollTo === 'function') {
+        lenisInstance.scrollTo(targetPos, { immediate: true });
+      } else {
+        window.scrollTo(0, targetPos);
+      }
       if (typeof onComplete === 'function') onComplete();
       return;
     }
 
-    var start = window.pageYOffset || window.scrollY || document.documentElement.scrollTop || 0;
+    var start = window.pageYOffset || window.scrollY || document.documentElement.scrollTop || (lenisInstance ? lenisInstance.scroll : 0);
     var dist = Math.abs(targetPos - start);
 
     if (dist < 2) {
-      window.scrollTo(0, targetPos);
       if (typeof onComplete === 'function') onComplete();
       return;
     }
@@ -140,8 +145,21 @@
       currentRafScrollId = null;
     }
 
-    var dur = typeof duration === 'number' ? duration : Math.min(0.85, Math.max(0.4, dist / 2000));
+    dur = typeof duration === 'number' ? duration : Math.min(0.9, Math.max(0.4, dist / 2200));
 
+    // Eğer Lenis pürüzsüz kaydırma motoru etkinse doğrudan Lenis'in kendi scrollTo metodunu kullan
+    if (lenisInstance && typeof lenisInstance.scrollTo === 'function') {
+      lenisInstance.scrollTo(targetPos, {
+        duration: dur,
+        easing: function (t) { return t === 1 ? 1 : 1 - Math.pow(2, -10 * t); },
+        onComplete: function () {
+          if (typeof onComplete === 'function') onComplete();
+        }
+      });
+      return;
+    }
+
+    // Lenis yoksa GSAP veya yerel scrollTo motoru
     if (window.gsap && window.gsap.to) {
       var scrollObj = { y: start };
       currentScrollTween = window.gsap.to(scrollObj, {
@@ -150,18 +168,24 @@
         ease: 'power3.out',
         overwrite: 'auto',
         onUpdate: function () {
-          window.scrollTo(0, Math.round(scrollObj.y));
+          var y = Math.round(scrollObj.y);
+          window.scrollTo(0, y);
+          if (document.documentElement) document.documentElement.scrollTop = y;
         },
         onComplete: function () {
           currentScrollTween = null;
           window.scrollTo(0, targetPos);
+          if (document.documentElement) document.documentElement.scrollTop = targetPos;
           if (typeof onComplete === 'function') onComplete();
         }
       });
       return;
     }
 
-    fallbackRafScroll(targetPos, dur, onComplete);
+    window.scrollTo({ top: targetPos, behavior: 'smooth' });
+    if (typeof onComplete === 'function') {
+      setTimeout(onComplete, Math.round(dur * 1000));
+    }
   }
 
   function fallbackRafScroll(targetPos, duration, onComplete) {
@@ -204,13 +228,13 @@
     options = options || {};
 
     var header = document.querySelector('.glass-header');
-    var headerHeight = (header ? header.offsetHeight : 72) + 16;
+    var headerHeight = (header ? header.offsetHeight : 64) + 16;
     var targetPos = 0;
 
     // Hem #hero hem de settings'teki en üst panel #accountCard için doğrudan en tepeye (0) git
     if (target !== document.body && target.id !== 'hero' && target.id !== 'accountCard') {
       var rect = target.getBoundingClientRect();
-      var currentScroll = window.pageYOffset || window.scrollY || document.documentElement.scrollTop || 0;
+      var currentScroll = window.pageYOffset || window.scrollY || document.documentElement.scrollTop || (lenisInstance ? lenisInstance.scroll : 0);
       targetPos = Math.max(0, Math.round(rect.top + currentScroll - headerHeight));
     }
 
@@ -324,10 +348,23 @@
         item.addEventListener('mouseenter', function () {
           moveBubbleTo(item, true);
         });
-        item.addEventListener('click', function () {
+        item.addEventListener('click', function (e) {
           items.forEach(function (i) { i.classList.remove('active'); });
           item.classList.add('active');
           moveBubbleTo(item, true);
+
+          var href = item.getAttribute('href') || item.getAttribute('data-scroll-to') || '';
+          var hashIdx = href.indexOf('#');
+          if (hashIdx !== -1) {
+            var hash = href.substring(hashIdx);
+            if (hash.length > 1) {
+              var targetEl = document.querySelector(hash);
+              if (targetEl) {
+                e.preventDefault();
+                scrollToElement(targetEl, hash);
+              }
+            }
+          }
 
           // Yatay çubuk taşması varsa (mobil ekranlar), yalnızca nav içi yatay kaydır
           // ASLA item.scrollIntoView çağrılmaz (sayfa dikey kaydırmasını bozmaz)!

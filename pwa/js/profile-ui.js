@@ -299,6 +299,7 @@
     if ($('saveProfileBtn')) $('saveProfileBtn').addEventListener('click', saveProfile);
     if ($('avatarPreview')) $('avatarPreview').addEventListener('click', pickAvatar);
     if ($('avatarPickBtn')) $('avatarPickBtn').addEventListener('click', pickAvatar);
+    if ($('avatarPickBox')) $('avatarPickBox').addEventListener('click', pickAvatar);
     if ($('avatarInput')) $('avatarInput').addEventListener('change', onAvatarChange);
     if ($('changeEmailBtn')) $('changeEmailBtn').addEventListener('click', function () { toggle('changeEmailRow'); });
     if ($('cancelEmailBtn')) $('cancelEmailBtn').addEventListener('click', function () { toggle('changeEmailRow', false); });
