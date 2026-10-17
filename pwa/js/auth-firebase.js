@@ -367,6 +367,42 @@
 
     listAuditLogs: async function (limit) { return FB().listAuditLogs(limit); },
 
+    /* ============================================== OLAY GÜNLÜĞÜ ========== */
+
+    // Bir olayı buluta (Firestore) yazar. Yalnızca giriş yapılmışsa ve cihaz
+    // kullanıcıya görünüyorsa yazılır (sahiplik/erişim sınırı korunur).
+    logEvent: async function (ev) {
+      const me = state.session && state.session.user;
+      if (!me) return null;
+      if (ev && ev.dev && !App.Auth.canView(ev.dev)) return null;
+      return FB().addAlarmEvent(Object.assign({}, ev, { owner_id: me.id }));
+    },
+
+    // Kendi olaylarım (bulut).
+    listMyEvents: async function (limit) {
+      const me = state.session && state.session.user;
+      if (!me) return [];
+      return FB().listAlarmEvents(me.id, limit);
+    },
+
+    // Admin: tüm cihazların olayları.
+    listAllEvents: async function (limit) {
+      if (!App.Auth.isAdmin()) throw err('Yetki yok.', 'Bu listeyi yalnızca admin görebilir.');
+      return FB().listAllAlarmEvents(limit);
+    },
+
+    deleteEvent: async function (id) {
+      if (!App.Auth.isAdmin()) throw err('Yetki yok.', 'Yalnızca admin silebilir.');
+      return FB().deleteAlarmEvent(id);
+    },
+
+    clearAllEvents: async function () {
+      if (!App.Auth.isAdmin()) throw err('Yetki yok.', 'Yalnızca admin temizleyebilir.');
+      const n = await FB().clearAllAlarmEvents();
+      try { await FB().addAuditLog('clear_alarm_events', null, { count: n }); } catch (e) { /* yoksay */ }
+      return n;
+    },
+
     /* ============================================== CİHAZ MÜLKİYETİ ======= */
 
     // Admin: tüm bağlantılar | Kullanıcı: yalnızca kendi bağlantıları.

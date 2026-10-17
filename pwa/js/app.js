@@ -610,7 +610,7 @@
   /* --- Cihaz görünürlüğü --------------------------------------------------
      Başka bir hesaba bağlı cihaz; farklı bir hesapta ya da oturum yokken
      "hiç yokmuş" gibi gösterilir: telemetri, kumanda ve alarmlar gizlenir. */
-  const DEVICE_SECTIONS = ['homeWidget', 'telemetry', 'command-center', 'analytics', 'diagnostics'];
+  const DEVICE_SECTIONS = ['homeWidget', 'telemetry', 'command-center', 'analytics', 'eventLog', 'diagnostics'];
 
   function deviceVisible(dev) {
     if (!dev) return false;
@@ -682,6 +682,11 @@
     renderLockHint();
     setControlsEnabled(controlsAllowed());
     announceAlarms(data, state);
+
+    /* Olay günlüğü: alarm/olay geçişlerini kalıcı kayda al */
+    if (window.App.Events && window.App.Events.note) {
+      try { window.App.Events.note(data, state); } catch (e) { /* günlük hatası çizimi bozmasın */ }
+    }
 
     /* SCADA WebGL Shader Motoru & Telemetri Kara Kutusu */
     if (window.App.Shaders && window.App.Shaders.update) {
@@ -778,6 +783,7 @@
     online = true;
     failStreak = 0;
     App.setConnBadge('live', 'Canlı Telemetri');
+    if (window.App.Events && window.App.Events.setOnline) { try { window.App.Events.setOnline(true); } catch (e) {} }
   }
 
   function markOffline(err) {
@@ -788,6 +794,7 @@
                  : App.api.transport() && App.deviceOnline === false ? 'Cihaz Çevrimdışı'
                  : 'Bağlantı Yok';
     App.setConnBadge('offline', reason);
+    if (window.App.Events && window.App.Events.setOnline) { try { window.App.Events.setOnline(false, reason); } catch (e) {} }
 
     setControlsEnabled(false);
     setChip('sysChip', 'warning', 'BAĞLANTI YOK');

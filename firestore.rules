@@ -167,6 +167,29 @@ service cloud.firestore {
     }
 
     // ================================================================
+    // ALARM_EVENTS - olay gunlugu / alarm gecmisi
+    //
+    //  * Kayit: giris yapmis kullanici kendi adina; YALNIZCA gorebildigi
+    //    (bosta veya kendine bagli) bir cihaz icin yazabilir.
+    //  * Okuma: yalnizca kendi kayitlari veya admin tumunu.
+    //  * Degistirme yok (kayitlar degismez); silme yalnizca admin.
+    // ================================================================
+    match /alarm_events/{eventId} {
+      allow create: if signedIn()
+                    && request.resource.data.owner_id == uid()
+                    && (
+                      isAdmin()
+                      || !deviceExists(request.resource.data.dev)
+                      || deviceOwner(request.resource.data.dev) == uid()
+                    );
+
+      allow read: if signedIn() && (resource.data.owner_id == uid() || isAdmin());
+
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+
+    // ================================================================
     // INVITES - davet kodlari
     // ================================================================
     match /invites/{code} {

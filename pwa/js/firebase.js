@@ -185,6 +185,7 @@
   const COL_LOGS = 'login_logs';
   const COL_INVITES = 'invites';
   const COL_AUDIT = 'audit_logs';
+  const COL_EVENTS = 'alarm_events';
 
   function profilesRef() { return db.collection(COL_PROFILES); }
   function bindingsRef() { return db.collection(COL_BINDINGS); }
@@ -193,6 +194,7 @@
   function logsRef() { return db.collection(COL_LOGS); }
   function invitesRef() { return db.collection(COL_INVITES); }
   function auditRef() { return db.collection(COL_AUDIT); }
+  function eventsRef() { return db.collection(COL_EVENTS); }
 
   /* Profiles collection: doc ID = user.uid */
   async function createProfile(user, role, displayName) {
@@ -370,6 +372,59 @@
   async function listAuditLogs(limit) {
     const snap = await auditRef().orderBy('timestamp', 'desc').limit(limit || 30).get();
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  }
+
+  /* -------------------------------------------------- Olay günlüğü ---------- */
+  /* alarm_events: sensör/alarm olaylarının kalıcı kaydı. Kullanıcı yalnızca
+     kendi olaylarını yazar/okur; admin tümünü görür. */
+
+  async function addAlarmEvent(ev) {
+    ev = ev || {};
+    const ref = await eventsRef().add({
+      owner_id: ev.owner_id || null,
+      dev: ev.dev || '',
+      type: ev.type || 'system',
+      severity: ev.severity || 'info',
+      message: String(ev.message || '').slice(0, 400),
+      at: Number(ev.at) || Date.now(),
+      local_id: ev.local_id || null,
+      created_at: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    return ref.id;
+  }
+
+  async function listAlarmEvents(ownerId, limit) {
+    const snap = await eventsRef()
+      .where('owner_id', '==', ownerId)
+      .orderBy('at', 'desc')
+      .limit(limit || 200)
+      .get();
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  }
+
+  async function listAllAlarmEvents(limit) {
+    const snap = await eventsRef().orderBy('at', 'desc').limit(limit || 300).get();
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  }
+
+  async function deleteAlarmEvent(id) {
+    if (!id) return;
+    await eventsRef().doc(id).delete();
+  }
+
+  async function clearAllAlarmEvents() {
+    // Admin temizliği: toplu silme (batch) ile sayfalarca kayıt.
+    let total = 0;
+    for (let i = 0; i < 20; i++) {
+      const snap = await eventsRef().orderBy('at', 'desc').limit(400).get();
+      if (snap.empty) break;
+      const batch = db.batch();
+      snap.docs.forEach(function (d) { batch.delete(d.ref); });
+      await batch.commit();
+      total += snap.docs.length;
+      if (snap.docs.length < 400) break;
+    }
+    return total;
   }
 
   /* -------------------------------------------------- Davetler --------------- */
@@ -893,6 +948,37 @@
     listAuditLogs: async function (limit) {
       ensureFirebase();
       try { return await listAuditLogs(limit); }
+      catch (e) { throw toError(e); }
+    },
+
+    /* ---------------------------------------------- Olay günlüğü ---------- */
+
+    addAlarmEvent: async function (ev) {
+      ensureFirebase();
+      return addAlarmEvent(ev);
+    },
+
+    listAlarmEvents: async function (ownerId, limit) {
+      ensureFirebase();
+      try { return await listAlarmEvents(ownerId, limit); }
+      catch (e) { throw toError(e); }
+    },
+
+    listAllAlarmEvents: async function (limit) {
+      ensureFirebase();
+      try { return await listAllAlarmEvents(limit); }
+      catch (e) { throw toError(e); }
+    },
+
+    deleteAlarmEvent: async function (id) {
+      ensureFirebase();
+      try { await deleteAlarmEvent(id); return true; }
+      catch (e) { throw toError(e); }
+    },
+
+    clearAllAlarmEvents: async function () {
+      ensureFirebase();
+      try { return await clearAllAlarmEvents(); }
       catch (e) { throw toError(e); }
     },
 

@@ -330,6 +330,34 @@
               buradan bir kod tanımlayın ve kodu kullanıcıya iletin.
             </p>
           </div>
+
+          <!-- ---- Admin: Olay Günlüğü (Tüm Cihazlar) ---- -->
+          <div id="adminEvents">
+            <div class="admin-head">
+              <span class="chip" data-state="normal">ADMIN</span>
+              <span>Olay Günlüğü — Tüm Cihazlar</span>
+              <span class="chip" id="adminEventChip" data-state="unknown" style="margin-left:auto;">—</span>
+            </div>
+            <div class="user-table-wrap">
+              <table class="user-table" id="eventTable">
+                <thead>
+                  <tr><th>Zaman</th><th>Cihaz</th><th>Olay</th><th>Mesaj</th><th>İşlem</th></tr>
+                </thead>
+                <tbody id="eventTableBody">
+                  <tr><td colspan="5">Yükleniyor…</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="btn-row">
+              <button class="btn ghost" type="button" id="adminEventRefresh">Yenile</button>
+              <button class="btn ghost" type="button" id="adminEventClear">Tümünü Sil</button>
+            </div>
+            <p class="help">
+              Tüm hesapların cihaz olaylarını (gaz, alev, sarsıntı, su, bağlantı) burada
+              görürsünüz. Kayıtlar cihaz paneli açıkken oluşur ve buluta yazılır;
+              <strong>yalnızca admin</strong> hepsini görebilir ve silebilir.
+            </p>
+          </div>
         </div>
 
         <!-- ---- Cihaz Mülkiyeti ---- -->
@@ -1161,6 +1189,7 @@
   <script src="./js/mqtt.js"></script>
   <script src="./js/firebase.js"></script>
   <script src="./js/auth-firebase.js"></script>
+  <script src="./js/events.js"></script>
   <script src="./js/history.js"></script>
   <script src="./js/app.js"></script>
   <script src="./js/settings.js"></script>

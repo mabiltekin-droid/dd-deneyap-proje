@@ -795,9 +795,61 @@
     </section>
 
     <!-- 5. SİSTEM TEŞHİSİ & BULUT AĞI -->
+    <!-- 4. OLAY GÜNLÜĞÜ & ALARM GEÇMİŞİ -->
+    <section class="scrolly-section eventlog-section" id="eventLog" aria-label="Olay Günlüğü ve Alarm Geçmişi">
+      <div class="section-badge-header">
+        <span class="sec-tag">[04 // OLAY GÜNLÜĞÜ &amp; ALARM GEÇMİŞİ]</span>
+        <h2 class="sec-title">Olay Günlüğü &amp; Alarm Geçmişi</h2>
+        <p class="sec-subtitle">Gaz, alev, sarsıntı, su baskını ve bağlantı olaylarının zaman damgalı kalıcı kaydı.</p>
+      </div>
+
+      <article class="card span-2 eventlog-card" id="eventCard">
+        <div class="card-head">
+          <div class="head-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 8v4l3 2"/>
+              <path d="M3.05 11a9 9 0 1 1 .5 4"/>
+              <path d="M3 4v4h4"/>
+            </svg>
+            <h3>Zaman Çizelgesi</h3>
+          </div>
+          <span class="chip" id="evChip" data-state="unknown">—</span>
+        </div>
+
+        <div class="ev-summary">
+          <div class="ev-stat"><span>Bugün</span><strong id="evCountToday">0</strong></div>
+          <div class="ev-stat"><span>Toplam</span><strong id="evCountAll">0</strong></div>
+          <div class="ev-stat" data-sev="danger"><span>Gaz</span><strong id="evCountGas">0</strong></div>
+          <div class="ev-stat" data-sev="danger"><span>Alev</span><strong id="evCountFlame">0</strong></div>
+          <div class="ev-stat" data-sev="danger"><span>Sarsıntı</span><strong id="evCountVib">0</strong></div>
+          <div class="ev-stat" data-sev="warn"><span>Su</span><strong id="evCountFlood">0</strong></div>
+          <div class="ev-stat" data-sev="info"><span>Sistem</span><strong id="evCountSystem">0</strong></div>
+        </div>
+
+        <div class="ev-filters" role="group" aria-label="Olay filtresi">
+          <button class="btn sm primary" type="button" data-evfilter="all">Tümü</button>
+          <button class="btn sm" type="button" data-evfilter="gas">Gaz</button>
+          <button class="btn sm" type="button" data-evfilter="flame">Alev</button>
+          <button class="btn sm" type="button" data-evfilter="vib">Sarsıntı</button>
+          <button class="btn sm" type="button" data-evfilter="flood">Su</button>
+          <button class="btn sm" type="button" data-evfilter="system">Sistem</button>
+        </div>
+
+        <ul class="ev-list" id="eventList"></ul>
+        <p class="ev-empty" id="evEmpty">Henüz kayıtlı olay yok. Alarmlar oluştuğunda burada listelenir.</p>
+
+        <div class="btn-row ev-actions">
+          <button class="btn ghost" type="button" id="evRefreshBtn">Buluttan Yenile</button>
+          <button class="btn ghost" type="button" id="evExportBtn">CSV İndir</button>
+          <button class="btn ghost" type="button" id="evClearBtn">Yereli Temizle</button>
+        </div>
+        <p class="help">Olaylar panel açıkken tespit edilir; giriş yapıldığında buluta (Firestore) yedeklenir ve yalnızca size görünür.</p>
+      </article>
+    </section>
+
     <section class="scrolly-section diagnostics-section" id="diagnostics" aria-label="Sistem Teşhisi ve Bulut Ağı">
       <div class="section-badge-header">
-        <span class="sec-tag">[04 // TEŞHİS &amp; BULUT MİMARİSİ]</span>
+        <span class="sec-tag">[05 // TEŞHİS &amp; BULUT MİMARİSİ]</span>
         <h2 class="sec-title">Sistem Teşhisi &amp; Bulut Ağı</h2>
         <p class="sec-subtitle">Deneyap Kart SoC donanım sağlığı, RF sinyal gücü, bellek dinamikleri ve MQTT taşıma metrikleri.</p>
       </div>
@@ -1018,6 +1070,7 @@
   <script src="./js/mqtt.js"></script>
   <script src="./js/firebase.js"></script>
   <script src="./js/auth-firebase.js"></script>
+  <script src="./js/events.js"></script>
   <script src="./js/history.js"></script>
   <script src="./js/app.js"></script>
   <script src="./js/settings.js"></script>
