@@ -75,6 +75,8 @@
 
     const appVer = $('appVersion');
     if (appVer) appVer.textContent = 'v' + App.VERSION;
+    const studioVer = $('studioVersion');
+    if (studioVer) studioVer.textContent = 'v' + App.VERSION;
   }
 
   function readForm() {

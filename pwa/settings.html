@@ -69,6 +69,7 @@
       <a href="#inviteCard" class="nav-item" id="navInvites" hidden>Davetler</a>
       <a href="#connSection" class="nav-item">Cihaz &amp; Ağ</a>
       <a href="#thresholdSection" class="nav-item">Eşikler</a>
+      <a href="#automationSection" class="nav-item">Modlar</a>
       <a href="#telegramSection" class="nav-item">Telegram</a>
       <a href="#themeSection" class="nav-item">Görünüm</a>
       <a href="#backupSection" class="nav-item">Bakım</a>
@@ -129,12 +130,20 @@
       <div class="hero-badge">
         <span class="badge-pulse"></span>
         <span class="badge-text">DENEYAP KART // MERKEZİ YAPILANDIRMA STÜDYOSU</span>
-        <span class="badge-version">v2.7.0</span>
+        <span class="badge-version" id="studioVersion">v2.12.1</span>
       </div>
       <p class="studio-intro-sub">
         NVS flash kayıtları, MQTT bulut köprüsü, telemetri eşikleri ve alarm kuralları.
       </p>
     </div>
+
+    <!-- ==================== GRUP: HESAP & GÜVENLİK ==================== -->
+    <div class="settings-group">
+      <h2 class="settings-group-label">
+        <span class="sgl-line" aria-hidden="true"></span>
+        <span class="sgl-text">Hesap &amp; Güvenlik</span>
+        <span class="sgl-line" aria-hidden="true"></span>
+      </h2>
 
     <!-- ==================== HESAP & ROLLER ==================== -->
     <section class="config-panel" aria-labelledby="h-acc" id="accountCard">
@@ -565,12 +574,22 @@
       </div>
     </section>
 
+    </div><!-- /settings-group: Hesap & Güvenlik -->
+
     <!-- FORM BAŞLANGICI -->
     <form id="settingsForm" novalidate>
+      <!-- ==================== GRUP: CİHAZ, DONANIM & OTOMASYON ==================== -->
+      <div class="settings-group">
+        <h2 class="settings-group-label">
+          <span class="sgl-line" aria-hidden="true"></span>
+          <span class="sgl-text">Cihaz, Donanım &amp; Otomasyon</span>
+          <span class="sgl-line" aria-hidden="true"></span>
+        </h2>
+
       <!-- ==================== CİHAZ BAĞLANTISI ==================== -->
       <section class="config-panel" aria-labelledby="h-conn" id="connSection">
         <div class="panel-header">
-          <span class="panel-tag">[CONFIG 02 // TAŞIYICI &amp; BULUT RÖLESİ]</span>
+          <span class="panel-tag">[CONFIG 04 // TAŞIYICI &amp; BULUT RÖLESİ]</span>
           <div class="panel-title-row">
             <div class="head-title">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -723,7 +742,7 @@
       <!-- ==================== EŞİKLER & DONANIM OTOMASYONU ==================== -->
       <section class="config-panel" aria-labelledby="h-th" id="thresholdSection">
         <div class="panel-header">
-          <span class="panel-tag">[CONFIG 03 // EŞİKLER &amp; OTONOM KORUMA]</span>
+          <span class="panel-tag">[CONFIG 05 // EŞİKLER &amp; OTONOM KORUMA]</span>
           <div class="panel-title-row">
             <div class="head-title">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -934,7 +953,7 @@
       <!-- ==================== MODLAR & ZAMANLANMIŞ OTOMASYON ==================== -->
       <section class="config-panel" aria-labelledby="h-auto" id="automationSection">
         <div class="panel-header">
-          <span class="panel-tag">[CONFIG 04 // MODLAR &amp; ZAMANLANMIŞ OTOMASYON]</span>
+          <span class="panel-tag">[CONFIG 06 // MODLAR &amp; ZAMANLANMIŞ OTOMASYON]</span>
           <div class="panel-title-row">
             <div class="head-title">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -985,11 +1004,20 @@
           </p>
         </div>
       </section>
+      </div><!-- /settings-group: Cihaz, Donanım & Otomasyon -->
+
+      <!-- ==================== GRUP: BİLDİRİM, GÖRÜNÜM & BAKIM ==================== -->
+      <div class="settings-group">
+        <h2 class="settings-group-label">
+          <span class="sgl-line" aria-hidden="true"></span>
+          <span class="sgl-text">Bildirim, Görünüm &amp; Bakım</span>
+          <span class="sgl-line" aria-hidden="true"></span>
+        </h2>
 
       <!-- ==================== TELEGRAM BİLDİRİMLERİ ==================== -->
       <section class="config-panel" aria-labelledby="h-tg" id="telegramSection">
         <div class="panel-header">
-          <span class="panel-tag">[CONFIG 05 // ANLIK TELEGRAM ALARM MOTORU]</span>
+          <span class="panel-tag">[CONFIG 07 // ANLIK TELEGRAM ALARM MOTORU]</span>
           <div class="panel-title-row">
             <div class="head-title">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -1059,7 +1087,7 @@
       <!-- ==================== GÖRÜNÜM & TEMA ==================== -->
       <section class="config-panel" aria-labelledby="h-theme" id="themeSection">
         <div class="panel-header">
-          <span class="panel-tag">[CONFIG 06 // GÖRSEL ATMOSFER &amp; MATRİS]</span>
+          <span class="panel-tag">[CONFIG 08 // GÖRSEL ATMOSFER &amp; MATRİS]</span>
           <div class="panel-title-row">
             <div class="head-title">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -1135,7 +1163,7 @@
       <!-- ==================== YEDEKLEME & BAKIM ==================== -->
       <section class="config-panel" aria-labelledby="h-backup" id="backupSection">
         <div class="panel-header">
-          <span class="panel-tag">[CONFIG 07 // YEDEKLEME &amp; FLASH BAKIMI]</span>
+          <span class="panel-tag">[CONFIG 09 // YEDEKLEME &amp; FLASH BAKIMI]</span>
           <div class="panel-title-row">
             <div class="head-title">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -1180,6 +1208,7 @@
           </div>
         </div>
       </section>
+      </div><!-- /settings-group: Bildirim, Görünüm & Bakım -->
 
       <!-- Sabit Kaydetme Çubuğu -->
       <div class="studio-actions-bar">
