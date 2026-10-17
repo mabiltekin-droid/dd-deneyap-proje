@@ -423,6 +423,9 @@
      yoklamada tekrar konuşmasın diye yalnızca yükselen kenarda tetiklenir. */
   function announceAlarms(data, state) {
     if (!App.voice || !App.voice.available()) return;
+    /* Gece / izleme modunda yalnızca kritik (force) anonslar çalar;
+       uyarı seviyesindeki sesli bildirim bastırılır. */
+    const silent = !!(App.Automation && App.Automation.isQuiet && App.Automation.isQuiet());
     const danger = state === 'danger';
     const warn = state === 'warning';
     const flood = !!(data && data.flood);
@@ -431,7 +434,7 @@
 
     if (danger && !prevAlarm.danger) {
       App.voice.speak('Dikkat! Gaz kaçağı algılandı. Tahliye fanı çalıştırıldı, su motoru kilitlendi ve pencere kapatıldı. Gaz vanasını kapatıp ortamı havalandırın.', { force: true });
-    } else if (warn && !prevAlarm.warn && !danger) {
+    } else if (warn && !prevAlarm.warn && !danger && !silent) {
       App.voice.speak('Uyarı. Gaz yoğunluğu yükseliyor. Lütfen ortamı havalandırın.');
     }
     if (flood && !prevAlarm.flood) {
@@ -536,7 +539,9 @@
         const ppm = Number(lastData && lastData.gasPpm) || 0;
         const dangerTh = (lastData && typeof lastData.gasDanger === 'number') ? lastData.gasDanger : 400;
         const normPpm = Math.min(1.0, ppm / Math.max(dangerTh * 1.5, 100));
-        App.sound.alarm(normPpm);
+        /* Gece / izleme modunda panel hoparlörü susar (cihaz sireni zaten kısık/kapalı). */
+        const quiet = !!(App.Automation && App.Automation.isQuiet && App.Automation.isQuiet());
+        if (!quiet) App.sound.alarm(normPpm);
         App.haptic(60);
       } else if (state === 'warning') {
         glow.classList.add('state-warning');
@@ -1220,10 +1225,15 @@
 
     console.info('%c[Deneyap Ev Koruma] Cyber-Console v' + App.VERSION + ' devrede',
       'color:#38bdf8;font-weight:bold;font-size:12px');
+    /* Hero sürüm etiketini tek kaynaktan güncelle (bayat etiketi önler) */
+    const heroVer = document.getElementById('heroVersion');
+    if (heroVer) heroVer.textContent = 'SCADA v' + App.VERSION;
   }
 
   window.App.initDashboard = init;
   window.App.destroyDashboard = destroy;
+  /* Sesli komut / otomasyon modülleri için son telemetri erişimi */
+  window.App.lastTelemetry = function () { return lastData; };
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () {

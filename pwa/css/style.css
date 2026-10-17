@@ -4375,3 +4375,224 @@ main {
   font-size: 0.82rem;
   color: var(--text-dim);
 }
+
+/* ==========================================================================
+   MODLAR & ZAMANLANMIŞ OTOMASYON  +  SESLİ KOMUT
+   ========================================================================== */
+
+/* --- Mod seçici (segment) --- */
+.mode-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-alt);
+  animation: modeFadeIn 0.35s ease;
+}
+
+@keyframes modeFadeIn {
+  from { opacity: 0; transform: translateY(-3px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.7rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+}
+
+.mode-btn:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+}
+
+.mode-btn:active { transform: scale(0.96); }
+
+.mode-btn .mode-ico { display: grid; place-items: center; }
+.mode-btn .mode-ico svg { width: 1.05rem; height: 1.05rem; }
+
+.mode-btn.active {
+  color: #fff;
+  background: linear-gradient(135deg, var(--primary), color-mix(in srgb, var(--primary) 55%, #000));
+  box-shadow: 0 0 0 1px var(--primary), 0 4px 14px var(--primary-glow);
+}
+
+.mode-sep { width: 1px; height: 1.1rem; background: var(--border); opacity: 0.7; }
+
+.mode-switch-lg { padding: 4px; }
+.mode-switch-lg .mode-btn { padding: 0.5rem 0.95rem; font-size: 0.88rem; }
+
+.mode-desc {
+  margin: 0.75rem 0 1.1rem;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  min-height: 1.2em;
+}
+
+/* --- Sesli komut düğmesi --- */
+.voice-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.voice-btn svg { width: 1.15rem; height: 1.15rem; }
+.voice-btn:hover { color: var(--primary); border-color: var(--primary); }
+
+.voice-btn.listening {
+  color: #fff;
+  border-color: var(--danger);
+  background: var(--danger);
+  animation: voicePulse 1.1s ease-in-out infinite;
+}
+
+@keyframes voicePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.45); }
+  50%      { box-shadow: 0 0 0 9px rgba(220, 38, 38, 0); }
+}
+
+.voice-hint {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  right: 1rem;
+  max-width: min(22rem, 82vw);
+  padding: 0.5rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-alt);
+  color: var(--text);
+  font-size: 0.82rem;
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 40;
+}
+
+.voice-hint.show { opacity: 1; transform: translateY(0); }
+
+/* --- Zamanlanmış kural düzenleyici --- */
+.sched-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 1.3rem 0 0.7rem;
+}
+
+.schedule-list { display: flex; flex-direction: column; gap: 0.55rem; }
+
+.sched-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-alt);
+  transition: border-color 0.2s ease;
+}
+
+.sched-row:hover { border-color: color-mix(in srgb, var(--primary) 40%, var(--border)); }
+
+.sched-mode,
+.sched-time {
+  padding: 0.34rem 0.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.84rem;
+}
+
+.sched-time { font-family: var(--font-mono); font-size: 0.82rem; }
+.sched-arrow { color: var(--text-dim); }
+
+.sched-days { display: inline-flex; gap: 3px; margin-left: auto; }
+
+.sched-day {
+  min-width: 2rem;
+  padding: 0.25rem 0.2rem;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sched-day.on { color: #fff; background: var(--primary); border-color: var(--primary); }
+
+.sched-del {
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sched-del:hover { color: var(--danger); border-color: var(--danger); }
+.sched-del svg { width: 1rem; height: 1rem; }
+
+.sched-empty {
+  margin: 0;
+  padding: 1rem;
+  text-align: center;
+  font-size: 0.84rem;
+  color: var(--text-dim);
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+}
+
+/* --- Olay giriş animasyonu (UI rötuş) --- */
+.ev-item { animation: evIn 0.28s ease; }
+
+@keyframes evIn {
+  from { opacity: 0; transform: translateX(-6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@media (max-width: 720px) {
+  .mode-btn .mode-txt { display: none; }
+  .mode-btn { padding: 0.45rem; }
+  .mode-switch-lg .mode-btn { padding: 0.5rem; }
+  .mode-sep { display: none; }
+  .sched-days { margin-left: 0; }
+  .voice-hint { right: 0.6rem; }
+  .header-actions { flex-wrap: wrap; justify-content: flex-end; }
+  .sched-row { gap: 0.45rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mode-switch,
+  .ev-item { animation: none; }
+  .voice-btn.listening { animation: none; }
+}

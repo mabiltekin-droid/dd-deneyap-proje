@@ -39,6 +39,7 @@
     offline: { label: 'Bağlantı Kesildi',     sev: 'warn',   group: 'system' },
     online:  { label: 'Bağlantı Kuruldu',     sev: 'ok',     group: 'system' },
     boot:    { label: 'Cihaz Yeniden Başladı', sev: 'info',  group: 'system' },
+    mode:    { label: 'Mod Değişikliği',      sev: 'info',   group: 'system' },
     system:  { label: 'Sistem',               sev: 'info',   group: 'system' }
   };
 
@@ -52,6 +53,7 @@
     offline: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="2" y1="2" x2="22" y2="22"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M5 12.55a11 11 0 0 1 4.2-2.36M1.42 9a16 16 0 0 1 6.1-4.3"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>',
     online: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>',
     boot: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.77.04"/></svg>',
+    mode: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3"/><path d="M1 14h6M9 8h6M17 16h6"/></svg>',
     system: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>'
   };
 

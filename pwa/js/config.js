@@ -9,7 +9,7 @@
 
   const App = (window.App = window.App || {});
 
-  App.VERSION = '2.11.0';
+  App.VERSION = '2.12.0';
   App.STORAGE_KEY = 'deneyap.settings.v2';
 
   App.DEFAULTS = {
@@ -75,7 +75,17 @@
     flameAlarm: true,
     flameUseDigital: true,
     flameUseAnalog: false,
-    flameTg: true
+    flameTg: true,
+
+    /* --- Modlar & Zamanlanmış Otomasyon ---
+       mode        : aktif çalışma modu ('home' | 'night' | 'away' | 'off')
+       modeAuto    : zamanlanmış otomatik mod geçişi etkin mi
+       modeSync    : moda göre cihaz (otomasyon + ses) ayarları uygulansın mı
+       modeSchedule: [{ id, days:[0..6], start:'HH:MM', end:'HH:MM', mode, enabled }] */
+    mode: 'home',
+    modeAuto: false,
+    modeSync: true,
+    modeSchedule: []
   };
 
   App.GAS_FS_MAX = 10000; // Sensör tam skalası (10.000 PPM)

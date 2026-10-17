@@ -931,10 +931,65 @@
         </div>
       </section>
 
+      <!-- ==================== MODLAR & ZAMANLANMIŞ OTOMASYON ==================== -->
+      <section class="config-panel" aria-labelledby="h-auto" id="automationSection">
+        <div class="panel-header">
+          <span class="panel-tag">[CONFIG 04 // MODLAR &amp; ZAMANLANMIŞ OTOMASYON]</span>
+          <div class="panel-title-row">
+            <div class="head-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2"/><path d="M9 2h6"/><path d="M12 2v3"/>
+              </svg>
+              <h3 id="h-auto">Çalışma Modları &amp; Zamanlanmış Otomasyon</h3>
+            </div>
+          </div>
+          <p class="panel-desc">Mod, paneli ve cihazı birlikte yönetir. Kurallarla gün içinde kendiliğinden mod geçişi yapılır.</p>
+        </div>
+
+        <div class="panel-content">
+          <p class="section-sub">Aktif Mod</p>
+          <div class="mode-switch mode-switch-lg" id="modeSwitcherSettings" data-mode-mount role="group" aria-label="Çalışma modu"></div>
+          <p class="mode-desc" id="modeDesc"></p>
+
+          <div class="switch-grid">
+            <label class="switch">
+              <input type="checkbox" id="modeAuto" name="modeAuto">
+              <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+              <span class="switch-body">
+                <strong>Zamanlanmış Geçiş</strong>
+                <small>Aktif kural aralığında modu otomatik değiştirir; kural bitince seçtiğiniz moda döner.</small>
+              </span>
+            </label>
+
+            <label class="switch">
+              <input type="checkbox" id="modeSync" name="modeSync">
+              <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+              <span class="switch-body">
+                <strong>Cihaz Senkronu</strong>
+                <small>Mod seçildiğinde otonom koruma ve hoparlör ses seviyesini cihaza uygular.</small>
+              </span>
+            </label>
+          </div>
+
+          <div class="sched-head">
+            <p class="section-sub" style="margin:0;">Zamanlanmış Kurallar</p>
+            <button class="btn sm primary" type="button" id="scheduleAddBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Kural Ekle
+            </button>
+          </div>
+          <div id="scheduleList" class="schedule-list"></div>
+          <p class="result" id="scheduleResult" role="status" aria-live="polite" hidden></p>
+          <p class="help">
+            Gece yarısını aşan aralıklar (ör. 23:00 → 07:00) desteklenir. Gün seçilmezse kural her gün geçerlidir.
+          </p>
+        </div>
+      </section>
+
       <!-- ==================== TELEGRAM BİLDİRİMLERİ ==================== -->
       <section class="config-panel" aria-labelledby="h-tg" id="telegramSection">
         <div class="panel-header">
-          <span class="panel-tag">[CONFIG 04 // ANLIK TELEGRAM ALARM MOTORU]</span>
+          <span class="panel-tag">[CONFIG 05 // ANLIK TELEGRAM ALARM MOTORU]</span>
           <div class="panel-title-row">
             <div class="head-title">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -1004,7 +1059,7 @@
       <!-- ==================== GÖRÜNÜM & TEMA ==================== -->
       <section class="config-panel" aria-labelledby="h-theme" id="themeSection">
         <div class="panel-header">
-          <span class="panel-tag">[CONFIG 05 // GÖRSEL ATMOSFER &amp; MATRİS]</span>
+          <span class="panel-tag">[CONFIG 06 // GÖRSEL ATMOSFER &amp; MATRİS]</span>
           <div class="panel-title-row">
             <div class="head-title">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -1080,7 +1135,7 @@
       <!-- ==================== YEDEKLEME & BAKIM ==================== -->
       <section class="config-panel" aria-labelledby="h-backup" id="backupSection">
         <div class="panel-header">
-          <span class="panel-tag">[CONFIG 06 // YEDEKLEME &amp; FLASH BAKIMI]</span>
+          <span class="panel-tag">[CONFIG 07 // YEDEKLEME &amp; FLASH BAKIMI]</span>
           <div class="panel-title-row">
             <div class="head-title">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -1190,6 +1245,8 @@
   <script src="./js/firebase.js"></script>
   <script src="./js/auth-firebase.js"></script>
   <script src="./js/events.js"></script>
+  <script src="./js/automation.js"></script>
+  <script src="./js/voice.js"></script>
   <script src="./js/history.js"></script>
   <script src="./js/app.js"></script>
   <script src="./js/settings.js"></script>
