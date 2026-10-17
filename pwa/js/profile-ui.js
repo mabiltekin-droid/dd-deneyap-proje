@@ -81,13 +81,20 @@
 
   let currentUser = null;
 
-  function render(snap) {
+  async function render(snap) {
     const card = $('profileCard');
     if (!card) return;
     card.hidden = !snap.signedIn;
     const nav = $('navProfile');
     if (nav) nav.hidden = !snap.signedIn;
     if (!snap.signedIn) { currentUser = null; return; }
+
+    // E-posta doğrulama durumunu sunucudan tazele (isteğe bağlı;
+    // önbellek eski olabilir). Refresh yapıldıktan sonra kullanıcı
+    // oturumu güncellenir ve rozet doğrulanır.
+    if (App.Auth && App.Auth.refreshVerification) {
+      await App.Auth.refreshVerification().catch(function () { /* yoksay */ });
+    }
 
     currentUser = snap.user || null;
     const profile = snap.profile || {};

@@ -146,6 +146,7 @@
           user: {
             id: user.uid,
             email: user.email,
+            emailVerified: !!user.emailVerified,
             created_at: user.metadata.creationTime
           }
         };
@@ -170,11 +171,34 @@
         id: firebaseUser.uid,
         email: firebaseUser.email,
         displayName: firebaseUser.displayName || null,
+        emailVerified: !!firebaseUser.emailVerified,
         created_at: firebaseUser.metadata.creationTime
       }
     };
     save(sess);
     return sess;
+  }
+
+  /* Sunucudaki guncel kullanici kaydini cek. E-posta dogrulamasi (emailVerified)
+     yalnizca reload() sonrasi tazelenir; bu yuzden rozet icin bu fonksiyon
+     kullanilir. Kayitli oturumu da gunceller. */
+  async function refreshUser() {
+    ensureFirebase();
+    const user = auth.currentUser;
+    if (!user) return null;
+    await user.reload();
+    const s = store(true);
+    if (s && s.user && s.user.id === user.uid) {
+      s.user.emailVerified = !!user.emailVerified;
+      s.user.email = user.email || s.user.email;
+      save(s);
+    }
+    return {
+      id: user.uid,
+      email: user.email,
+      displayName: user.displayName || null,
+      emailVerified: !!user.emailVerified
+    };
   }
 
   /* -------------------------------------------------- Firestore Yardımcıları - */
@@ -773,6 +797,7 @@
     session: function () { return current(); },
 
     ensureSession: ensureSession,
+    refreshUser: refreshUser,
 
     probeSetup: async function () {
       if (!App.FB.hasConfig()) return false;

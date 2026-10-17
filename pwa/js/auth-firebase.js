@@ -825,6 +825,23 @@
     // Doğrulama e-postasını yeniden gönder (oturum yoksa e-posta+şifre ile)
     resendVerificationEmail: async function (email, password) {
       return FB().resendVerificationEmail(email, password);
+    },
+
+    /* E-posta doğrulama durumunu SUNUCUDAN tazele (kullanıcı bağlantıyı
+       onaylamış olabilir; istemci önbelleği "doğrulanmamış" kalır) ve
+       oturumu güncelleyip arayüzlere bildir. */
+    refreshVerification: async function () {
+      if (!state.session || !state.session.user) return false;
+      let fresh = null;
+      try { fresh = await FB().refreshUser(); } catch (e) { fresh = null; }
+      if (fresh) {
+        state.session.user.emailVerified = !!fresh.emailVerified;
+        if (fresh.email) state.session.user.email = fresh.email;
+        if (fresh.displayName) state.session.user.displayName = fresh.displayName;
+        emit();
+        return !!fresh.emailVerified;
+      }
+      return !!state.session.user.emailVerified;
     }
   };
 
