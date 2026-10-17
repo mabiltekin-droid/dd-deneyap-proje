@@ -1295,10 +1295,25 @@
     }
   }
 
+  /* ---------------------- Evrensel Buton Etkileşim ve Dinamik Geri Bildirim */
+  function setupUniversalButtonFeedback() {
+    document.addEventListener('click', function (e) {
+      const btn = e.target.closest('.btn[data-action], .mode-btn, .drill-btn, [data-sched="del"]');
+      if (!btn || btn.classList.contains('is-busy')) return;
+
+      btn.classList.add('is-busy');
+      if (typeof App.haptic === 'function') App.haptic(15);
+      setTimeout(function () {
+        btn.classList.remove('is-busy');
+      }, 700); // 700ms debounce kilidi
+    }, true);
+  }
+
   function bootGlobalFeatures() {
     setupVirtualKeyboardHandler();
     setupNetworkSyncHandler();
     setupSmartInstallButton();
+    setupUniversalButtonFeedback();
   }
 
   window.App.initDashboard = init;

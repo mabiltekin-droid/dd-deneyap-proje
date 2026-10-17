@@ -1442,9 +1442,40 @@ main {
   min-height: 38px;
 }
 
-.btn.is-busy {
-  opacity: 0.6;
-  pointer-events: none;
+/* 1. Dokunma Alanı Genişletici (Fitts Kanunu - Minimum 44px) */
+.mode-btn, .sched-day, .sched-del, .nav-back-pill, .acct-pill, .pwa-install-btn, .btn.sm {
+  position: relative;
+  min-height: 40px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+.sched-day::after, .sched-del::after, .mode-btn::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+}
+
+/* 2. Sticky Hover Engeli (Yalnızca gerçek farede hover çalışsın) */
+@media (hover: none) {
+  .btn:hover, .mode-btn:hover, .voice-btn:hover, .drill-btn:hover, .sched-day:hover, .sched-del:hover, .nav-back-pill:hover, .acct-pill:hover, .pwa-install-btn:hover, .theme-card:hover, .icon-btn:hover {
+    background: inherit !important;
+    color: inherit !important;
+    transform: none !important;
+  }
+}
+
+/* 3. Dokunmatik Anlık Geri Bildirim (Active State) */
+.btn:active, .mode-btn:active, .voice-btn:active, .drill-btn:active, .sched-day:active, .sched-del:active, .nav-back-pill:active, .acct-pill:active, .theme-card:active, .icon-btn:active {
+  transform: scale(0.96) !important;
+  transition: transform 0.08s ease !important;
+}
+
+/* 4. Dinamik Meşgul / İstek Bekleme Durumu */
+.btn.is-busy, .mode-btn.is-busy, .voice-btn.is-busy, .drill-btn.is-busy, .sched-day.is-busy, .sched-del.is-busy, .nav-back-pill.is-busy, .acct-pill.is-busy, .pwa-install-btn.is-busy, .theme-card.is-busy, .icon-btn.is-busy {
+  pointer-events: none !important;
+  opacity: 0.65 !important;
+  cursor: wait !important;
 }
 
 .btn-row {
