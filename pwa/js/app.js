@@ -643,11 +643,16 @@
     nd.hidden = false;
 
     const snap = (App.Auth && App.Auth.snapshot) ? App.Auth.snapshot() : {};
+    const devState = (App.Auth && App.Auth.deviceState) ? App.Auth.deviceState(dev) : null;
     let msg;
     if (!dev) {
       msg = 'Cihaz bağlantısı bekleniyor…';
     } else if (App.Auth && App.Auth.needsCheck && App.Auth.needsCheck(dev)) {
       msg = 'Cihaz durumu kontrol ediliyor…';
+    } else if (devState === 'free') {
+      msg = 'Bu cihaz henüz bir hesaba bağlı değil; telemetri gösterilmiyor. ' +
+            'Ayarlar → Hesap & Roller → "Mülkiyet & Erişim" bölümünden aktivasyon ' +
+            'kodunu girerek cihazı hesabınıza bağlayın.';
     } else if (!snap.signedIn) {
       msg = 'Bağlı bir cihaz yalnızca sahibine ve admine görünür. ' +
             'Kendi cihazınızı görmek için giriş yapın.';

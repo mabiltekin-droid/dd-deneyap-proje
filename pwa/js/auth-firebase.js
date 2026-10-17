@@ -515,25 +515,32 @@
             // Sahibiyiz → yerel hafızayı tazele.
             rememberOwner(deviceId, me.id, me.email, b.label);
             res = { state: b.status === 'release_pending' ? 'mine_pending' : 'mine', binding: b };
-          } else if (admin) {
-            res = { state: b.status === 'release_pending' ? 'pending_other' : 'other', binding: b };
-          } else if (local && local.uid === me.id) {
-            // Sunucu okumaya izin vermedi ama kayıt bu hesaba ait → sahibi say.
-            res = { state: 'mine', binding: { device_id: deviceId, owner_id: me.id, label: local.label }, local_fallback: true };
           } else {
-            // Bağlı + sahibi/admin değiliz → görünmez.
-            res = { state: 'hidden' };
+            // Sunucu başka bir sahip diyor → yerel kayıt bayat (admin yeniden
+            // atamış olabilir) → temizle; sahiplik yerelden DEVRALINMAZ.
+            if (local && local.uid === me.id) forgetOwner(deviceId);
+            res = admin
+              ? { state: b.status === 'release_pending' ? 'pending_other' : 'other', binding: b }
+              : { state: 'hidden' };
           }
         } catch (e) {
-          if (local && local.uid === me.id) {
+          if (isPermDenied(e)) {
+            /* Okuma reddedildi. Kurallar gereği BOŞTA cihazlar ve SAHİBİ
+               olduğum cihazlar okunabilir; reddedildiyse cihaz var ve bana
+               ait değil → yerel kayıt bayattır, temizle ve gizle. */
+            if (local && local.uid === me.id) forgetOwner(deviceId);
+            res = { state: 'hidden', error: e };
+          } else if (local && local.uid === me.id) {
+            // Ağ hatası / çevrimdışı: yerel sahiplik kaydına güven.
             res = { state: 'mine', binding: { device_id: deviceId, owner_id: me.id, label: local.label }, local_fallback: true };
           } else {
-            res = { state: isPermDenied(e) ? 'hidden' : 'error', error: e };
+            res = { state: 'error', error: e };
           }
         }
       }
 
       let access;
+      res.device_id = deviceId;
       switch (res.state) {
         case 'free': access = 'free'; break;
         case 'mine': access = 'granted'; break;
@@ -552,6 +559,16 @@
       return (state.deviceAccess && state.deviceAccess[deviceId]) || null;
     },
 
+    // Son checkDevice sonucundaki durum adı ('free' | 'mine' | 'mine_pending'
+    // | 'other' | 'pending_other' | 'hidden' | 'local_mine' | 'anon' | 'error').
+    // UI metinleri bu duruma göre seçilir.
+    deviceState: function (deviceId) {
+      const info = state.deviceInfo;
+      if (!info) return null;
+      if (deviceId && info.device_id && info.device_id !== deviceId) return null;
+      return info.state || null;
+    },
+
     needsCheck: function (deviceId) {
       if (!deviceId) return false;
       return !(state.deviceAccess && state.deviceAccess[deviceId]);
@@ -560,8 +577,9 @@
     // Cihaza kumanda edilebilir mi? (app.js her karede çağırır → senkron)
     canControl: function (deviceId) {
       const a = state.deviceAccess && state.deviceAccess[deviceId];
-      if (a === 'granted' || a === 'free') return true;
-      if (a === 'denied') return false;
+      if (a === 'granted') return true;
+      // Boşta (bağlanmamış) ya da başkasına bağlı → kumanda yok.
+      if (a === 'free' || a === 'denied') return false;
       // Henüz doğrulanmadı
       const me = state.session && state.session.user;
       if (!me) return true;   // oturum yok: eski davranış korunur
@@ -569,12 +587,14 @@
     },
 
     // Cihaz bu kullanıcıya GÖRÜNÜR mü?
-    // Başka bir hesaba bağlı cihaz; farklı hesapta ya da giriş yapılmamış
-    // durumda YOK sayılır. Yalnızca sahibi/admin (ve boştaki cihaz) görünür.
+    // Yalnızca SAHİBİ (bağlı hesap) veya admin görür. Boşta ('free') cihazın
+    // telemetrisi/kumandası bağlanana kadar GÖSTERİLMEZ; cihaz yalnızca
+    // Ayarlar > Hesap & Roller > "Mülkiyet & Erişim" kutusunda görünür ki
+    // aktivasyon koduyla bağlanabilsin.
     canView: function (deviceId) {
       if (!deviceId) return false;
       const a = state.deviceAccess && state.deviceAccess[deviceId];
-      return a === 'granted' || a === 'free';
+      return a === 'granted';
     },
 
     // Yalnızca BOŞTA bir cihaz "bağlanabilir" sayılır.

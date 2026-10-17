@@ -69,10 +69,12 @@
     updateResendVerificationButton(snap);
 
     /* Oturum/kimlik değişince cihaz durumunu yeniden doğrula (yetki
-       değişmiş olabilir) ve sahiplik kutusunu/butonları güncelle. */
+       değişmiş olabilir) ve sahiplik kutusunu/butonları güncelle.
+       ÖNEMLİ: sonuç deviceStatus'a yazılmalı; aksi halde paintOwnership()
+       bayat durumla çizer ve giriş yapıldığında kutu "giriş yapın" der. */
     if (lastDeviceId) {
       App.Auth.checkDevice(lastDeviceId)
-        .then(function () { paintOwnership(); })
+        .then(function (st) { deviceStatus = st; paintOwnership(); })
         .catch(function () { paintOwnership(); });
     } else {
       paintOwnership();
