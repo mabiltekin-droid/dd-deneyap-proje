@@ -154,6 +154,7 @@ main.page-container {
 body {
   margin: 0;
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   font-family: var(--font-main);
@@ -177,6 +178,8 @@ h1, h2, h3, p, dl, dd, dt {
 .cyber-backdrop {
   position: fixed;
   inset: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
   pointer-events: none;
   z-index: 0;
   overflow: hidden;
@@ -2142,6 +2145,19 @@ main {
   margin-bottom: 1rem;
 }
 
+@media (max-width: 640px) {
+  .hist-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.5rem;
+  }
+}
+
+@media (max-width: 380px) {
+  .hist-metrics {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 .hist-metrics .hm {
   background: var(--surface-alt);
   border: 1px solid var(--border-subtle);
@@ -2645,6 +2661,7 @@ main {
   overflow: hidden;
   flex: 1;
   min-height: 70vh;
+  min-height: 70dvh;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3199,6 +3216,8 @@ main {
 .crt-overlay {
   position: fixed;
   inset: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
   pointer-events: none;
   z-index: 999;
   opacity: 0;
@@ -3331,73 +3350,114 @@ main {
 /* --------------------------------- Mobil SCADA ve Header Duyarlılık Kuralları */
 @media (max-width: 980px) {
   .bottom-nav {
-    display: none !important;
-  }
-
-  .glass-header {
-    flex-wrap: wrap;
-    padding: 0.65rem 1rem;
-    gap: 0.65rem;
-  }
-
-  .brand {
-    flex: 1 1 auto;
-    gap: 0.65rem;
-  }
-
-  .brand-icon {
-    width: 34px;
-    height: 34px;
-  }
-
-  .brand-meta h1 {
-    font-size: 1.02rem;
-  }
-
-  .header-actions {
-    flex: 0 0 auto;
-    gap: 0.45rem;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 95;
+    display: flex !important;
+    background: var(--surface);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
   }
 
   .header-nav,
   .settings-header-nav {
-    order: 3;
-    width: 100%;
-    max-width: 100%;
+    display: none !important;
+  }
+
+  .glass-header {
     display: flex;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    justify-content: flex-start;
-    padding: 0.25rem 0.35rem;
-    gap: 0.2rem;
-    border-radius: 9999px;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    padding: 0.5rem 1rem;
+    padding-top: max(0.5rem, env(safe-area-inset-top));
+    gap: 0.5rem;
+    min-height: 56px;
+    max-height: 64px;
+    box-sizing: border-box;
   }
 
-  .header-nav::-webkit-scrollbar,
-  .settings-header-nav::-webkit-scrollbar {
-    display: none;
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    min-width: 0;
+    flex: 0 1 auto;
   }
 
-  .header-nav .nav-item,
-  .settings-header-nav .nav-item {
-    padding: 0.38rem 0.8rem;
-    font-size: 0.78rem;
+  .brand-icon {
+    width: 32px;
+    height: 32px;
     flex-shrink: 0;
+  }
+
+  .brand-meta {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .brand-meta h1 {
+    font-size: 0.98rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .brand-meta .conn {
+    font-size: 0.72rem;
+    white-space: nowrap;
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+    gap: 0.45rem;
+    flex-shrink: 0;
+  }
+
+  main,
+  .mission-main,
+  .settings-studio-main {
+    padding-bottom: calc(var(--nav-h, 64px) + env(safe-area-inset-bottom) + 1.5rem) !important;
+  }
+
+  input[type="text"],
+  input[type="password"],
+  input[type="email"],
+  input[type="number"],
+  input[type="time"],
+  input[type="search"],
+  select,
+  textarea,
+  .sched-mode,
+  .sched-time,
+  .field input,
+  .field select,
+  .blackbox-select,
+  .user-table select {
+    font-size: 16px !important; /* iOS Safari focus auto-zoom engeli */
+    padding-top: 0.4rem;
+    padding-bottom: 0.4rem;
   }
 }
 
 @media (max-width: 480px) {
   .glass-header {
-    padding: 0.5rem 0.75rem;
+    padding: 0.45rem 0.65rem;
+    gap: 0.4rem;
   }
 
   .brand-meta h1 {
-    font-size: 0.94rem;
+    font-size: 0.92rem;
   }
 
   .brand-meta .conn {
-    font-size: 0.72rem;
+    font-size: 0.7rem;
   }
 
   .nav-back-pill {
@@ -3418,9 +3478,72 @@ main {
   .pwa-install-btn .install-text {
     display: none;
   }
+}
+
+@media (max-width: 420px) {
+  .glass-header {
+    padding: 0.35rem 0.45rem;
+    gap: 0.3rem;
+  }
+
+  .brand {
+    gap: 0.35rem;
+  }
+
+  .brand-icon {
+    width: 28px;
+    height: 28px;
+  }
+
+  .brand-meta h1 {
+    font-size: 0.86rem;
+  }
+
+  .brand-meta .conn {
+    font-size: 0.66rem;
+  }
+
+  .header-actions {
+    gap: 0.25rem;
+  }
+
+  .mode-switch {
+    padding: 2px;
+    gap: 2px;
+  }
+
+  .mode-btn {
+    padding: 0.3rem 0.38rem;
+  }
+
+  .mode-btn svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  .voice-btn {
+    width: 2.1rem;
+    height: 2.1rem;
+  }
+
+  .acct-pill {
+    padding: 0.3rem 0.45rem;
+    font-size: 0.72rem;
+  }
+
+  .acct-pill span:not(.acct-role) {
+    max-width: 60px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 480px) {
 
   .hero-section {
     min-height: 85vh;
+    min-height: 85dvh;
     padding-top: 0.5rem;
   }
 
@@ -3859,6 +3982,7 @@ main {
   inset: 0;
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   pointer-events: none;
   z-index: 9999;
   opacity: 0;
@@ -4630,6 +4754,47 @@ main {
   to   { opacity: 1; transform: none; }
 }
 
+@media (max-width: 768px) {
+  .sched-del,
+  .mode-btn,
+  .nav-back-pill,
+  .hist-range .btn,
+  .voice-btn,
+  .acct-pill {
+    min-height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
+  .sched-del::after,
+  .mode-btn::after,
+  .nav-back-pill::after,
+  .hist-range .btn::after {
+    content: '';
+    position: absolute;
+    top: -5px;
+    bottom: -5px;
+    left: -5px;
+    right: -5px;
+    pointer-events: auto;
+  }
+
+  .sched-day {
+    min-height: 36px;
+    position: relative;
+  }
+  .sched-day::after {
+    content: '';
+    position: absolute;
+    top: -4px;
+    bottom: -4px;
+    left: 0;
+    right: 0;
+  }
+}
+
 @media (max-width: 720px) {
   .mode-btn .mode-txt { display: none; }
   .mode-btn { padding: 0.45rem; }
@@ -4637,8 +4802,72 @@ main {
   .mode-sep { display: none; }
   .sched-days { margin-left: 0; }
   .voice-hint { right: 0.6rem; }
-  .header-actions { flex-wrap: wrap; justify-content: flex-end; }
-  .sched-row { gap: 0.45rem; }
+  .header-actions { flex-wrap: nowrap; justify-content: flex-end; }
+  .nav-settings-pill { display: none !important; }
+}
+
+@media (max-width: 620px) {
+  .sched-row {
+    display: grid !important;
+    grid-template-columns: auto 1fr auto !important;
+    gap: 0.65rem 0.5rem;
+    align-items: center;
+    padding: 0.85rem;
+  }
+  .sched-row .sched-toggle {
+    grid-column: 1;
+    grid-row: 1;
+    display: flex;
+    align-items: center;
+  }
+  .sched-row .sched-mode {
+    grid-column: 2;
+    grid-row: 1;
+    width: 100%;
+    min-width: 0;
+  }
+  .sched-row .sched-del {
+    grid-column: 3;
+    grid-row: 1;
+    justify-self: end;
+  }
+
+  /* Saat seçiciler 2. satırda tam genişlik */
+  .sched-row [data-sched="start"] {
+    grid-column: 1;
+    grid-row: 2;
+    width: 100%;
+    text-align: center;
+  }
+  .sched-row .sched-arrow {
+    grid-column: 2;
+    grid-row: 2;
+    justify-self: center;
+    text-align: center;
+  }
+  .sched-row [data-sched="end"] {
+    grid-column: 3;
+    grid-row: 2;
+    width: 100%;
+    text-align: center;
+  }
+
+  /* 7 günlük buton çubuğu en alt satırda yayılsın */
+  .sched-row .sched-days {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    margin-left: 0 !important;
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    gap: 4px;
+  }
+  .sched-row .sched-day {
+    flex: 1;
+    min-width: 0;
+    padding: 0.4rem 0.2rem;
+    font-size: 0.75rem;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
