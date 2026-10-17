@@ -80,6 +80,13 @@ bool              vibUseDigital = VIB_DIGITAL_DEFAULT;
 bool              vibUseAnalog  = VIB_ANALOG_DEFAULT;
 bool              vibTg         = VIB_ALARM_TG_DEFAULT;
 
+/* Alev / yangın sensörü ayarları (NVS) */
+bool              flameEnabled    = FLAME_ENABLED_DEFAULT;
+bool              flameAlarm      = FLAME_ALARM_DEFAULT;
+bool              flameUseDigital = FLAME_DIGITAL_DEFAULT;
+bool              flameUseAnalog  = FLAME_ANALOG_DEFAULT;
+bool              flameTg         = FLAME_ALARM_TG_DEFAULT;
+
 /* Ses / hoparlör ayarları (NVS) */
 int               sndVolume     = SND_VOLUME_DEFAULT;   // 0..100
 
@@ -112,6 +119,14 @@ bool              vibDigital    = false;  // DO mantıksal durum (titreşim = tr
 bool              vibActive     = false;  // olay aktif mi (hold penceresi)
 bool              vibConnected  = false;  // en az bir giriş hareket gördü mü
 uint32_t          vibHoldUntilMs = 0;
+/* Alev / yangın okumaları */
+int               flameRaw      = 0;      // AO ham ADC (0..1023)
+float             flameEma      = 0.0f;   // AO yavaş taban (baseline) izleme
+int               flameBase     = 0;      // AO boştaki referans
+bool              flameDigital  = false;  // DO mantıksal durum (alev = true)
+bool              flameActive   = false;  // olay aktif mi (hold penceresi)
+bool              flameConnected= false;  // sensör en az bir kez tetiklendi mi
+uint32_t          flameHoldUntilMs = 0;
 uint32_t          warmUpUntilMs = 0;
 bool              firstRead     = true;
 bool              gasBaseStable = false;   // ısınma penceresi bitince taban yeniden ölçüldü mü
@@ -125,6 +140,7 @@ bool              fanByAutomation = false;
 bool              wasDanger       = false;
 bool              wasRainShut     = false;
 bool              wasVibShut      = false;
+bool              wasFlameOn      = false;   // alev alarmı penceresi kapatıldı mı
 bool              soundManual     = false;   // panelden elle açılan ses (otomasyon ezmez)
 uint32_t          alarmSimUntilMs = 0;
 int               windowPos       = SERVO_WINDOW_OPEN;
@@ -155,7 +171,7 @@ String            lastCmdErr      = "";
 String            cmdErrHold      = "";   // bir sonraki yayına kadar tutulur
 
 /* Geçmiş halka tamponu (RAM) */
-struct HistRec { uint32_t t; uint16_t ppm; uint8_t rain; uint8_t st; uint8_t fl; };
+struct HistRec { uint32_t t; uint16_t ppm; uint8_t rain; uint8_t st; uint16_t fl; };
 static HistRec    hist[HISTORY_MAX];
 uint16_t          histCount = 0;
 uint16_t          histHead  = 0;
@@ -179,6 +195,11 @@ static void loadSettings() {
   vibUseDigital= prefs.getBool("vibDigital", VIB_DIGITAL_DEFAULT);
   vibUseAnalog = prefs.getBool("vibAnalog", VIB_ANALOG_DEFAULT);
   vibTg        = prefs.getBool("vibTg", VIB_ALARM_TG_DEFAULT);
+  flameEnabled = prefs.getBool("flameEnabled", FLAME_ENABLED_DEFAULT);
+  flameAlarm   = prefs.getBool("flameAlarm", FLAME_ALARM_DEFAULT);
+  flameUseDigital = prefs.getBool("flameDigital", FLAME_DIGITAL_DEFAULT);
+  flameUseAnalog  = prefs.getBool("flameAnalog", FLAME_ANALOG_DEFAULT);
+  flameTg      = prefs.getBool("flameTg", FLAME_ALARM_TG_DEFAULT);
   sndVolume    = prefs.getInt("sndVol", SND_VOLUME_DEFAULT);
   tgEnabled    = prefs.getBool("tgEnabled", TG_ENABLED_DEFAULT);
   tgToken      = prefs.getString("tgToken", "");
@@ -208,6 +229,11 @@ static void saveSettings() {
   prefs.putBool("vibDigital", vibUseDigital);
   prefs.putBool("vibAnalog", vibUseAnalog);
   prefs.putBool("vibTg", vibTg);
+  prefs.putBool("flameEnabled", flameEnabled);
+  prefs.putBool("flameAlarm", flameAlarm);
+  prefs.putBool("flameDigital", flameUseDigital);
+  prefs.putBool("flameAnalog", flameUseAnalog);
+  prefs.putBool("flameTg", flameTg);
   prefs.putInt("sndVol", sndVolume);
   prefs.putBool("tgEnabled", tgEnabled);
   prefs.putString("tgToken", tgToken);
@@ -491,17 +517,22 @@ static void readSensors() {
   rainRaw = analogRead(PIN_RAIN);
   vibRaw  = (PIN_VIB_AO >= 0) ? analogRead(PIN_VIB_AO) : 0;
   int vibDoLevel = (PIN_VIB_DO >= 0) ? digitalRead(PIN_VIB_DO) : HIGH;
+  flameRaw = (PIN_FLAME_AO >= 0) ? analogRead(PIN_FLAME_AO) : 0;
+  int flameDoLevel = (PIN_FLAME_DO >= 0) ? digitalRead(PIN_FLAME_DO) : HIGH;
 
-  if (firstRead) { gasEma = gasRaw; rainEma = rainRaw; vibEma = vibRaw; firstRead = false; }
+  if (firstRead) { gasEma = gasRaw; rainEma = rainRaw; vibEma = vibRaw; flameEma = flameRaw; firstRead = false; }
   else {
     gasEma  = (SENSOR_EMA_ALPHA * gasRaw)  + ((1.0f - SENSOR_EMA_ALPHA) * gasEma);
     rainEma = (SENSOR_EMA_ALPHA * rainRaw) + ((1.0f - SENSOR_EMA_ALPHA) * rainEma);
     /* AO yavaş taban: gerçek sarsıntının tabanı kaydırmaması için çok yavaş izle */
     vibEma  = (0.02f * vibRaw) + (0.98f * vibEma);
+    /* Alev AO da yavaş taban (alev algısındaki parlaklık kaymasını izler) */
+    flameEma = (0.02f * flameRaw) + (0.98f * flameEma);
   }
   gasFiltered  = (int)(gasEma + 0.5f);
   rainFiltered = (int)(rainEma + 0.5f);
   vibBase      = (int)(vibEma + 0.5f);
+  flameBase    = (int)(flameEma + 0.5f);
 
   /* Gaz sensörü arıza tespiti (kopuk / kısa devre) */
   gasFault = (gasRaw <= GAS_FAULT_LOW) || (gasRaw >= GAS_FAULT_HIGH);
@@ -584,6 +615,26 @@ static void readSensors() {
   }
   vibActive = vibEnabled && ((int32_t)(vibHoldUntilMs - now) > 0);
 
+  /* Alev / yangın: titreşimle aynı mantık. Dijital DO (LOW=alev) ve/veya
+     analog AO (tabandan sapma). Herhangi biri tetiklerse olay
+     FLAME_TRIGGER_HOLD_MS boyunca aktif kalır (alev titremeleri tek olay). */
+  bool flameDigitalNow = false;
+  if (flameEnabled && flameUseDigital) {
+    bool low = (flameDoLevel == LOW);
+    flameDigitalNow = FLAME_DO_ACTIVE_LOW ? low : !low;
+  }
+  bool flameAnalogNow = false;
+  if (flameEnabled && flameUseAnalog) {
+    int dev = flameRaw - flameBase; if (dev < 0) dev = -dev;
+    flameAnalogNow = (flameRaw > 5) && (dev >= FLAME_ANALOG_DELTA);
+  }
+  flameDigital = flameDigitalNow;
+  if (flameDigitalNow || flameAnalogNow) {
+    flameHoldUntilMs = now + FLAME_TRIGGER_HOLD_MS;
+    flameConnected = true;
+  }
+  flameActive = flameEnabled && ((int32_t)(flameHoldUntilMs - now) > 0);
+
   /* Isınma süresi dolmadan güvenli tarafta kal */
   if ((int32_t)(warmUpUntilMs - now) > 0) {
     gasState = GAS_NORMAL;
@@ -622,6 +673,34 @@ static void readSensors() {
 static void runAutomation() {
   uint32_t now = millis();
   bool alarmSound = false;
+
+  /* 0) Alev / yangın (EN YÜKSEK öncelik — gazdan da önce) */
+  if (flameAlarm && flameActive) {
+    alarmSound = true;                       // siren: oto kapalı olsa da çalar (güvenlik)
+    if (autoControl) {
+      setFan(false, false);                  // yangına oksijen pompalamayı ÖNLE
+      setPump(false);
+      if (!wasFlameOn) {
+        setWindow(SERVO_WINDOW_SHUT);        // oksijeni kes
+        wasFlameOn = true;
+        Serial.println(F("[otomasyon] ALEV -> pencere kapatildi, siren"));
+        if (flameTg) tgSend(String("ALEV/YANGIN algilandi! Siren caliyor, pencere kapatildi. Cihaz: ") + deviceId, false);
+      }
+    } else if (!wasFlameOn) {
+      wasFlameOn = true;
+      if (flameTg) tgSend(String("ALEV/YANGIN algilandi (otomasyon kapali). Cihaz: ") + deviceId, false);
+    }
+    setBuzzer(alarmSound || soundManual);
+    return;
+  }
+  if (wasFlameOn) {
+    wasFlameOn = false;
+    if (fanByAutomation) setFan(false, false);
+    if (autoControl && gasState != GAS_DANGER) {
+      if (rainWet) { setWindow(SERVO_WINDOW_SHUT); wasRainShut = true; }
+      else         { setWindow(SERVO_WINDOW_OPEN); wasRainShut = false; }
+    }
+  }
 
   /* 1) Gaz tehlikesi (en yüksek öncelik) */
   if (gasState == GAS_DANGER) {
@@ -718,7 +797,7 @@ static void historyPush() {
   r.ppm = (uint16_t)(gasPpm < 0 ? 0 : (gasPpm > 65000 ? 65000 : gasPpm));
   r.rain = (uint8_t)(rainPct < 0 ? 0 : (rainPct > 100 ? 100 : rainPct));
   r.st = (uint8_t)(gasFault ? 3 : (uint8_t)gasState);
-  uint8_t fl = 0;
+  uint16_t fl = 0;
   if (fanOn)             fl |= 1;
   if (pumpOn)            fl |= 2;
   if (buzzerOn)          fl |= 4;
@@ -727,6 +806,7 @@ static void historyPush() {
   if (floodActive)       fl |= 32;
   if (autoControl)       fl |= 64;
   if (vibActive)         fl |= 128;
+  if (flameActive)       fl |= 256;
   r.fl = fl;
   histHead = (histHead + 1) % HISTORY_MAX;
   if (histCount < HISTORY_MAX) histCount++;
@@ -819,6 +899,16 @@ static String buildStatus() {
   j += ",\"vibUseDigital\":"; j += (vibUseDigital ? "true" : "false");
   j += ",\"vibUseAnalog\":"; j += (vibUseAnalog ? "true" : "false");
   j += ",\"vibTg\":"; j += (vibTg ? "true" : "false");
+  j += ",\"flame\":"; j += (flameActive ? "true" : "false");
+  j += ",\"flameRaw\":"; j += flameRaw;
+  j += ",\"flameBase\":"; j += flameBase;
+  j += ",\"flameDigital\":"; j += (flameDigital ? "true" : "false");
+  j += ",\"flameEnabled\":"; j += (flameEnabled ? "true" : "false");
+  j += ",\"flameAlarm\":"; j += (flameAlarm ? "true" : "false");
+  j += ",\"flameDetected\":"; j += (flameConnected ? "true" : "false");
+  j += ",\"flameUseDigital\":"; j += (flameUseDigital ? "true" : "false");
+  j += ",\"flameUseAnalog\":"; j += (flameUseAnalog ? "true" : "false");
+  j += ",\"flameTg\":"; j += (flameTg ? "true" : "false");
   j += ",\"sndMode\":\""; j += sndName(sndMode); j += "\"";
   j += ",\"sndVol\":"; j += sndVolume;
   j += ",\"sndManual\":"; j += (soundManual ? "true" : "false");
@@ -844,7 +934,7 @@ static String buildStatus() {
 }
 
 static String buildSettingsJson() {
-  String j; j.reserve(460);
+  String j; j.reserve(700);
   j += "{\"ok\":true,\"gasWarn\":"; j += gasWarnPpm;
   j += ",\"gasDanger\":"; j += gasDangerPpm;
   j += ",\"gasHyst\":"; j += gasHyst;
@@ -857,6 +947,11 @@ static String buildSettingsJson() {
   j += ",\"vibUseDigital\":"; j += (vibUseDigital ? "true" : "false");
   j += ",\"vibUseAnalog\":"; j += (vibUseAnalog ? "true" : "false");
   j += ",\"vibTg\":"; j += (vibTg ? "true" : "false");
+  j += ",\"flameEnabled\":"; j += (flameEnabled ? "true" : "false");
+  j += ",\"flameAlarm\":"; j += (flameAlarm ? "true" : "false");
+  j += ",\"flameUseDigital\":"; j += (flameUseDigital ? "true" : "false");
+  j += ",\"flameUseAnalog\":"; j += (flameUseAnalog ? "true" : "false");
+  j += ",\"flameTg\":"; j += (flameTg ? "true" : "false");
   j += ",\"sndVolume\":"; j += sndVolume;
   j += ",\"tgEnabled\":"; j += (tgEnabled ? "true" : "false");
   j += ",\"tgTokenSet\":"; j += (tgToken.length() ? "true" : "false");
@@ -915,6 +1010,17 @@ static String applyCommand(const String &device, const String &action, long valu
     else return "gecersiz titresim komutu";
     saveSettings();
 
+  } else if (device == "flame" || device == "fire") {
+    if (action == "on")           flameEnabled = true;
+    else if (action == "off")     flameEnabled = false;
+    else if (action == "toggle")  flameEnabled = !flameEnabled;
+    else if (action == "alarm")   flameAlarm = true;
+    else if (action == "noalarm") flameAlarm = false;
+    else if (action == "clear")   { flameActive = false; flameHoldUntilMs = 0; }
+    else if (action == "test")    { flameHoldUntilMs = millis() + FLAME_TRIGGER_HOLD_MS; flameConnected = true; }
+    else return "gecersiz alev komutu";
+    saveSettings();
+
   } else if (device == "window") {
     if (action == "open")       setWindow(SERVO_WINDOW_OPEN);
     else if (action == "shut")  setWindow(SERVO_WINDOW_SHUT);
@@ -970,6 +1076,7 @@ static String applySettingsJson(const String &body) {
   long rw = rainWetPct, rf = rainFloodPct;
   bool invert = rainInvert, autc = autoControl, tgen = tgEnabled;
   bool vibEn = vibEnabled, vibAl = vibAlarm, vibDig = vibUseDigital, vibAna = vibUseAnalog, vibTelegram = vibTg;
+  bool flmEn = flameEnabled, flmAl = flameAlarm, flmDig = flameUseDigital, flmAna = flameUseAnalog, flmTelegram = flameTg;
   long sndVol = sndVolume;
   bool ttest = false, forgetTok = false, forgetChat = false;
   String token = "", chat = "";
@@ -986,6 +1093,11 @@ static String applySettingsJson(const String &body) {
   jsonGetBool(body, "vibUseDigital", vibDig);
   jsonGetBool(body, "vibUseAnalog", vibAna);
   jsonGetBool(body, "vibTg", vibTelegram);
+  jsonGetBool(body, "flameEnabled", flmEn);
+  jsonGetBool(body, "flameAlarm", flmAl);
+  jsonGetBool(body, "flameUseDigital", flmDig);
+  jsonGetBool(body, "flameUseAnalog", flmAna);
+  jsonGetBool(body, "flameTg", flmTelegram);
   jsonGetNum(body, "sndVolume", sndVol);
   jsonGetBool(body, "tgEnabled", tgen);
   jsonGetStr(body, "tgToken", token);
@@ -1012,6 +1124,11 @@ static String applySettingsJson(const String &body) {
   vibUseDigital= vibDig;
   vibUseAnalog = vibAna;
   vibTg        = vibTelegram;
+  flameEnabled = flmEn;
+  flameAlarm   = flmAl;
+  flameUseDigital = flmDig;
+  flameUseAnalog  = flmAna;
+  flameTg      = flmTelegram;
   if (sndVol < 0) sndVol = 0;
   if (sndVol > 100) sndVol = 100;
   sndVolume    = (int)sndVol;
@@ -1279,6 +1396,8 @@ void setup() {
   pinMode(PIN_RAIN, INPUT);
   if (PIN_VIB_AO >= 0) pinMode(PIN_VIB_AO, INPUT);
   if (PIN_VIB_DO >= 0) pinMode(PIN_VIB_DO, INPUT_PULLUP);   // LM393 açık kolektör
+  if (PIN_FLAME_AO >= 0) pinMode(PIN_FLAME_AO, INPUT);
+  if (PIN_FLAME_DO >= 0) pinMode(PIN_FLAME_DO, INPUT_PULLUP); // LM393 açık kolektör
   outputsSafe("acilis");
 
   /* I2S hoparlör (MAX98357A) + ses görevi */

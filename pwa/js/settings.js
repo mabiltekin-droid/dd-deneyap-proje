@@ -61,6 +61,11 @@
     setChk('vibUseDigital', s.vibUseDigital, true);
     setChk('vibUseAnalog', s.vibUseAnalog, false);
     setChk('vibTg', s.vibTg, true);
+    setChk('flameEnabled', s.flameEnabled, true);
+    setChk('flameAlarm', s.flameAlarm, true);
+    setChk('flameUseDigital', s.flameUseDigital, true);
+    setChk('flameUseAnalog', s.flameUseAnalog, false);
+    setChk('flameTg', s.flameTg, true);
     setChk('aiVoice', s.aiVoice, true);
     const sndVolEl = $('sndVolume');
     if (sndVolEl) sndVolEl.value = String(s.sndVolume !== undefined ? s.sndVolume : 70);
@@ -101,6 +106,11 @@
       vibUseDigital: $('vibUseDigital') ? $('vibUseDigital').checked : true,
       vibUseAnalog: $('vibUseAnalog') ? $('vibUseAnalog').checked : false,
       vibTg: $('vibTg') ? $('vibTg').checked : true,
+      flameEnabled: $('flameEnabled') ? $('flameEnabled').checked : true,
+      flameAlarm: $('flameAlarm') ? $('flameAlarm').checked : true,
+      flameUseDigital: $('flameUseDigital') ? $('flameUseDigital').checked : true,
+      flameUseAnalog: $('flameUseAnalog') ? $('flameUseAnalog').checked : false,
+      flameTg: $('flameTg') ? $('flameTg').checked : true,
       sndVolume: $('sndVolume') ? Number($('sndVolume').value) : 70,
       theme: themeEl ? themeEl.value : 'dark'
     };
@@ -301,6 +311,12 @@
       App.sound.alarm();
       return;
     }
+    if (v.flameEnabled && !v.flameUseDigital && !v.flameUseAnalog) {
+      setResult($('testResult'),
+        'Alev algılama açık ama hiçbir giriş seçili değil — Dijital (DO) veya Analog (AO) seçin.', 'fail');
+      App.sound.alarm();
+      return;
+    }
 
     const typedTgToken = ($('tgToken') ? $('tgToken').value.trim() : '');
     if (v.tgEnabled && !tgInfo.tgTokenSet && !typedTgToken) {
@@ -333,6 +349,11 @@
         vibUseDigital: v.vibUseDigital,
         vibUseAnalog: v.vibUseAnalog,
         vibTg: v.vibTg,
+        flameEnabled: v.flameEnabled,
+        flameAlarm: v.flameAlarm,
+        flameUseDigital: v.flameUseDigital,
+        flameUseAnalog: v.flameUseAnalog,
+        flameTg: v.flameTg,
         sndVolume: Math.max(0, Math.min(100, Number(v.sndVolume) || 0)),
         tgEnabled: v.tgEnabled,
         tgChatId: v.tgChatId
@@ -414,6 +435,21 @@
           if (s.vibTg !== undefined) {
             $('vibTg').checked = (s.vibTg === true || s.vibTg === 'true');
           }
+          if (s.flameEnabled !== undefined) {
+            $('flameEnabled').checked = (s.flameEnabled === true || s.flameEnabled === 'true');
+          }
+          if (s.flameAlarm !== undefined) {
+            $('flameAlarm').checked = (s.flameAlarm === true || s.flameAlarm === 'true');
+          }
+          if (s.flameUseDigital !== undefined) {
+            $('flameUseDigital').checked = (s.flameUseDigital === true || s.flameUseDigital === 'true');
+          }
+          if (s.flameUseAnalog !== undefined) {
+            $('flameUseAnalog').checked = (s.flameUseAnalog === true || s.flameUseAnalog === 'true');
+          }
+          if (s.flameTg !== undefined) {
+            $('flameTg').checked = (s.flameTg === true || s.flameTg === 'true');
+          }
           if (typeof s.sndVol === 'number' && $('sndVolume')) {
             $('sndVolume').value = String(s.sndVol);
           }
@@ -428,6 +464,11 @@
             vibUseDigital: $('vibUseDigital').checked,
             vibUseAnalog: $('vibUseAnalog').checked,
             vibTg: $('vibTg').checked,
+            flameEnabled: $('flameEnabled').checked,
+            flameAlarm: $('flameAlarm').checked,
+            flameUseDigital: $('flameUseDigital').checked,
+            flameUseAnalog: $('flameUseAnalog').checked,
+            flameTg: $('flameTg').checked,
             sndVolume: Number($('sndVolume').value) || 0
           });
         }

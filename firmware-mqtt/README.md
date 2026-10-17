@@ -1,8 +1,9 @@
 # Deneyap Ev Koruma — Cihaz Firmware'i (MQTT sürümü)
 
-**Sürüm: 3.1.0** — titreşim/sarsıntı sensörü (dijital + analog) ve **I2S
-hoparlör (MAX98357A)** desteği: sesli alarm/siren/bip, panelden ses seviyesi
-ve siren testi. Bunlara ek olarak: yedek broker'a otomatik geçiş, ısınma sonrası
+**Sürüm: 3.2.0** — **alev (IR flame) sensörü** (dijital + analog, yangında tam
+alarm), titreşim/sarsıntı sensörü (dijital + analog) ve **I2S hoparlör
+(MAX98357A)** desteği: sesli alarm/siren/bip, panelden ses seviyesi ve siren
+testi. Bunlara ek olarak: yedek broker'a otomatik geçiş, ısınma sonrası
 gaz tabanı yeniden ölçümü + uyarlanabilir taban, panelden gaz tabanı
 kalibrasyonu, yağmur sensörü ham ADC kalibrasyonu + **kopuk/kısa sensör
 koruması**, üstel yeniden bağlanma.
@@ -63,6 +64,8 @@ MAX98357A amfi doğrudan ESP32 donanımsal I2S'iyle sürülür.
 | Yağmur sensörü (AO) | A1 | 39 |
 | Titreşim sensörü — dijital (DO) | D14 | 14 |
 | Titreşim sensörü — analog (AO) | A4 | 32 |
+| Alev sensörü — dijital (DO) | D10 | 4 |
+| Alev sensörü — analog (AO) | A0 | 36 |
 | I2S amfi — BCLK | D6 | 18 |
 | I2S amfi — LRC / WS | D5 | 19 |
 | I2S amfi — DIN (veri) | D4 | 21 |
@@ -111,6 +114,8 @@ Komutlar:
   `test` (test tonu), `siren`, `beep`, `set`/`volume` (`value` = 0..100 ses seviyesi)
 - `vibration` / `vib` → `on` | `off` | `toggle` (algılama), `alarm` | `noalarm`
   (sarsıntıda tam alarm), `test` (alarmı simüle et), `clear` (olayı temizle)
+- `flame` / `fire` → `on` | `off` | `toggle` (algılama), `alarm` | `noalarm`
+  (alevde tam alarm), `test` (alarmı simüle et), `clear` (olayı temizle)
 - `window` / `blind` → `open` | `shut` | `ajar` | `set` | `angle` | `stop`
 - `gas` → `recalibrate` (temiz hava tabanını yeniden ölç)
 - `test` → `simulate_alarm` (5 sn'lik gaz tehlikesi); `reboot`
@@ -165,6 +170,22 @@ Komutlar:
   Simüle Et" (`vibration` → `test`) yapılabilir. Durumda `vib`, `vibRaw`,
   `vibBase`, `vibDigital`, `vibEnabled`, `vibAlarm`, `vibDetected`,
   `vibUseDigital`, `vibUseAnalog`, `vibTg` alanları yayınlanır.
+- **Alev / yangın (v3.2.0):** IR alev sensörü modülü (ör. **KY-026**, LM393
+  tabanlı). Titreşimle aynı mantık: hem dijital (DO) hem analog (AO)
+  desteklenir, varsayılan **yalnızca dijital** kullanılır. DO, LM393 açık
+  kolektör olduğundan dahili yukarı çekme açılır; alev algılanınca LOW'a
+  çekilir. Alev olayı **en yüksek öncelikli** alarmdır (gazdan da önce):
+  `flameAlarm` açıkken siren çalar, pencere **kapatılır** (oksijen kesilir),
+  **fan ve su motoru durdurulur** (yangına oksijen/hava verilmez) ve (`flameTg`
+  ise) Telegram bildirimi gider. Panelden algılama aç/kapa, tam alarm aç/kapa
+  ve "Alarmı Simüle Et" (`flame` → `test`) yapılabilir. Durumda `flame`,
+  `flameRaw`, `flameBase`, `flameDigital`, `flameEnabled`, `flameAlarm`,
+  `flameDetected`, `flameUseDigital`, `flameUseAnalog`, `flameTg` alanları
+  yayınlanır; geçmiş kaydında 256 biti (`fl`) alev olayını işaretler.
+  > **Kablolama:** Dijital çıkışı **D10 (GPIO4)**'e, analog çıkışı (4 pinli
+  > modülde) **A0 (GPIO36)**'ya bağlayın. Gerekirse `config.h`'de
+  > `PIN_FLAME_DO` / `PIN_FLAME_AO` değerlerini değiştirin. Modülü 3V3 ile
+  > besleyin (GPIO'lar 5 V toleranslı değildir).
 - **Ses / hoparlör (I2S, v3.1.0):** MAX98357A amfi ile sesli alarm. Desenler:
   `siren` (alarm), `alarm` (kesintili), `test` (test tonu), `bip`. Panelden ses
   seviyesi (`sndVolume`, 0..100) ve siren/bip testi yapılabilir; seviye NVS'ye

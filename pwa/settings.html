@@ -824,6 +824,56 @@
               </span>
             </label>
 
+            <!-- Alev / Yangın Sensörü -->
+            <label class="switch">
+              <input type="checkbox" id="flameEnabled" name="flameEnabled">
+              <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+              <span class="switch-body">
+                <strong>Alev / Yangın Algılama</strong>
+                <small>IR alev sensörü (KY-026 vb.) alev algıladığında olay üretir.</small>
+              </span>
+            </label>
+
+            <!-- Alevde Tam Alarm -->
+            <label class="switch">
+              <input type="checkbox" id="flameAlarm" name="flameAlarm">
+              <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+              <span class="switch-body">
+                <strong>Alevde Tam Alarm</strong>
+                <small>Siren çalar, pencereyi kapatır (oksijeni keser), fan ve su motorunu durdurur.</small>
+              </span>
+            </label>
+
+            <!-- Alev — Dijital Giriş -->
+            <label class="switch">
+              <input type="checkbox" id="flameUseDigital" name="flameUseDigital">
+              <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+              <span class="switch-body">
+                <strong>Alev — Dijital Giriş (DO)</strong>
+                <small>Modülün dijital çıkışını kullanır (yaygın 3 pinli modül). Önerilir.</small>
+              </span>
+            </label>
+
+            <!-- Alev — Analog Giriş -->
+            <label class="switch">
+              <input type="checkbox" id="flameUseAnalog" name="flameUseAnalog">
+              <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+              <span class="switch-body">
+                <strong>Alev — Analog Giriş (AO)</strong>
+                <small>4 pinli modüllerde analog çıkışı da kullanır; dijital yoksa açın.</small>
+              </span>
+            </label>
+
+            <!-- Alevde Telegram -->
+            <label class="switch">
+              <input type="checkbox" id="flameTg" name="flameTg">
+              <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+              <span class="switch-body">
+                <strong>Alevde Telegram Bildirimi</strong>
+                <small>Alev alarmında Telegram üzerinden anlık mesaj gönderir.</small>
+              </span>
+            </label>
+
             <!-- AI Sesli Uyarı -->
             <label class="switch">
               <input type="checkbox" id="aiVoice" name="aiVoice">

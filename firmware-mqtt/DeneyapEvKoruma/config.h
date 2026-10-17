@@ -26,8 +26,9 @@
    (karta özel, yeniden flaşta değişmez). Aynı MQTT_TOPIC'i kullanan iki
    kart olmasın! */
 #define DEVICE_ID          ""        // boş = otomatik "DK-XXXX"; istersen sabit ad yaz (örn. "kart1")
-#define FW_VERSION         "3.1.0"   // cihazın kendi sürümü; panel /status'te `fw` olarak gösterir
+#define FW_VERSION         "3.2.0"   // cihazın kendi sürümü; panel /status'te `fw` olarak gösterir
                                      // 3.1.0: titreşim sensörü + I2S hoparlör (MAX98357A) + sesli alarm
+                                     // 3.2.0: alev (IR flame) sensörü — dijital + analog, tam alarm
                                      // (not: panel sürümü package.json/config.js/sw.js'ten ayrıdır)
 
 /* ============================ Wi-Fi (STA) ============================== */
@@ -82,6 +83,8 @@
 #define PIN_RAIN           A1    // GPIO39 - Yağmur sensörü (analog AO)
 #define PIN_VIB_AO         A4    // GPIO32 - Titreşim sensörü analog çıkış (AO, opsiyonel)
 #define PIN_VIB_DO         14    // GPIO14 - Titreşim sensörü dijital çıkış (DO, opsiyonel)
+#define PIN_FLAME_AO       A0    // GPIO36 - Alev sensörü analog çıkış (AO, opsiyonel)
+#define PIN_FLAME_DO       4     // GPIO4  - Alev sensörü dijital çıkış (DO, opsiyonel)
 
 /* Çıkışlar: transistörlü röle modülü / sürücü üzerinden.
    ESP32 strapping pinleri (GPIO0, 2, 5, 12, 15) ÇIKIŞ olarak kullanılmamalı. */
@@ -181,6 +184,23 @@
 #define VIB_ANALOG_DELTA    250           // AO tabandan bu kadar saparsa sarsıntı (0..1023)
 #define VIB_TRIGGER_HOLD_MS 4000UL        // olay bu süre "aktif" kalsın (sarsıntı süresi)
 #define VIB_ALARM_TG_DEFAULT true         // sarsıntıda Telegram bildirimi gönder
+
+/* ================== ALEV / YANGIN SENSÖRÜ (IR Flame) ================== */
+/* IR alev sensörü modülü (ör. KY-026 / LM393 tabanlı). Çoğu modülde DO,
+   alev algılandığında LOW'a çekilir (aktif düşük) — titreşim modülüyle aynı
+   mantık. Analog (AO) taraf ise yavaş bir tabana göre sapma ile tetiklenir;
+   böylece modülün boştaki seviyesini önceden bilmek gerekmez. Varsayılan
+   olarak yalnızca DİJİTAL kullanılır. Alev olayı yangın açısından en yüksek
+   öncelikli alarmdır: siren çalar, pencere KAPATILIR (oksijen kesilir), fan ve
+   su motoru DURDURULUR, (flameTg ise) Telegram bildirimi gider. */
+#define FLAME_ENABLED_DEFAULT true        // açılışta alev algılama açık
+#define FLAME_ALARM_DEFAULT   true        // alev => tam alarm (siren+aktüatör+Telegram)
+#define FLAME_DIGITAL_DEFAULT true        // dijital DO girişini kullan
+#define FLAME_ANALOG_DEFAULT  false       // analog AO girişini kullan (4 pinli modül)
+#define FLAME_DO_ACTIVE_LOW   true        // DO LOW'a çekilince (alev) tetikle
+#define FLAME_ANALOG_DELTA    250         // AO tabandan bu kadar saparsa alev (0..1023)
+#define FLAME_TRIGGER_HOLD_MS 4000UL      // olay bu süre "aktif" kalsın (alev süresi)
+#define FLAME_ALARM_TG_DEFAULT true       // alevde Telegram bildirimi gönder
 
 /* ======================= SES / HOPARLÖR (I2S) ========================== */
 /* Sesli alarmlar I2S amfi (MAX98357A) üzerinden hoparlörden verilir. Panelden

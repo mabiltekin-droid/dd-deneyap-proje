@@ -371,6 +371,32 @@
     if (note) note.textContent = enabled ? 'sarsıntı izleme: aktif' : 'sarsıntı izleme: kapalı';
   }
 
+  /* Alev / yangın sensörü (IR flame sınıfı, ör. KY-026) */
+  function renderFlame(data) {
+    if (!$('flameCard')) return;
+    const active = !!(data && data.flame);
+    const enabled = !(data && data.flameEnabled === false);
+    const raw = Number(data && data.flameRaw) || 0;
+    const base = Number(data && data.flameBase) || 0;
+    const digital = !!(data && (data.flameDigital === true || data.flameDigital === 'true'));
+
+    const card = $('flameCard');
+    if (card) card.setAttribute('data-state', active ? 'danger' : (enabled ? 'normal' : 'unknown'));
+    setText('flameValue', active ? 'ALEV!' : (enabled ? 'GÜVENDE' : 'PASİF'));
+    setChip('flameChip', active ? 'danger' : (enabled ? 'normal' : 'unknown'),
+      active ? 'YANGIN' : (enabled ? 'İZLENİYOR' : 'KAPALI'));
+    setText('flameRaw', 'ham ' + raw + ' · taban ' + base + ' · DO ' + (digital ? '1' : '0'));
+
+    const fill = $('flameFill');
+    if (fill) {
+      const dev = Math.min(100, Math.abs(raw - base) / 4);
+      fill.style.width = (active ? 100 : dev) + '%';
+      fill.style.background = active ? 'var(--danger)' : 'var(--primary)';
+    }
+    const note = $('flameMode');
+    if (note) note.textContent = enabled ? 'alev izleme: aktif' : 'alev izleme: kapalı';
+  }
+
   /* Cihaz hoparlörü (I2S / MAX98357A) durumu ve ses seviyesi */
   function renderSound(data) {
     const on = !!(data && (data.buzzer === true || data.buzzer === 'true'));
@@ -460,6 +486,7 @@
       ['fan', data.fan, 'fanState'],
       ['pump', data.pump, 'pumpState'],
       ['vibration', !(data.vibEnabled === false), 'vibEnableState'],
+      ['flame', !(data.flameEnabled === false), 'flameEnableState'],
       ['auto', data.auto, 'autoState']
     ];
 
@@ -520,6 +547,14 @@
   function renderBanner(state) {
     const el = $('banner');
     if (!el) return;
+    if (lastData && lastData.flame) {
+      el.className = 'banner danger';
+      el.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 14.5A3.5 3.5 0 0 0 12 18a3.5 3.5 0 0 0 3.5-3.5c0-2-1.5-3-2-4.5-.5 1.5-1.5 2-1.5 2s-.5-1.5-1-2.5c-.8 1.5-2.5 3-2.5 5Z"/><path d="M12 2c1 3 4 5.5 5.5 8.5a7 7 0 1 1-13 3.5c0-4 3.5-7.5 5-10.5.5 2 2 3 2.5 3 .5-.5 1-2.5 0-4.5Z"/></svg>' +
+        '<div><strong>ALEV / YANGIN ALARMI</strong>' +
+        'Alev sensörü yangın algıladı. Siren (hoparlör) çalıyor, pencere oksijeni kesmek için kapatıldı ve fan/su motoru durduruldu. Yangın güvenliğinizi derhal kontrol edin.</div>';
+      el.hidden = false;
+      return;
+    }
     if (lastData && lastData.vib) {
       el.className = 'banner danger';
       el.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>' +
@@ -637,6 +672,7 @@
     renderGas(data, state);
     renderRain(data);
     renderVibration(data);
+    renderFlame(data);
     renderSound(data);
     renderSystem(data, state);
     renderOutlets(data);
