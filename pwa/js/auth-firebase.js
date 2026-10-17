@@ -161,6 +161,37 @@
     return App.Auth.snapshot();
   }
 
+  /* Sosyal giriş sonrası ortak işler: davet kodu, profil sağlığı, giriş kaydı. */
+  async function completeSocialLogin(sess, provider) {
+    // Davet kodu (varsa): profil yoksa davet rolüyle oluştur ve kodu tüket.
+    let code = null;
+    try { code = localStorage.getItem('deneyap.invite'); } catch (e) { /* yoksay */ }
+    if (code) {
+      let invite = null;
+      try { invite = await FB().verifyInvite(code); } catch (e) { invite = null; }
+      if (invite) {
+        try {
+          const existing = await FB().profile();
+          if (existing && existing.__setupRequired) {
+            await FB().ensureOwnProfile(sess.user.id, sess.user.email, sess.user.displayName, invite.role);
+          }
+          await FB().consumeInvite(code, sess.user.id);
+          localStorage.removeItem('deneyap.invite');
+        } catch (e) { /* yoksay */ }
+      }
+    }
+
+    await refreshProfile();
+    state.ready = true;
+    emit();
+    try {
+      await FB().addLoginLog({
+        userId: sess.user.id, email: sess.user.email,
+        success: true, action: 'login_' + provider, userAgent: navigator.userAgent
+      });
+    } catch (e) { /* yoksay */ }
+  }
+
   /* --------------------------------------------------- dışa açık API ------- */
 
   App.Auth = {
@@ -213,42 +244,20 @@
       return App.Auth.snapshot();
     },
 
-    signInWithGoogle: async function () {
+    // Sosyal giriş: 'google' | 'github' | 'apple'
+    signInWithProvider: async function (provider) {
       state.error = null;
-      const r = await FB().signInWithGoogle();
+      const r = await FB().signInWithProvider(provider);
       if (r && r.redirect) return { redirect: true };
       state.session = r;
       resetDeviceAccess();
-
-      // Davet kodu (varsa): profil yoksa davet rolüyle oluştur ve kodu tüket.
-      let code = null;
-      try { code = localStorage.getItem('deneyap.invite'); } catch (e) { /* yoksay */ }
-      if (code) {
-        let invite = null;
-        try { invite = await FB().verifyInvite(code); } catch (e) { invite = null; }
-        if (invite) {
-          try {
-            const existing = await FB().profile();
-            if (existing && existing.__setupRequired) {
-              await FB().ensureOwnProfile(r.user.id, r.user.email, r.user.displayName, invite.role);
-            }
-            await FB().consumeInvite(code, r.user.id);
-            localStorage.removeItem('deneyap.invite');
-          } catch (e) { /* yoksay */ }
-        }
-      }
-
-      await refreshProfile();
-      state.ready = true;
-      emit();
-      try {
-        await FB().addLoginLog({
-          userId: r.user.id, email: r.user.email,
-          success: true, action: 'login_google', userAgent: navigator.userAgent
-        });
-      } catch (e) { /* yoksay */ }
+      await completeSocialLogin(r, provider);
       return App.Auth.snapshot();
     },
+
+    signInWithGoogle: function () { return App.Auth.signInWithProvider('google'); },
+    signInWithGithub: function () { return App.Auth.signInWithProvider('github'); },
+    signInWithApple: function () { return App.Auth.signInWithProvider('apple'); },
 
     signUp: async function (email, password, displayName) {
       state.error = null;

@@ -595,25 +595,68 @@
     return true;
   }
 
-  /* Google ile oturum açma (popup; engellenirse tam sayfa yönlendirme).
-     Google hesapları e-postası doğrulanmış gelir; ayrıca doğrulama gerekmez. */
-  function googleHuman(err) {
+  /* -------------------------------------------------- Sosyal Giriş -------- */
+  // Google / GitHub / Apple ile oturum açma. Önce açılır pencere (popup)
+  // denenir; tarayıcı engellerse tam sayfa yönlendirmeye (redirect) düşülür.
+  // Yönlendirme dönüşünde onAuthStateChanged oturumu kendiliğinden kaydeder.
+  // Bu sağlayıcıların hesapları e-postası doğrulanmış gelir; ek doğrulama yok.
+
+  const SOCIAL = {
+    google: {
+      label: 'Google',
+      make: function () {
+        const p = new firebase.auth.GoogleAuthProvider();
+        p.setCustomParameters({ prompt: 'select_account' });
+        return p;
+      }
+    },
+    github: {
+      label: 'GitHub',
+      make: function () {
+        const p = new firebase.auth.GithubAuthProvider();
+        p.addScope('read:user');
+        p.addScope('user:email');
+        return p;
+      }
+    },
+    apple: {
+      label: 'Apple',
+      make: function () {
+        const p = new firebase.auth.OAuthProvider('apple.com');
+        p.addScope('email');
+        p.addScope('name');
+        return p;
+      }
+    }
+  };
+
+  function socialHuman(err, label) {
     const code = err && err.code;
     if (code === 'auth/operation-not-allowed')
-      return 'Google ile giriş kapalı. Firebase Console > Authentication > Sign-in method > Google seçeneğini etkinleştirin.';
+      return label + ' ile giriş kapalı. Firebase Console > Authentication > Sign-in method > '
+        + label + ' seçeneğini etkinleştirin.';
     if (code === 'auth/unauthorized-domain')
       return 'Bu alan adı yetkili değil. Console > Authentication > Settings > Authorized domains listesine ekleyin.';
     if (code === 'auth/account-exists-with-different-credential')
-      return 'Bu e-posta şifre ile kayıtlı. Önce e-posta + şifre ile giriş yapın.';
+      return 'Bu e-posta başka bir yöntemle kayıtlı. Önce onunla giriş yapın, sonra hesabınıza '
+        + label + ' bağlayın.';
+    if (code === 'auth/credential-already-in-use')
+      return 'Bu ' + label + ' hesabı başka bir kullanıcıya bağlı.';
     if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request')
-      return 'Google girişi iptal edildi.';
+      return label + ' girişi iptal edildi.';
     return human(err);
   }
 
-  async function signInWithGoogle() {
+  async function signInWithProvider(name) {
     ensureFirebase();
-    const provider = new firebase.auth.GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: 'select_account' });
+    const def = SOCIAL[name];
+    if (!def) {
+      const e = new Error('Bilinmeyen sağlayıcı: ' + name);
+      e.code = 'auth/unknown-provider';
+      e.human = 'Bilinmeyen giriş yöntemi.';
+      throw e;
+    }
+    const provider = def.make();
 
     let cred = null;
     try {
@@ -622,21 +665,36 @@
       const code = e && e.code;
       if (code === 'auth/popup-blocked' ||
           code === 'auth/operation-not-supported-in-this-environment') {
-        // Açılır pencere engellendi/desteklenmiyor → tam sayfa yönlendirme akışı.
-        // Dönüşte onAuthStateChanged oturumu kendiliğinden kaydeder.
+        // Açılır pencere engellendi/desteklenmiyor → tam sayfa yönlendirme.
         await auth.signInWithRedirect(provider);
         return { redirect: true };
       }
-      const err = new Error((e && e.message) || 'Google girişi başarısız.');
+      const err = new Error((e && e.message) || def.label + ' girişi başarısız.');
       err.code = code || 'unknown';
-      err.human = googleHuman(e);
+      err.human = socialHuman(e, def.label);
       throw err;
     }
 
     const user = cred.user;
+    // GitHub bazı hesaplarda e-posta paylaşmaz; profil için e-posta şart.
+    if (!user.email) {
+      try { await auth.signOut(); } catch (e) { /* yoksay */ }
+      const e = new Error('E-posta alınamadı.');
+      e.code = 'auth/no-email';
+      e.human = name === 'github'
+        ? 'GitHub hesabınızdan e-posta alınamadı. GitHub → Settings → Emails bölümünde '
+          + 'e-postanızı doğrulayıp "Keep my email addresses private" seçeneğini kapatın.'
+        : def.label + ' hesabınızdan e-posta alınamadı; başka bir hesapla deneyin.';
+      throw e;
+    }
+
     const token = await user.getIdToken();
     return saveSession(user, token);
   }
+
+  function signInWithGoogle() { return signInWithProvider('google'); }
+  function signInWithGithub() { return signInWithProvider('github'); }
+  function signInWithApple() { return signInWithProvider('apple'); }
 
   /* -------------------------------------------------- Dışa Açık API ---------- */
 
@@ -666,7 +724,10 @@
       return saveSession(cred.user, token);
     },
 
+    signInWithProvider: signInWithProvider,
     signInWithGoogle: signInWithGoogle,
+    signInWithGithub: signInWithGithub,
+    signInWithApple: signInWithApple,
 
     signUp: async function (email, password, data) {
       ensureFirebase();

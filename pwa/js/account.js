@@ -203,15 +203,22 @@
     }
   }
 
-  async function doGoogleSignIn() {
+  const SOCIAL_BTN = {
+    google: { id: 'googleSignInBtn', label: 'Google' },
+    github: { id: 'githubSignInBtn', label: 'GitHub' },
+    apple:  { id: 'appleSignInBtn',  label: 'Apple'  }
+  };
+
+  async function doSocialSignIn(provider) {
+    const def = SOCIAL_BTN[provider] || { id: '', label: provider };
+    const btn = def.id ? $(def.id) : null;
     busy = true;
-    const btn = $('googleSignInBtn');
     if (btn) btn.disabled = true;
-    setResult('Google ile giriş yapılıyor…');
+    setResult(def.label + ' ile giriş yapılıyor…');
     try {
-      const r = await App.Auth.signInWithGoogle();
+      const r = await App.Auth.signInWithProvider(provider);
       if (r && r.redirect) {
-        setResult('Google sayfasına yönlendiriliyorsunuz…');
+        setResult(def.label + ' sayfasına yönlendiriliyorsunuz…');
         return;
       }
       setResult('Giriş başarılı.', 'ok');
@@ -219,7 +226,7 @@
       App.haptic && App.haptic(40);
     } catch (e) {
       if (e && e.code === 'auth/popup-closed-by-user') {
-        setResult('Google girişi iptal edildi.', 'err');
+        setResult(def.label + ' girişi iptal edildi.', 'err');
       } else {
         setResult(e.human || e.message, 'err');
       }
@@ -686,7 +693,10 @@
 
     $('authSignInBtn').addEventListener('click', doSignIn);
     $('authSignUpBtn').addEventListener('click', doSignUp);
-    if ($('googleSignInBtn')) $('googleSignInBtn').addEventListener('click', doGoogleSignIn);
+    ['google', 'github', 'apple'].forEach(function (p) {
+      const id = SOCIAL_BTN[p].id;
+      if ($(id)) $(id).addEventListener('click', function () { doSocialSignIn(p); });
+    });
     $('authSignOutBtn').addEventListener('click', doSignOut);
     $('forgotPasswordBtn').addEventListener('click', doForgotPassword);
     $('createUserBtn').addEventListener('click', doCreateUser);

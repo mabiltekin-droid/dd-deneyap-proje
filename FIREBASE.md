@@ -13,27 +13,63 @@ ancak canlı projeye ayrıca **yayınlanmaları** gerekir.
 
 1. **Firestore Database** oluşturulmuş olmalı (Native mode).
 2. **Authentication → Sign-in method → Email/Password** etkin olmalı.
-3. **Authentication → Sign-in method → Google** etkin olmalı (aşağıya bakın).
+3. **Sosyal girişler** (Google / GitHub / Apple) isteğe bağlıdır — aşağıya bakın.
 4. (İsteğe bağlı) E-posta doğrulama şablonlarını Türkçeleştir.
 
 Bu adımlar tamamlanmadan panel oturum açamaz.
 
-### 0.1) Google ile girişi açma
+### 0.1) Sosyal girişler (Google / GitHub / Apple)
 
-1. Firebase Console → **Authentication** → **Sign-in method** → **Google** → **Enable**.
+Üçü de aynı akışla çalışır: açılır pencere (popup); tarayıcı engellerse tam sayfa
+yönlendirme. Kullanıcı tarafında kod hazırdır — yalnızca Console'da sağlayıcıyı açın.
+
+**Ortak adım (hepsi için geçerli):**
+
+**Authentication → Settings → Authorized domains** listesine üretim alan adını
+ekleyin (ör. `ddproje.vercel.app`). `localhost` ve `ddproje-9f594.firebaseapp.com`
+zaten varsayılan olarak yetkilidir. Listede olmayan bir alan adından giriş
+`auth/unauthorized-domain` verir.
+
+#### Google
+1. **Authentication → Sign-in method → Google → Enable**.
 2. **Proje destek e-postası** (support email) seçin. İlk kez açarken Google OAuth
    onay ekranı otomatik oluşturulur.
-3. **Authentication → Settings → Authorized domains** listesine üretim alan adını
-   ekleyin (ör. `ddproje.vercel.app`). `localhost` ve
-   `ddproje-9f594.firebaseapp.com` zaten varsayılan olarak yetkilidir.
-4. Panelde **Ayarlar → Hesap & Roller → “Google ile Devam Et”** butonu görünür.
 
-> • Google ile **ilk giriş yapan** hesap (profil hiç yoksa) **otomatik ADMIN** olur.
-> • `?invite=KOD` bağlantısıyla gelip Google ile giren kullanıcı, davetin rolünü alır.
-> • Google hesapları e-posta doğrulanmış kabul edilir; ayrı doğrulama adımı yoktur.
-> • Aynı e-posta şifre ile de kayıtlıysa Google girişi
->   `auth/account-exists-with-different-credential` verir → önce e-posta+şifre
->   ile giriş yapılmalıdır.
+#### GitHub
+GitHub, kendi OAuth uygulamanızı ister:
+1. GitHub → **Settings → Developer settings → OAuth Apps → New OAuth App**.
+   - **Application name:** `Deneyap Ev Koruma`
+   - **Homepage URL:** `https://ddproje.vercel.app`
+   - **Authorization callback URL:** `https://ddproje-9f594.firebaseapp.com/__/auth/handler`
+2. **Generate a new client secret** → Client ID ve Secret'ı kopyalayın.
+3. Firebase Console → **Authentication → Sign-in method → GitHub → Enable**;
+   kopyaladığınız **Client ID** ve **Client Secret**'ı girin, **Save**.
+
+> GitHub hesabında e-posta **gizli** ise giriş hata verir. Çözüm: GitHub →
+> Settings → Emails → e-postayı doğrulayıp **"Keep my email addresses private"**
+> seçeneğini kapatmak. (Panelde bu durumda anlaşılır bir uyarı gösterilir.)
+
+#### Apple
+Apple, ücretli **Apple Developer Program** üyeliği ve bir Service ID ister:
+1. Apple Developer → **Certificates, Identifiers & Profiles → Identifiers →
+   Services IDs → +** ile bir Service ID oluşturun (ör. `com.ornek.deneyap.web`).
+   - **Return URLs:** `https://ddproje-9f594.firebaseapp.com/__/auth/handler`
+2. **Keys → +** ile bir **Sign in with Apple** anahtarı oluşturun; `.p8`
+   dosyasını indirin (Key ID ve Team ID'yi not edin).
+3. Firebase Console → **Authentication → Sign-in method → Apple → Enable**;
+   **Service ID**, **Team ID**, **Key ID** ve `.p8` dosyasını girin, **Save**.
+
+> Apple e-postayı yalnızca **ilk** yetkilendirmede paylaşır ve kullanıcı
+> "Hide My Email" seçtiyse `@privaterelay.appleid.com` adresi gelir — panel bunu
+> normal e-posta olarak kabul eder.
+
+#### Ortak notlar
+> • Sosyal girişle **ilk giren** hesap (profil hiç yoksa) **otomatik ADMIN** olur.
+> • `?invite=KOD` bağlantısıyla gelip sosyal girişle katılan kullanıcı davetin rolünü alır.
+> • Sosyal hesapların e-postası doğrulanmış kabul edilir; ek doğrulama adımı yoktur.
+> • Aynı e-posta şifre ile de kayıtlıysa `auth/account-exists-with-different-credential`
+>   verir → önce e-posta + şifre ile giriş yapılmalıdır.
+> • Sağlayıcı kapalıysa buton `auth/operation-not-allowed` için Türkçe uyarı gösterir.
 
 ---
 
