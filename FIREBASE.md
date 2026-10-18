@@ -181,3 +181,88 @@ kullanıcı bu işareti alır ve admin olur, sonraki kullanıcılar alamaz.
   kullanıcı ve anonim erişim kapalıdır.
 - Cihaz bir hesaba bağlıysa, diğer hesaplar ve çıkış yapmış kullanıcılar için
   o cihaz **yok gibi** görünür (tüm panel gizlenir).
+- Sistem bildirimleri (Notification API + Service Worker) yalnızca **HTTPS**
+  veya `localhost` üzerinde çalışır. Cihazın kendi ağ adresinde (`http://192.168.4.1`)
+  tarayıcı bildirim/Service Worker izni vermez — bu normaldir, Vercel adresi kullanın.
+
+---
+
+## 6) Arka plan bildirimi (Web Push / Vercel gönderici)
+
+İki katman vardır:
+
+| Katman | Panel açıkken | Panel kapalıyken | Nerede yönetilir |
+| --- | --- | --- | --- |
+| **Yerel bildirim** | ✅ | ❌ | Tarayıcı (`pwa/js/notify.js`) |
+| **Web Push (uzak)** | ✅ | ✅ | Vercel gönderici + `push_subs` |
+| **Telegram** | ✅ | ✅ | Cihaz (doğrudan `api.telegram.org`) |
+
+Yerel bildirim kurulum gerektirmez; Ayarlar → Bildirimler → **İzin Ver** yeterlidir.
+Aşağısı yalnızca **panel kapalıyken de bildirim** istiyorsanız gereklidir.
+
+### 6.1) VAPID anahtarları (bir kez)
+
+```powershell
+npm run vapid        # node tools/gen-vapid.js
+```
+
+Bu, depoya **girmeyen** `.vapid.json` dosyasını üretir ve ekrana şunları yazar:
+`publicKey` (panele gider), `privateKey` ve `triggerSecret` (Vercel'e gider).
+
+`publicKey` değerini `pwa/js/config.js` içindeki `App.VAPID_PUBLIC_KEY` alanına
+kopyalayın (depoda zaten bir anahtar kayıtlıdır; isterseniz kendi anahtarınızı
+üretip değiştirin — anahtar değişirse mevcut abonelikler geçersiz olur).
+
+### 6.2) Servis hesabı (abonelikleri okumak için)
+
+Firebase Console → Proje Ayarları → **Servis hesapları** → *Yeni özel anahtar
+oluştur* → JSON dosyası. Gönderici bu anahtarla `push_subs` koleksiyonunu okur
+(Admin SDK güvenlik kurallarını atlar; bu yüzden anahtar **gizlidir**).
+
+### 6.3) Vercel ortam değişkenleri
+
+Vercel → Proje → Settings → Environment Variables:
+
+| Ad | Değer |
+| --- | --- |
+| `VAPID_PUBLIC_KEY` | `.vapid.json` → `publicKey` |
+| `VAPID_PRIVATE_KEY` | `.vapid.json` → `privateKey` |
+| `VAPID_SUBJECT` | `mailto:size@ornek.com` |
+| `PUSH_TRIGGER_SECRET` | `.vapid.json` → `triggerSecret` |
+| `FIREBASE_SERVICE_ACCOUNT` | Servis hesabı JSON'u **tek satır** olarak |
+
+> JSON'u tek satıra indirmek (PowerShell):
+> ```powershell
+> (Get-Content key.json -Raw).Replace("`r","").Replace("`n","") | Set-Clipboard
+> ```
+
+Deploy: `git push` (Vercel otomatik yayınlar).
+
+### 6.4) Doğrulama
+
+```powershell
+curl.exe -s "https://<proje>.vercel.app/api/push"
+# → {"ok":true,"configured":{"vapid":true,"firestore":true},"ready":true}
+
+curl.exe -s -X POST "https://<proje>.vercel.app/api/push" `
+  -H "content-type: application/json" `
+  -H "x-dd-secret: <PUSH_TRIGGER_SECRET>" `
+  -d "{\"kind\":\"test\"}"
+# → {"ok":true,"kind":"test","targeted":1,"sent":1,"removed":0,"failed":0}
+```
+
+`targeted:0` ise panelde henüz abonelik yok demektir: Ayarlar → Bildirimler →
+**Arka Plan Bildirimini Aç**.
+
+### 6.5) Firmware
+
+`firmware-mqtt/DeneyapEvKoruma/config.h`:
+
+```c
+#define PUSH_URL    "https://<proje>.vercel.app/api/push"
+#define PUSH_SECRET "<PUSH_TRIGGER_SECRET>"
+```
+
+Boş bırakılırsa özellik kapalıdır (derleme boyutuna hiç yansımaz). Doldurulunca
+cihaz; alev, gaz tehlikesi, su baskını ve sarsıntı anında göndericiye haber
+verir (aynı türden 30 sn'de bir). Telegram'dan bağımsızdır.

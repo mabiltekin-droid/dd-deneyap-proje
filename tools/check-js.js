@@ -58,7 +58,8 @@ function oku(rel) {
 
 console.log('\n[1/6] JavaScript sözdizimi');
 const jsFiles = walk(PWA).filter(function (f) { return f.endsWith('.js'); })
-  .concat(walk(path.join(ROOT, 'tools')).filter(function (f) { return f.endsWith('.js'); }));
+  .concat(walk(path.join(ROOT, 'tools')).filter(function (f) { return f.endsWith('.js'); }))
+  .concat(walk(path.join(ROOT, 'api')).filter(function (f) { return f.endsWith('.js'); }));
 
 let jsHata = 0;
 jsFiles.forEach(function (f) {

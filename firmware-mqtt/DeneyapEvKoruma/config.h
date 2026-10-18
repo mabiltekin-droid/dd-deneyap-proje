@@ -26,10 +26,11 @@
    (karta özel, yeniden flaşta değişmez). Aynı MQTT_TOPIC'i kullanan iki
    kart olmasın! */
 #define DEVICE_ID          ""        // boş = otomatik "DK-XXXX"; istersen sabit ad yaz (örn. "kart1")
-#define FW_VERSION         "3.2.1"   // cihazın kendi sürümü; panel /status'te `fw` olarak gösterir
+#define FW_VERSION         "3.2.2"   // cihazın kendi sürümü; panel /status'te `fw` olarak gösterir
                                      // 3.1.0: titreşim sensörü + I2S hoparlör (MAX98357A) + sesli alarm
                                      // 3.2.0: alev (IR flame) sensörü — dijital + analog, tam alarm
                                      // 3.2.1: LEDC servo sürücüsü ESP32 çekirdeği 3.x uyumlu
+                                     // 3.2.2: alarm anında Vercel göndericisine Web Push isteği (PUSH_URL)
                                      // (not: panel sürümü package.json/config.js/sw.js'ten ayrıdır)
 
 /* ============================ Wi-Fi (STA) ============================== */
@@ -77,6 +78,17 @@
 /* Token ve chat id kalıcı olarak NVS'ye kaydedilir (panel Ayarlar'dan girer).
    Aşağıdaki yalnızca ilk açılış için varsayılandır. */
 #define TG_ENABLED_DEFAULT false
+
+/* ==================== UZAK BİLDİRİM (Web Push gönderici) ============== */
+/* Panel KAPALIYKEN de telefon/masaüstü bildirimi gitsin diye cihaz, alarm
+   anında Vercel'deki göndericiye (api/push.js) kısa bir HTTPS isteği atar.
+   Gönderici, panele kayıtlı aboneliklere (Firestore `push_subs`) bildiririmi
+   iletir. Aşağıdakiler BOŞ bırakılırsa özellik kapalıdır (Telegram yine çalışır).
+
+   PUSH_SECRET, Vercel'deki PUSH_TRIGGER_SECRET ile AYNI olmalıdır.
+   Değerleri üretmek için: node tools/gen-vapid.js */
+#define PUSH_URL           ""     // örn: "https://ddproje.vercel.app/api/push"
+#define PUSH_SECRET        ""     // uzun rastgele anahtar (Vercel ortam değişkeni)
 
 /* ============================ PIN HARİTASI ============================ */
 /* Analog girişler ADC1 kanalında olmalı (Wi-Fi açıkken ADC2 kullanılamaz). */

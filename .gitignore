@@ -25,6 +25,10 @@ public/
 firebase-debug.log
 serviceAccountKey*.json
 
+# ---------------------------------------------------------------- web push
+# VAPID özel anahtarı + tetikleme sırrı (Vercel ortam değişkenlerine girer)
+.vapid.json
+
 # Python araçları (mqtt-pub.py vb.) çalıştırılınca oluşan önbellek
 __pycache__/
 *.pyc

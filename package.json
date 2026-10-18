@@ -17,10 +17,15 @@
     "deploy:rules": "npx --yes firebase-tools deploy --only firestore:rules",
     "deploy:indexes": "npx --yes firebase-tools deploy --only firestore:indexes",
     "deploy:firestore": "npx --yes firebase-tools deploy --only firestore",
-    "firestore:list": "npx --yes firebase-tools firestore:indexes"
+    "firestore:list": "npx --yes firebase-tools firestore:indexes",
+    "vapid": "node tools/gen-vapid.js"
   },
   "engines": {
     "node": ">=18"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.0",
+    "web-push": "^3.6.0"
   },
   "devDependencies": {
     "mqtt": "^5.16.0"

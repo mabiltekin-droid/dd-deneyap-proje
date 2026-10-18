@@ -708,10 +708,12 @@ static void runAutomation() {
         wasFlameOn = true;
         Serial.println(F("[otomasyon] ALEV -> pencere kapatildi, siren"));
         if (flameTg) tgSend(String("ALEV/YANGIN algilandi! Siren caliyor, pencere kapatildi. Cihaz: ") + deviceId, false);
+        pushNotify("flame");
       }
     } else if (!wasFlameOn) {
       wasFlameOn = true;
       if (flameTg) tgSend(String("ALEV/YANGIN algilandi (otomasyon kapali). Cihaz: ") + deviceId, false);
+      pushNotify("flame");
     }
     setBuzzer(alarmSound || soundManual);
     return;
@@ -757,10 +759,12 @@ static void runAutomation() {
         wasVibShut = true;
         Serial.println(F("[otomasyon] TITRESIM -> pencere kapatildi, siren"));
         if (vibTg) tgSend(String("SARSINTI/KURCALAMA algilandi! Siren caliyor, pencere kapatildi. Cihaz: ") + deviceId, false);
+        pushNotify("vib");
       }
     } else if (!wasVibShut) {
       wasVibShut = true;
       if (vibTg) tgSend(String("SARSINTI/KURCALAMA algilandi (otomasyon kapali). Cihaz: ") + deviceId, false);
+      pushNotify("vib");
     }
   } else if (wasVibShut) {
     wasVibShut = false;
@@ -807,6 +811,38 @@ static bool tgSend(const String &text, bool force) {
   http.end();
   Serial.print(F("[tg] gonderim kodu: ")); Serial.println(code);
   return code == 200;
+}
+
+/* ----------------------------------------------------- uzak bildirim (push) */
+/* Panel kapalıyken de bildirim için Vercel göndericisine (api/push.js) kısa
+   bir HTTPS isteği atar. Panel tarafındaki tür tercihleri göndericide tutulur;
+   cihaz yalnızca "şu tür olay oldu" bilgisini + cihaz kimliğini iletir.
+   Aynı türden 30 sn içinde tek istek gider (alarm titremeleri tek bildirim). */
+static bool pushNotify(const char *kind) {
+  if (strlen(PUSH_URL) == 0 || strlen(PUSH_SECRET) == 0) return false;
+  if (WiFi.status() != WL_CONNECTED) return false;
+
+  int idx = 3;
+  if      (!strcmp(kind, "flame")) idx = 0;
+  else if (!strcmp(kind, "gas"))   idx = 1;
+  else if (!strcmp(kind, "flood")) idx = 2;
+  static uint32_t pushLastMs[4] = { 0, 0, 0, 0 };
+  uint32_t now = millis();
+  if (pushLastMs[idx] != 0 && (uint32_t)(now - pushLastMs[idx]) < 30000UL) return false;
+  pushLastMs[idx] = now;
+
+  WiFiClientSecure sec; sec.setInsecure();      // kök sertifika yüklenmez (pin sınırı)
+  HTTPClient http;
+  http.setConnectTimeout(6000);
+  http.setTimeout(6000);
+  if (!http.begin(sec, PUSH_URL)) return false;
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("x-dd-secret", PUSH_SECRET);
+  String body = String("{\"device\":\"") + deviceId + "\",\"kind\":\"" + kind + "\"}";
+  int code = http.POST(body);
+  http.end();
+  Serial.print(F("[push] gonderim kodu: ")); Serial.println(code);
+  return code == 200 || code == 202;
 }
 
 /* --------------------------------------------------------------- geçmiş */
@@ -1512,9 +1548,11 @@ void loop() {
 
     if (before != GAS_DANGER && gasState == GAS_DANGER) {
       tgSend(String("GAZ TEHLIKESI! ") + gasPpm + " ppm. Fan calistirildi, pencere kapatildi.", false);
+      pushNotify("gas");
     }
     if (!floodBefore && floodActive) {
       tgSend(String("SU BASKINI! Islaklik %") + rainPct + ". Pencere kapatildi.", false);
+      pushNotify("flood");
     }
   }
 

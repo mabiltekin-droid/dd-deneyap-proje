@@ -196,6 +196,12 @@ Komutlar:
   yeniden başlarsa sıfırlanır (panel yerel önbelleğiyle tamamlar).
 - Telegram: panel `Ayarlar → Telegram` bölümünden bot token + chat id girilir;
   firmware bunları NVS'ye kaydeder ve gaz tehlikesi/su baskınında bildirim yollar.
+- **Web Push (v3.2.2, isteğe bağlı):** Panel kapalıyken de bildirim için
+  `config.h` içindeki `PUSH_URL` (Vercel `api/push.js`) ve `PUSH_SECRET`
+  doldurulur. Cihaz; alev, gaz tehlikesi, su baskını ve sarsıntı anında
+  göndericiye kısa bir HTTPS isteği atar (aynı türden 30 sn'de bir); gönderici
+  `push_subs` koleksiyonundaki aboneliklere bildirimi iletir. Boş bırakılırsa
+  özellik kapalıdır ve Telegram yine çalışır. Kurulum: `FIREBASE.md` §6.
 - **Güç / brownout:** Wi-Fi TX ani akımı, marjinal USB beslemelerde voltajı
   düşürüp sistemin sürekli resetlenmesine yol açabilir. Firmware bu duruma karşı
   (a) açılışta brownout detektörünü kapatır, (b) Wi-Fi TX gücünü 8.5 dBm'e

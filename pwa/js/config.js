@@ -117,7 +117,7 @@
      Özel anahtar yalnızca göndericide (Vercel ortam değişkeni) durur.
      Üretmek için:  node tools/gen-vapid.js
      Boşsa panelde "arka plan bildirimi" düğmesi kapalı görünür. */
-  App.VAPID_PUBLIC_KEY = '';
+  App.VAPID_PUBLIC_KEY = 'BEuziLAOcLECKODrGCd8KiVvtNFqYJYZiLedzsILXFDqhVPZRVVcOV2tii7NUBGAeHWcSpgpx8kusgzEbvHGlh0';
 
   /* ------------------------------------------------------------ ayar deposu */
 
