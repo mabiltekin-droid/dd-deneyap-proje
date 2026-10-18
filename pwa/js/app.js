@@ -319,7 +319,7 @@
 
   function renderRain(data) {
     /* Firmware yağmur terslemesini zaten kendisi uygulayıp "rain" alanını
-       son hâliyle gönderiyor (main.ino: rainWet = rainInvert ? ... : ...),
+       son hâliyle gönderiyor (firmware.ino: rainWet = rainInvert ? ... : ...),
        status JSON'u da her zaman "rainInvert" içeriyor. Eski koddaki
        "rainInvert gelmemişse yerel ayarla tersle" dalı hiçbir firmware
        sürümünde erişilemiyordu; "s" değişkeni de yalnızca onun için

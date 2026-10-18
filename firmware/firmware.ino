@@ -1,6 +1,6 @@
 /*
  * ============================================================================
- *  Deneyap Ev Koruma Sistemi — firmware  v2.3.0
+ *  Deneyap Ev Koruma Sistemi — firmware (HTTP + Access Point modu)
  * ----------------------------------------------------------------------------
  *  • Access Point modunda çalışır (AP_SSID) -> cihazın adresi 192.168.4.1
  *  • LittleFS'ten PWA'yı kendisi sunar  (/, /settings.html, /css, /js, ...)
@@ -8,15 +8,23 @@
  *    sayfa gösterir (graceful fallback)
  *  • Cihaz durumunu JSON olarak açar:  GET /api/status
  *  • Cihazları kontrol eder:             POST /api/control  {"device","action"}
+ *  • Sensörler: MQ-2 gaz, yağmur, ALEV/YANGIN (dijital DO + analog AO)
+ *  • Aktüatörler: fan + su motoru röleleri, buzzer, pencere ve panjur servo
  *
- *  Donanım / eşik ayarları -> config.h
+ *  Donanım / eşik ayarları -> config.h   (sürüm: FW_VERSION)
  *  Web arayüzü            -> ../pwa  (cihazın LittleFS'ine yüklenir)
+ *
+ *  Arduino IDE notu: sketch klasör adı .ino adıyla AYNI olmalıdır; bu yüzden
+ *  dosya `firmware/firmware.ino` biçimindedir. Servo.h ESP32 çekirdeği 3.x'te
+ *  bulunmadığı için servo PWM'i yerleşik LEDC ile üretilir (harici kütüphane
+ *  gerekmez); yalnızca WiFi/WebServer/LittleFS/Preferences kullanılır.
  * ============================================================================
  */
 
 #include <WiFi.h>
 #include <WebServer.h>
-#include <Servo.h>
+/* NOT: Servo.h ESP32 çekirdeği 3.x'te YOKTUR. Servo PWM'i yerleşik LEDC ile
+   üretilir (aşağıdaki servoDrive/servoRelease). Harici kütüphane gerekmez. */
 #include <LittleFS.h>
 #include <Preferences.h>
 
@@ -27,8 +35,6 @@
 enum GasState : uint8_t { GAS_NORMAL = 0, GAS_WARN = 1, GAS_DANGER = 2 };
 
 WebServer    server(80);
-Servo        servoWindow;
-Servo        servoBlind;
 Preferences  preferences;
 
 bool         fsReady        = false;
@@ -53,11 +59,26 @@ int          rainFiltered   = 0;      // filtrelenmiş tam sayı
 bool         firstSensorRead= true;
 GasState     gasState       = GAS_NORMAL;
 
+/* Alev / yangın sensörü (ayarları NVS'de saklanır) */
+bool         flameEnabled    = FLAME_ENABLED_DEFAULT;
+bool         flameAlarm      = FLAME_ALARM_DEFAULT;
+bool         flameUseDigital = FLAME_DIGITAL_DEFAULT;
+bool         flameUseAnalog  = FLAME_ANALOG_DEFAULT;
+int          flameRaw        = 0;      // 0..1023 AO ham okuma
+float        flameEma        = 0.0f;   // AO yavaş taban izleme (parlaklık kayması)
+int          flameBase       = 0;      // AO boştaki referans
+bool         flameDigital    = false;  // DO mantıksal durum (true = alev)
+bool         flameActive     = false;  // olay aktif mi (hold penceresi içinde)
+bool         flameConnected  = false;  // sensör en az bir kez tetiklendi mi
+bool         firstFlameRead  = true;   // AO tabanının ilk örneği
+uint32_t     flameHoldUntilMs= 0;      // olayın "aktif" kalacağı son an
+
 bool         fanOn          = false;
 bool         pumpOn         = false;
 bool         buzzerOn       = false;
 bool         fanByAutomation= false;
 bool         wasDanger      = false;
+bool         wasFlame       = false;   // Alev nedeniyle pencere kapatıldı mı
 bool         wasRainShut    = false;   // Yağmur nedeniyle otomatik kapatıldı mı
 uint32_t     alarmSimUntilMs= 0;       // Test simülasyonu bitiş zamanı (ms)
 int          windowPos      = SERVO_WINDOW_OPEN;   // 0=kapalı 180=açık
@@ -82,6 +103,10 @@ static void loadSettings() {
   gasDangerPpm = preferences.getInt("gasDanger", GAS_DANGER_PPM);
   rainInvert   = preferences.getBool("rainInvert", false);
   autoControl  = preferences.getBool("autoControl", true);
+  flameEnabled    = preferences.getBool("flameEnabled", FLAME_ENABLED_DEFAULT);
+  flameAlarm      = preferences.getBool("flameAlarm", FLAME_ALARM_DEFAULT);
+  flameUseDigital = preferences.getBool("flameDigital", FLAME_DIGITAL_DEFAULT);
+  flameUseAnalog  = preferences.getBool("flameAnalog", FLAME_ANALOG_DEFAULT);
   preferences.end();
 
   if (gasWarnPpm <= 0) gasWarnPpm = GAS_WARN_PPM;
@@ -94,7 +119,15 @@ static void loadSettings() {
   Serial.print(F(" rainInvert: "));
   Serial.print(rainInvert ? "true" : "false");
   Serial.print(F(" auto: "));
-  Serial.println(autoControl ? "true" : "false");
+  Serial.print(autoControl ? "true" : "false");
+  Serial.print(F(" flame: "));
+  Serial.print(flameEnabled ? "true" : "false");
+  Serial.print(F(" alarm: "));
+  Serial.print(flameAlarm ? "true" : "false");
+  Serial.print(F(" DO: "));
+  Serial.print(flameUseDigital ? "true" : "false");
+  Serial.print(F(" AO: "));
+  Serial.println(flameUseAnalog ? "true" : "false");
 }
 
 static void saveSettings(int warn, int danger, bool invert, bool autoCtrl) {
@@ -108,6 +141,12 @@ static void saveSettings(int warn, int danger, bool invert, bool autoCtrl) {
   preferences.putInt("gasDanger", gasDangerPpm);
   preferences.putBool("rainInvert", rainInvert);
   preferences.putBool("autoControl", autoControl);
+  /* Alev ayarları bu fonksiyonun dışından (panel/kontrol uçları) değiştirilir;
+     ayrı bir imza açmamak için mevcut NVS oturumunda aynı anda yazılır. */
+  preferences.putBool("flameEnabled", flameEnabled);
+  preferences.putBool("flameAlarm", flameAlarm);
+  preferences.putBool("flameDigital", flameUseDigital);
+  preferences.putBool("flameAnalog", flameUseAnalog);
   preferences.end();
   Serial.println(F("[nvs] ayarlar kalici olarak kaydedildi"));
 }
@@ -215,22 +254,58 @@ static void setBuzzer(bool on) {
   buzzerOn = on;
 }
 
-/* Servo "stop": aktüatörü sürüklemeden bırakmak için servoyu ayırır.
-   Sürekli dönen motorlarda servo.detach() yapılmazsa motor ısınır. */
-static void servoRelease(Servo &s, int pin) {
-  s.detach();
+/* ------------------------------------------------------------- servo (LEDC)
+   Servo sürücüsü — ESP32 yerleşik LEDC (Servo.h çekirdek 3.x'te yok).
+   Aktüatörler sürekli dönen tipte olduğu için "dur" işlemi pini INPUT yapıp
+   sürücüyü bırakmaktır (servoRelease): motor kendi frenine geçer ve ısınmaz.
+
+   LEDC API'si çekirdek sürümleri arasında değişti:
+     2.x : ledcSetup(ch,freq,res) + ledcAttachPin(pin,ch) + ledcWrite(ch,duty) + ledcDetachPin(pin)
+     3.x : ledcAttach(pin,freq,res)                      + ledcWrite(pin,duty) + ledcDetach(pin)
+   Aşağıdaki makrolar ikisini de destekler; elle sürüm seçmek gerekmez. */
+#if defined(ESP_ARDUINO_VERSION_MAJOR) && ESP_ARDUINO_VERSION_MAJOR >= 3
+  #define SERVO_PWM_ATTACH(pin, ch, freq, res)  do { (void)(ch); ledcAttach((pin), (freq), (res)); } while (0)
+  #define SERVO_PWM_WRITE(pin, ch, duty)        do { (void)(ch); ledcWrite((pin), (duty)); } while (0)
+  #define SERVO_PWM_DETACH(pin, ch)             do { (void)(ch); ledcDetach((pin)); } while (0)
+#else
+  #define SERVO_PWM_ATTACH(pin, ch, freq, res)  do { ledcSetup((ch), (freq), (res)); ledcAttachPin((pin), (ch)); } while (0)
+  #define SERVO_PWM_WRITE(pin, ch, duty)        do { ledcWrite((ch), (duty)); } while (0)
+  #define SERVO_PWM_DETACH(pin, ch)             do { ledcDetachPin((pin)); } while (0)
+#endif
+
+static bool servoAttached[2] = { false, false };   // 0: pencere, 1: panjur
+
+static void servoDrive(uint8_t pin, uint8_t ch, int angle) {
+  if (angle < 0)   angle = 0;
+  if (angle > 180) angle = 180;
+  uint32_t us   = (uint32_t)SERVO_MIN_US +
+                  ((uint32_t)(SERVO_MAX_US - SERVO_MIN_US) * (uint32_t)angle) / 180UL;
+  /* 50 Hz => periyot 20000 us; duty = us * (2^RES - 1) / 20000 */
+  uint32_t duty = (us * ((1UL << SERVO_RES) - 1UL)) / 20000UL;
+  uint8_t slot = (ch == LEDC_CH_WINDOW) ? 0 : 1;
+  if (!servoAttached[slot]) {
+    /* pinMode ÖNCE: sonradan çağrılırsa pinin LEDC matris bağlantısını koparır */
+    pinMode(pin, OUTPUT);
+    SERVO_PWM_ATTACH(pin, ch, SERVO_FREQ, SERVO_RES);
+    servoAttached[slot] = true;
+  }
+  SERVO_PWM_WRITE(pin, ch, duty);
+}
+
+/* Servo "stop": aktüatörü sürüklemeden bırakır. servoMovingMs de sıfırlanır;
+   aksi hâlde status'te 800 ms daha "true" görünür ve döngü yeniden bırakırdı. */
+static void servoRelease(uint8_t pin, uint8_t ch) {
+  uint8_t slot = (ch == LEDC_CH_WINDOW) ? 0 : 1;
+  if (servoAttached[slot]) {
+    SERVO_PWM_DETACH(pin, ch);
+    servoAttached[slot] = false;
+  }
   pinMode(pin, INPUT);
-  /* Artık hareket yok: moving bayrağını da sıfırla, aksi hâlde status'te
-     800 ms daha "true" görünür ve döngü gereksiz yere yeniden detach ederdi. */
   servoMovingMs = 0;
 }
 
 static void setWindow(int angle) {
-  if (angle < 0)   angle = 0;
-  if (angle > 180) angle = 180;
-  servoWindow.attach(PIN_SERVO_WINDOW);
-  pinMode(PIN_SERVO_WINDOW, OUTPUT);
-  servoWindow.write(angle);
+  servoDrive(PIN_SERVO_WINDOW, LEDC_CH_WINDOW, angle);
   windowPos = angle;
   servoMovingMs = millis() + SERVO_MOVE_MS;
   Serial.print(F("[servo] pencere -> "));
@@ -238,11 +313,7 @@ static void setWindow(int angle) {
 }
 
 static void setBlind(int angle) {
-  if (angle < 0)   angle = 0;
-  if (angle > 180) angle = 180;
-  servoBlind.attach(PIN_SERVO_BLIND);
-  pinMode(PIN_SERVO_BLIND, OUTPUT);
-  servoBlind.write(angle);
+  servoDrive(PIN_SERVO_BLIND, LEDC_CH_BLIND, angle);
   blindPos = angle;
   servoMovingMs = millis() + SERVO_MOVE_MS;
   Serial.print(F("[servo] panjur -> "));
@@ -299,6 +370,48 @@ static void readSensors() {
   /* Yağmur durumu: rainInvert ayarına göre değerlendirilir */
   rainWet = rainInvert ? (rainFiltered < RAIN_WET_ABOVE_RAW) : (rainFiltered >= RAIN_WET_ABOVE_RAW);
 
+  /* ---- Alev / yangın sensörü ------------------------------------------
+     Dijital DO (aktif-düşük) ve/veya analog AO (boş hava tabanından sapma).
+     Alev titrediği için tetiklenen olay FLAME_TRIGGER_HOLD_MS boyunca
+     "aktif" kalır: tek bir alev, onlarca ölçüm yerine TEK olay olur.
+     AO tabanı çok yavaş izlenir (alpha 0.02) ki sensörün parlaklık kayması
+     sahte alarm üretmesin; bu yüzden ayrı bir "ilk okuma" bayrağı gerekir. */
+  {
+    uint32_t fnow = millis();
+    int flameDoLevel = (PIN_FLAME_DO >= 0) ? digitalRead(PIN_FLAME_DO) : HIGH;
+    flameRaw = (PIN_FLAME_AO >= 0) ? analogRead(PIN_FLAME_AO) : 0;
+
+    if (firstFlameRead) { flameEma = (float)flameRaw; firstFlameRead = false; }
+    else                { flameEma = (0.02f * (float)flameRaw) + (0.98f * flameEma); }
+    flameBase = (int)(flameEma + 0.5f);
+
+    bool flameDigitalNow = false;
+    if (flameEnabled && flameUseDigital) {
+      bool low = (flameDoLevel == LOW);
+      flameDigitalNow = FLAME_DO_ACTIVE_LOW ? low : !low;
+    }
+    bool flameAnalogNow = false;
+    if (flameEnabled && flameUseAnalog) {
+      int dev = flameRaw - flameBase; if (dev < 0) dev = -dev;
+      flameAnalogNow = (flameRaw > 5) && (dev >= FLAME_ANALOG_DELTA);
+    }
+    flameDigital = flameDigitalNow;
+    if (flameDigitalNow || flameAnalogNow) {
+      if (!flameConnected) {
+        flameConnected = true;
+        Serial.print(F("[alev] sensor tetiklendi (DO mantiksal="));
+        Serial.print(flameDigitalNow ? "true" : "false");
+        Serial.print(F(", AO="));
+        Serial.print(flameRaw);
+        Serial.print(F(" taban="));
+        Serial.print(flameBase);
+        Serial.println(F(")"));
+      }
+      flameHoldUntilMs = fnow + FLAME_TRIGGER_HOLD_MS;
+    }
+    flameActive = flameEnabled && ((int32_t)(flameHoldUntilMs - fnow) > 0);
+  }
+
   /* Test / alarm simülasyonu aktif ise doğrudan tehlike moduna al */
   if ((int32_t)(alarmSimUntilMs - millis()) > 0) {
     gasState = GAS_DANGER;
@@ -330,6 +443,33 @@ static void readSensors() {
 
 static void runAutomation() {
   uint32_t now = millis();
+
+  /* 0. ÖNCELİK: Alev / Yangın — gazdan da önce, en yüksek öncelik.
+     Siren otomasyon kapalı olsa bile çalar (güvenlik); fan KAPATILIR çünkü
+     yangına hava pompalamak alevi büyütür (gaz mantığının tam tersi). */
+  if (flameAlarm && flameActive) {
+    setBuzzer(true);
+    setFan(false, false);
+    setPump(false);              // alev varken su motoru kilitli
+    if (autoControl && !wasFlame) {
+      setWindow(SERVO_WINDOW_SHUT);      // oksijeni kes
+      Serial.println(F("[otomasyon] ALEV/YANGIN -> pencere kapatildi, siren"));
+    }
+    wasFlame = true;
+    return;
+  }
+
+  /* Alev olayı bitti: pencereyi (yağmur durumuna göre) geri getir */
+  if (wasFlame) {
+    wasFlame = false;
+    if (fanByAutomation) setFan(false, false);
+    if (gasState != GAS_DANGER) {
+      if (autoControl) {
+        if (rainWet) { setWindow(SERVO_WINDOW_SHUT); wasRainShut = true; }
+        else         { setWindow(SERVO_WINDOW_OPEN); wasRainShut = false; }
+      }
+    }
+  }
 
   /* 1. ÖNCELİK: Gaz Tehlikesi — en yüksek öncelik, yağmur durumunu ezer */
   if (gasState == GAS_DANGER) {
@@ -413,12 +553,15 @@ static void handleStatus() {
     "\"rainRaw\":%d,\"rainFiltered\":%d,\"rain\":%s,\"state\":\"%s\","
     "\"gasWarn\":%d,\"gasDanger\":%d,\"rainInvert\":%s,"
     "\"fan\":%s,\"pump\":%s,\"buzzer\":%s,\"auto\":%s,\"window\":%d,\"blind\":%d,\"moving\":%s,"
+    "\"flame\":%s,\"flameRaw\":%d,\"flameBase\":%d,\"flameDigital\":%s,"
+    "\"flameEnabled\":%s,\"flameAlarm\":%s,\"flameDetected\":%s,"
+    "\"flameUseDigital\":%s,\"flameUseAnalog\":%s,"
     "\"fs\":%s,\"fsUsed\":%lu,\"fsTotal\":%lu}",
     FW_VERSION,
     (unsigned long)now,
     WiFi.RSSI(),
     WiFi.softAPIP().toString().c_str(),
-    WiFi.softAPClientCount(),
+    WiFi.softAPgetStationNum(),
     (unsigned long)ESP.getFreeHeap(),
     (unsigned long)(now - bootMs),
     gasRaw, gasFiltered, gasPpm, gasBaseRaw,
@@ -433,6 +576,14 @@ static void handleStatus() {
     autoControl ? "true" : "false",
     windowPos, blindPos,
     moving ? "true" : "false",
+    flameActive ? "true" : "false",
+    flameRaw, flameBase,
+    flameDigital ? "true" : "false",
+    flameEnabled ? "true" : "false",
+    flameAlarm ? "true" : "false",
+    flameConnected ? "true" : "false",
+    flameUseDigital ? "true" : "false",
+    flameUseAnalog ? "true" : "false",
     fsReady ? "true" : "false",
     (unsigned long)fsUsed,
     (unsigned long)fsTotal);
@@ -475,7 +626,7 @@ static void applyCommand(const String &device, const String &action, long value)
     else if (action == "shut")  setWindow(SERVO_WINDOW_SHUT);
     else if (action == "ajar")  setWindow(SERVO_WINDOW_AJAR);
     else if (action == "set" || action == "angle") setWindow((int)value);
-    else if (action == "stop")  servoRelease(servoWindow, PIN_SERVO_WINDOW);
+    else if (action == "stop")  servoRelease(PIN_SERVO_WINDOW, LEDC_CH_WINDOW);
     else if (value >= 0 && value <= 180) setWindow((int)value);
     else { sendError(400, "gecersiz pencere komutu"); return; }
 
@@ -483,9 +634,24 @@ static void applyCommand(const String &device, const String &action, long value)
     if (action == "open")       setBlind(SERVO_BLIND_OPEN);
     else if (action == "shut")  setBlind(SERVO_BLIND_SHUT);
     else if (action == "set" || action == "angle") setBlind((int)value);
-    else if (action == "stop")  servoRelease(servoBlind, PIN_SERVO_BLIND);
+    else if (action == "stop")  servoRelease(PIN_SERVO_BLIND, LEDC_CH_BLIND);
     else if (value >= 0 && value <= 180) setBlind((int)value);
     else { sendError(400, "gecersiz panjur komutu"); return; }
+
+  } else if (device == "flame" || device == "fire") {
+    /* Alev sensörü: on/off/toggle = algılama aç-kapa
+                     alarm/noalarm = alevde tam alarm aç-kapa
+                     clear         = "aktif" pencereyi hemen bitir
+                     test          = sensör olmadan 4 sn'lik olay üret */
+    if (action == "on")            flameEnabled = true;
+    else if (action == "off")      flameEnabled = false;
+    else if (action == "toggle")   flameEnabled = !flameEnabled;
+    else if (action == "alarm")    flameAlarm = true;
+    else if (action == "noalarm")  flameAlarm = false;
+    else if (action == "clear")    { flameHoldUntilMs = 0; flameActive = false; }
+    else if (action == "test")     { flameHoldUntilMs = millis() + FLAME_TRIGGER_HOLD_MS; flameConnected = true; }
+    else { sendError(400, "gecersiz alev komutu"); return; }
+    saveSettings(gasWarnPpm, gasDangerPpm, rainInvert, autoControl);
 
   } else if (device == "auto") {
     if (action == "on")        autoControl = true;
@@ -539,32 +705,50 @@ static void handleSettingsPost() {
   long danger = gasDangerPpm;
   bool invert = rainInvert;
   bool autoCtrl = autoControl;
+  bool flmEn = flameEnabled;
+  bool flmAl = flameAlarm;
+  bool flmDig = flameUseDigital;
+  bool flmAna = flameUseAnalog;
 
   jsonGetNum(body, "gasWarn", warn);
   jsonGetNum(body, "gasDanger", danger);
   jsonGetBool(body, "rainInvert", invert);
   jsonGetBool(body, "autoControl", autoCtrl);
+  jsonGetBool(body, "flameEnabled", flmEn);
+  jsonGetBool(body, "flameAlarm", flmAl);
+  jsonGetBool(body, "flameUseDigital", flmDig);
+  jsonGetBool(body, "flameUseAnalog", flmAna);
 
   if (warn <= 0 || danger <= 0 || warn >= danger) {
     sendError(400, "gecersiz esik degerleri (gasWarn < gasDanger olmali)");
     return;
   }
 
+  flameEnabled    = flmEn;
+  flameAlarm      = flmAl;
+  flameUseDigital = flmDig;
+  flameUseAnalog  = flmAna;
   saveSettings((int)warn, (int)danger, invert, autoCtrl);
 
-  char buf[256];
+  char buf[320];
   snprintf(buf, sizeof(buf),
-    "{\"ok\":true,\"gasWarn\":%d,\"gasDanger\":%d,\"rainInvert\":%s,\"autoControl\":%s}",
-    gasWarnPpm, gasDangerPpm, rainInvert ? "true" : "false", autoControl ? "true" : "false");
+    "{\"ok\":true,\"gasWarn\":%d,\"gasDanger\":%d,\"rainInvert\":%s,\"autoControl\":%s,"
+    "\"flameEnabled\":%s,\"flameAlarm\":%s,\"flameUseDigital\":%s,\"flameUseAnalog\":%s}",
+    gasWarnPpm, gasDangerPpm, rainInvert ? "true" : "false", autoControl ? "true" : "false",
+    flameEnabled ? "true" : "false", flameAlarm ? "true" : "false",
+    flameUseDigital ? "true" : "false", flameUseAnalog ? "true" : "false");
   sendJson(buf);
 }
 
 static void handleSettingsGet() {
   if (!authorize()) return;
-  char buf[256];
+  char buf[320];
   snprintf(buf, sizeof(buf),
-    "{\"ok\":true,\"gasWarn\":%d,\"gasDanger\":%d,\"rainInvert\":%s,\"autoControl\":%s}",
-    gasWarnPpm, gasDangerPpm, rainInvert ? "true" : "false", autoControl ? "true" : "false");
+    "{\"ok\":true,\"gasWarn\":%d,\"gasDanger\":%d,\"rainInvert\":%s,\"autoControl\":%s,"
+    "\"flameEnabled\":%s,\"flameAlarm\":%s,\"flameUseDigital\":%s,\"flameUseAnalog\":%s}",
+    gasWarnPpm, gasDangerPpm, rainInvert ? "true" : "false", autoControl ? "true" : "false",
+    flameEnabled ? "true" : "false", flameAlarm ? "true" : "false",
+    flameUseDigital ? "true" : "false", flameUseAnalog ? "true" : "false");
   sendJson(buf);
 }
 
@@ -716,7 +900,8 @@ static void serveStatic() {
   server.setContentLength(CONTENT_LENGTH_UNKNOWN);
   server.send(200, mime.c_str(), "");
 
-  uint8_t buf[1024];
+  /* FS::readBytes 3.x'te char* bekler; tamponu char olarak tutmak en basiti. */
+  char buf[1024];
   File     stream = LittleFS.open(path, "r");
   if (!stream) return;
   size_t sent = 0;
@@ -738,7 +923,9 @@ void setup() {
   delay(200);
   bootMs = millis();
   Serial.println();
-  Serial.println(F("=== Deneyap Ev Koruma v2.3.0 ==="));
+  Serial.print(F("=== Deneyap Ev Koruma (HTTP/AP modu) v"));
+  Serial.print(FW_VERSION);
+  Serial.println(F(" ==="));
 
   /* 0) ESP32 analog okuma çözünürlüğünü 10-bit (0-1023) olarak sabitle */
   analogReadResolution(10);
@@ -752,6 +939,10 @@ void setup() {
   pinMode(PIN_BUZZER, OUTPUT);     digitalWrite(PIN_BUZZER, LOW);
   pinMode(PIN_MQ2, INPUT);
   pinMode(PIN_RAIN, INPUT);
+  /* Alev sensörü: DO girişi (modül sürer; yine de dahili pull-up güvenli),
+     AO analog giriş olarak kullanılır. */
+  if (PIN_FLAME_DO >= 0) pinMode(PIN_FLAME_DO, INPUT_PULLUP);
+  if (PIN_FLAME_AO >= 0) pinMode(PIN_FLAME_AO, INPUT);
   allOutputsSafe("acilis");
 
   /* 3) Web arayüzünü depodan yükle (yoksa API-only modu) */
@@ -782,14 +973,11 @@ void setup() {
   /* 4) Gaz sensörü temiz hava tabanı */
   calibrateGasBaseline();
 
-  /* 5) Servoları başlangıç konumuna getir */
+  /* 5) Servoları başlangıç konumuna getir, sonra motorları serbest bırak */
   setWindow(SERVO_WINDOW_OPEN);
   setBlind(SERVO_BLIND_SHUT);
-  servoWindow.detach();
-  servoBlind.detach();
-  pinMode(PIN_SERVO_WINDOW, INPUT);
-  pinMode(PIN_SERVO_BLIND, INPUT);
-  servoMovingMs = 0;                   /* açılış hareketi bitti */
+  servoRelease(PIN_SERVO_WINDOW, LEDC_CH_WINDOW);
+  servoRelease(PIN_SERVO_BLIND, LEDC_CH_BLIND);
   Serial.println(F("[servo] baslangic konumlari ayarlandi, motorlar serbest"));
 
   /* 6) Access Point (kullanıcı kararı: sadece AP modu) */
@@ -852,11 +1040,8 @@ void loop() {
      çağrılıyordu; otomatik aç/kapat komutlarından sonra aktüatör attach
      edili kalıyor ve sürekli dönen motorlarda ısınmaya yol açıyordu. */
   if (servoMovingMs != 0 && (int32_t)(now - servoMovingMs) >= 0) {
-    servoMovingMs = 0;
-    servoWindow.detach();
-    servoBlind.detach();
-    pinMode(PIN_SERVO_WINDOW, INPUT);
-    pinMode(PIN_SERVO_BLIND, INPUT);
+    servoRelease(PIN_SERVO_WINDOW, LEDC_CH_WINDOW);
+    servoRelease(PIN_SERVO_BLIND, LEDC_CH_BLIND);
     Serial.println(F("[servo] hareket tamam, motorlar serbest"));
   }
 
@@ -869,14 +1054,14 @@ void loop() {
          0'a düşerse rölelerin açılıp kapanması (flicker) engellenir.
        • Gaz tehlikesi sırasında bu kural UYGULANMAZ: fan ve buzzer tehlikenin
          bir parçasıdır; bağlantının kopması onları susturmalı değildir. */
-  uint8_t clients = WiFi.softAPClientCount();
+  uint8_t clients = WiFi.softAPgetStationNum();
   if (clients != lastClients) {
     lastClients = clients;
     lastClientZeroMs = (clients == 0) ? now : 0;
   }
   if (clients == 0 && lastClientZeroMs != 0 &&
       timeReached(now, lastClientZeroMs, CLIENT_DROP_MS) &&
-      gasState != GAS_DANGER) {
+      gasState != GAS_DANGER && !(flameAlarm && flameActive)) {
     allOutputsSafe("bagli istemci yok");
     lastClientZeroMs = 0;              /* yalnızca bir kez uygula */
   }
@@ -895,6 +1080,12 @@ void loop() {
     Serial.print(F("  pompa: ")); Serial.print(pumpOn ? "ACIK" : "KAPALI");
     Serial.print(F("  RSSI: ")); Serial.print(WiFi.RSSI());
     Serial.print(F(" dBm  heap: ")); Serial.print(ESP.getFreeHeap());
-    Serial.println(F(" B"));
+    Serial.print(F(" B  alev: ")); Serial.print(flameActive ? "ALEV!" : "-");
+    Serial.print(F(" (DO ")); Serial.print(flameDigital ? "1" : "0");
+    Serial.print(F(" AO ")); Serial.print(flameRaw);
+    Serial.print(F("/")); Serial.print(flameBase);
+    Serial.print(F(")"));
+    if (!flameConnected) Serial.print(F(" [sensor hic tetiklenmedi]"));
+    Serial.println();
   }
 }

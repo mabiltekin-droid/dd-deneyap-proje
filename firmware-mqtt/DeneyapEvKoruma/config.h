@@ -26,9 +26,10 @@
    (karta özel, yeniden flaşta değişmez). Aynı MQTT_TOPIC'i kullanan iki
    kart olmasın! */
 #define DEVICE_ID          ""        // boş = otomatik "DK-XXXX"; istersen sabit ad yaz (örn. "kart1")
-#define FW_VERSION         "3.2.0"   // cihazın kendi sürümü; panel /status'te `fw` olarak gösterir
+#define FW_VERSION         "3.2.1"   // cihazın kendi sürümü; panel /status'te `fw` olarak gösterir
                                      // 3.1.0: titreşim sensörü + I2S hoparlör (MAX98357A) + sesli alarm
                                      // 3.2.0: alev (IR flame) sensörü — dijital + analog, tam alarm
+                                     // 3.2.1: LEDC servo sürücüsü ESP32 çekirdeği 3.x uyumlu
                                      // (not: panel sürümü package.json/config.js/sw.js'ten ayrıdır)
 
 /* ============================ Wi-Fi (STA) ============================== */

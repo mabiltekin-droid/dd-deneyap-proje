@@ -28,12 +28,18 @@
    Örnek: "gizli-anahtar" -> PWA'da Ayarlar > Cihaz Token alanına aynısını yaz. */
 #define API_TOKEN          ""
 
-#define FW_VERSION         "2.15.0"  // package.json / config.js / sw.js ile aynı olmalı
+#define FW_VERSION         "2.15.1"  // package.json / config.js / sw.js ile aynı olmalı
 
 /* ============================ PIN HARİTASI ============================= */
 /* Analog girişler ADC1 kanalında olmalı (Wi-Fi açıkken ADC2 kullanılamaz). */
 #define PIN_MQ2            A0    // GPIO36 - ADC1_CH0 - Gaz / duman sensörü
 #define PIN_RAIN           A1    // GPIO39 - ADC1_CH1 - Yağmur sensörü
+
+/* Alev / yangın (IR flame) sensörü: 3 pinli modülde yalnızca DO, 4 pinli
+   modülde AO da bulunur. AO için GPIO34 (A2) seçildi: giriş-özel ADC1 pini
+   ve bu firmware'de boşta. DO modülün kendi sürücüsünden gelir. */
+#define PIN_FLAME_DO       4     // GPIO4  (D10) - dijital çıkış: alev = LOW
+#define PIN_FLAME_AO       A2    // GPIO34 (A2)  - analog çıkış (opsiyonel)
 
 /* Çıkışlar: sadece sürülebilir pinler (transistör röle modülü üzerinden) */
 #define PIN_RELAY_FAN      13    // Fan (davlumbaz havalandırma)
@@ -41,6 +47,17 @@
 #define PIN_BUZZER         33    // Buzzer (transistör sürücü ile)
 #define PIN_SERVO_WINDOW   25    // Servo 1 - pencere kapağı
 #define PIN_SERVO_BLIND    26    // Servo 2 - panjur
+
+/* Servo sürücüsü — ESP32 yerleşik LEDC.
+   ESP32 çekirdeği 3.x'te Servo.h ARTIK YOKTUR (2.x'te vardı). Bu yüzden
+   servo PWM'i doğrudan LEDC ile üretilir; harici kütüphane gerekmez.
+   LEDC_CH_* kanalları bu firmware'de başka amaçla kullanılmaz. */
+#define LEDC_CH_WINDOW     0
+#define LEDC_CH_BLIND      1
+#define SERVO_FREQ         50      // 50 Hz => 20 ms periyot (standart servo)
+#define SERVO_RES          16      // duty çözünürlüğü (bit)
+#define SERVO_MIN_US       500     // "0 derece" darbe genişliği (us)
+#define SERVO_MAX_US       2400    // "180 derece" darbe genişliği (us)
 
 /* Eski (riskli) eşleşme, referans için:
    #define PIN_RELAY_FAN    D0    // GPIO0  -> strapping, açılışta LOW olmalı
@@ -73,6 +90,20 @@
    rainInvert = false iken bu eşiği aşıyorsa "ıslak" sayılır. */
 #define RAIN_WET_ABOVE_RAW 500         // 10-bit ADC eşiği (0..1023)
 
+/* ======================= ALEV / YANGIN SENSÖRÜ ======================== */
+/* Dijital DO: alev algılandığında LOW'a çekilir (yaygın IR flame modülleri). */
+#define FLAME_DO_ACTIVE_LOW    1
+/* Analog AO: boş hava tabanından bu kadar sapma alev sayılır (0..1023). */
+#define FLAME_ANALOG_DELTA     250
+/* Alev titrediği için tetiklenen olay bu süre boyunca "aktif" kalır; böylece
+   tek bir alev TEK olay olarak raporlanır (gaz histerezisinin karşılığı). */
+#define FLAME_TRIGGER_HOLD_MS  4000UL
+/* Açılış varsayılanları — NVS'de saklanır, panelden değiştirilebilir. */
+#define FLAME_ENABLED_DEFAULT  true    // alev algılama açık
+#define FLAME_ALARM_DEFAULT    true    // alev => tam alarm (siren + pencere kapat)
+#define FLAME_DIGITAL_DEFAULT  true    // dijital DO girişini kullan
+#define FLAME_ANALOG_DEFAULT   false   // analog AO girişini kullan (4 pinli modül)
+
 /* ============================ GÜVENLİK EŞİKLERİ ======================= */
 /* Histerezis: eşik aşılınca uyarıya girer, eşik-histerezis'in altına inince çıkar.
    Bu olmadan sensör eşiğin çevresinde salınır ve buzzer sürekli öter. */
@@ -96,7 +127,10 @@
    Süreleri çekirdek sabitleri belirler: HTTP_MAX_DATA_WAIT,
    HTTP_MAX_POST_WAIT, HTTP_MAX_SEND_WAIT (WebServer.h içinde 5000 ms). */
 #define SERVO_MOVE_MS        800       // "hareket ediyor" göstergesi için
-#define STATUS_JSON_MAX      1024      // JSON yanıt tamponu
+/* /api/status JSON tamponu. Alev/yangın alanları eklendikten sonra da bol
+   yer kalması için geniş tutulur: tampon taşarsa JSON KESİLİR ve panel onu
+   ayrıştıramaz. */
+#define STATUS_JSON_MAX      1400
 
 /* ======================= DOSYA SİSTEMİ (LittleFS) ===================== */
 /* PWA dosyaları cihaza yüklenmeli: index.html, settings.html, css/, js/,

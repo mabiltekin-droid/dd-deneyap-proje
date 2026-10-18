@@ -462,7 +462,24 @@ static void setBuzzer(bool on) {
 }
 /* Servo sürücü: Servo.h yerine ESP32 yerleşik LEDC (Deneyap çekirdeğinde
    Servo.h yoktur). Sürekli dönen aktüatörlerde "stop" işlemi pini INPUT
-   yapıp sürücüyü bırakır (motor ısınmaz, kendi frenine geçer). */
+   yapıp sürücüyü bırakır (motor ısınmaz, kendi frenine geçer).
+
+   LEDC API'si çekirdek sürümleri arasında değişti:
+     2.x : ledcSetup(ch,freq,res) + ledcAttachPin(pin,ch) + ledcWrite(ch,duty) + ledcDetachPin(pin)
+     3.x : ledcAttach(pin,freq,res)                      + ledcWrite(pin,duty) + ledcDetach(pin)
+   Aşağıdaki makrolar ikisini de destekler; elle sürüm seçmek gerekmez. */
+#if defined(ESP_ARDUINO_VERSION_MAJOR) && ESP_ARDUINO_VERSION_MAJOR >= 3
+  #define SERVO_PWM_ATTACH(pin, ch, freq, res)  do { (void)(ch); ledcAttach((pin), (freq), (res)); } while (0)
+  #define SERVO_PWM_WRITE(pin, ch, duty)        do { (void)(ch); ledcWrite((pin), (duty)); } while (0)
+  #define SERVO_PWM_DETACH(pin, ch)             do { (void)(ch); ledcDetach((pin)); } while (0)
+#else
+  #define SERVO_PWM_ATTACH(pin, ch, freq, res)  do { ledcSetup((ch), (freq), (res)); ledcAttachPin((pin), (ch)); } while (0)
+  #define SERVO_PWM_WRITE(pin, ch, duty)        do { ledcWrite((ch), (duty)); } while (0)
+  #define SERVO_PWM_DETACH(pin, ch)             do { ledcDetachPin((pin)); } while (0)
+#endif
+
+static bool servoAttached[2] = { false, false };   // 0: pencere, 1: panjur
+
 static void servoDrive(uint8_t pin, uint8_t ch, int angle) {
   if (angle < 0)   angle = 0;
   if (angle > 180) angle = 180;
@@ -470,15 +487,21 @@ static void servoDrive(uint8_t pin, uint8_t ch, int angle) {
                    ((uint32_t)(SERVO_MAX_US - SERVO_MIN_US) * (uint32_t)angle) / 180UL;
   /* 50 Hz => periyot 20000 us; duty = us * (2^RES - 1) / 20000 */
   uint32_t duty = (us * ((1UL << SERVO_RES) - 1UL)) / 20000UL;
-  static bool setupDone[2] = { false, false };
   uint8_t slot = (ch == LEDC_CH_WINDOW) ? 0 : 1;
-  if (!setupDone[slot]) { ledcSetup(ch, SERVO_FREQ, SERVO_RES); setupDone[slot] = true; }
-  pinMode(pin, OUTPUT);
-  ledcAttachPin(pin, ch);
-  ledcWrite(ch, duty);
+  if (!servoAttached[slot]) {
+    /* pinMode ÖNCE: sonradan çağrılırsa pinin LEDC matris bağlantısını koparır */
+    pinMode(pin, OUTPUT);
+    SERVO_PWM_ATTACH(pin, ch, SERVO_FREQ, SERVO_RES);
+    servoAttached[slot] = true;
+  }
+  SERVO_PWM_WRITE(pin, ch, duty);
 }
 static void servoRelease(uint8_t pin, uint8_t ch) {
-  ledcDetachPin(pin);
+  uint8_t slot = (ch == LEDC_CH_WINDOW) ? 0 : 1;
+  if (servoAttached[slot]) {
+    SERVO_PWM_DETACH(pin, ch);
+    servoAttached[slot] = false;
+  }
   pinMode(pin, INPUT);
   servoReleaseAt = 0;
 }

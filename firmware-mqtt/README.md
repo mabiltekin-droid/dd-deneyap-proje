@@ -13,7 +13,7 @@ Bu klasör, depodaki `pwa/` kontrol panelinin **varsayılan MQTT taşımasıyla*
 `wss://broker.hivemq.com:8884/mqtt`, konu `deneyap/kart1`) uyumlu
 **Deneyap Kart / Arduino IDE** firmware'ini içerir.
 
-> Neden yeni bir firmware? Depodaki mevcut `firmware/main.ino` yalnızca
+> Neden yeni bir firmware? Depodaki mevcut `firmware/firmware.ino` yalnızca
 > **HTTP + Access Point** tabanlıydı; panel ise MQTT bekliyordu (durumda
 > `ready`, `rainPct`, `flood`, `gasHyst`, `cmdId`, `cmdErr`, `pumpLocked` …
 > alanları ve `<T>/cmd`, `<T>/settings`, `<T>/histreq`, `<T>/hist`, `<T>/online`
