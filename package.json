@@ -1,6 +1,6 @@
 {
   "name": "nambir",
-  "version": "2.17.0",
+  "version": "2.18.0",
   "private": true,
   "description": "Deneyap Ev Koruma — ESP32 firmware + PWA kontrol paneli",
   "license": "UNLICENSED",
@@ -9,7 +9,9 @@
     "check": "node tools/check-js.js",
     "test:roles": "node tools/test-roles.js",
     "test:devices": "node tools/test-devices.js",
-    "verify": "node tools/check-js.js && node tools/test-devices.js && node tools/test-roles.js",
+    "test:rules": "node tools/run-rules-test.js",
+    "test:session": "node tools/test-session.js",
+    "verify": "node tools/check-js.js && node tools/test-devices.js && node tools/test-roles.js && node tools/test-session.js",
     "build": "node tools/build-web.js",
     "icons": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/make-icons.ps1",
     "fw": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/build-firmware.ps1 -Target both",

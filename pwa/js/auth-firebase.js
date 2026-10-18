@@ -139,6 +139,103 @@
     state.deviceInfo = null;
   }
 
+  /* ======================================================= OTURUM GÜVENLİĞİ
+     ADIM YÜKSELTME (step-up)
+     ------------------------------------------------------------------------
+     Sunucu tarafındaki kurallar kritik yazmalarda ID token'ın `auth_time`
+     claim'ini denetler (son kimlik doğrulama zamanı). Buradaki denetim AYNI
+     değeri okur ve kullanıcıya sunucudan "permission-denied" almadan önce
+     AÇIK bir mesaj verir.
+
+       • STEP_UP_MIN  15 dk → yönetici/kritik işlemler (rol, davet, kod, onay)
+       • RECENT_MIN   60 dk → günlük cihaz işlemleri (bağlama, bırakma)
+
+     `auth_time` yalnızca yeniden kimlik doğrulamayla (reauth) tazelenir;
+     token yenilemek yetmez. Bu yüzden çalınmış uzun ömürlü bir oturum bu
+     işlemleri yapamaz.                                                  */
+  const STEP_UP_MIN = 15;
+  const RECENT_MIN = 60;
+
+  function authTimeMs() {
+    const s = state.session;
+    if (!s) return 0;
+    if (s.auth_time) return s.auth_time;
+    try {
+      if (FB() && FB().tokenAuthTime) return FB().tokenAuthTime(s.access_token) || 0;
+    } catch (e) { /* yoksay */ }
+    return 0;
+  }
+
+  function isFresh(min) {
+    const t = authTimeMs();
+    if (!t) return false;
+    return (Date.now() - t) <= (min || STEP_UP_MIN) * 60000;
+  }
+
+  function requireFresh(min, what) {
+    const m = min || STEP_UP_MIN;
+    if (isFresh(m)) return;
+    /* Arayüz varsa doğrulama penceresini kendiliğinden aç (kullanıcı ne
+       yapacağını aramasın), ardından açıklayıcı hatayı fırlat. */
+    if (App.openStepUp) {
+      try { App.openStepUp(what, m); } catch (e) { /* yoksay */ }
+    }
+    throw err('step-up-required',
+      'Güvenlik: ' + (what || 'bu işlem') + ' için son ' + m + ' dakika içinde ' +
+      'giriş yapmış olmanız gerekir. Ayarlar → Profilim → “Oturum Güvenliği” ' +
+      'bölümünde “Tekrar Doğrula” ile şifrenizi girin.');
+  }
+
+  /* E-posta doğrulaması: cihaz bağlama gibi işlemler doğrulanmış hesap ister
+     (sunucu kuralı da `email_verified` claim'ini denetler). Burada erken ve
+     anlaşılır bir mesaj veririz. */
+  function requireVerified(what) {
+    const u = state.session && state.session.user;
+    if (u && u.emailVerified === false) {
+      throw err('email-unverified',
+        'Güvenlik: ' + (what || 'bu işlem') + ' için e-posta adresinizin doğrulanmış ' +
+        'olması gerekir. Profilim bölümünden doğrulama bağlantısını kullanın.');
+    }
+  }
+
+  /* ---------------------------------- hareketsizlikte otomatik çıkış -----
+     Ayarlar → Profilim → Oturum Güvenliği → "Hareketsizlik" (0 = kapalı).
+     Yalnızca ETKİLEŞİM sayılır; telemetri akışı oturumu canlı tutmaz
+     (aksi hâlde zaman aşımı hiç çalışmazdı).                              */
+  const IDLE_EVENTS = ['pointerdown', 'keydown', 'wheel', 'touchstart'];
+  let idleTimer = null;
+  let idleSon = 0;
+
+  function idleLimitMs() {
+    const dk = Number((App.settings ? App.settings().sessionIdleMin : 0)) || 0;
+    return dk > 0 ? dk * 60000 : 0;
+  }
+  function idleDokun() { idleSon = Date.now(); }
+  function idleKontrol() {
+    const limit = idleLimitMs();
+    if (!limit || !state.session) return;
+    if (Date.now() - idleSon < limit) return;
+    idleDokun();
+    if (App.toast) {
+      App.toast('Güvenlik: uzun süre işlem yapılmadı, oturum kapatıldı.',
+        { kind: 'warn', duration: 6000 });
+    }
+    App.Auth.signOut().catch(function () { /* yoksay */ });
+  }
+  function stopIdleWatch() {
+    if (idleTimer) { clearInterval(idleTimer); idleTimer = null; }
+    IDLE_EVENTS.forEach(function (ev) { window.removeEventListener(ev, idleDokun); });
+  }
+  function startIdleWatch() {
+    stopIdleWatch();
+    if (!idleLimitMs() || !state.session) return;
+    idleDokun();
+    IDLE_EVENTS.forEach(function (ev) {
+      window.addEventListener(ev, idleDokun, { passive: true });
+    });
+    idleTimer = setInterval(idleKontrol, 20000);
+  }
+
   /* ------------------------------------------- kalıcı sahiplik hafızası ----
      Bir hesap bir cihazı bağladığında bu bağ, hesap oturumu kapansa bile
      tarayıcıda saklanır. Böylece kullanıcı çıkış yapsa da cihaz "onun"
@@ -222,6 +319,7 @@
     }
     state.ready = true;
     emit();
+    startIdleWatch();
     return App.Auth.snapshot();
   }
 
@@ -248,6 +346,7 @@
     await refreshProfile();
     state.ready = true;
     emit();
+    startIdleWatch();
     try {
       await FB().addLoginLog({
         userId: sess.user.id, email: sess.user.email,
@@ -290,6 +389,39 @@
     isAdmin: function () { return !!(state.profile && state.profile.role === 'admin'); },
     role: function () { return (state.profile && state.profile.role) || null; },
 
+    /* -------------------------------------------- oturum güvenliği (step-up) */
+    authTimeMs: authTimeMs,
+    authAgeMs: function () {
+      const t = authTimeMs();
+      return t ? Math.max(0, Date.now() - t) : 0;
+    },
+    isFresh: isFresh,
+    stepUpMinutes: function () { return STEP_UP_MIN; },
+    recentMinutes: function () { return RECENT_MIN; },
+
+    /* Şifreyi yeniden girip oturumu TAZELE (adım yükseltme).
+       auth_time'ı yalnızca bu çağrı günceller; token yenilemek yetmez. */
+    reauth: async function (password) {
+      await FB().reauth(password || '');
+      let s = null;
+      try { s = await FB().refreshToken(); } catch (e) { s = null; }
+      if (!s) { try { s = await FB().ensureSession(); } catch (e) { s = null; } }
+      if (s) state.session = s;
+      startIdleWatch();
+      try {
+        await FB().addLoginLog({
+          userId: (s && s.user && s.user.id) || '',
+          email: (s && s.user && s.user.email) || '',
+          success: true, action: 'step_up', userAgent: navigator.userAgent
+        });
+      } catch (e) { /* yoksay */ }
+      emit();
+      return true;
+    },
+
+    /* Hareketsizlik sayacını yeniden başlat (ayar değişince çağrılır). */
+    restartIdleWatch: function () { startIdleWatch(); },
+
     signIn: async function (email, password) {
       state.error = null;
       const s = await FB().signIn(email, password);
@@ -298,6 +430,7 @@
       await refreshProfile();
       state.ready = true;
       emit();
+      startIdleWatch();
       // Giriş kaydı (audit) — başarısız olursa girişi engellemez
       try {
         await FB().addLoginLog({
@@ -368,6 +501,7 @@
       state.profile = null;
       state.bindings = null;
       resetDeviceAccess();
+      stopIdleWatch();
       state.ready = true;
       emit();
       return App.Auth.snapshot();
@@ -396,7 +530,17 @@
     },
 
     updatePassword: async function (currentPassword, newPassword) {
-      return FB().updatePassword(currentPassword, newPassword);
+      const ok = await FB().updatePassword(currentPassword, newPassword);
+      /* Şifre değişirken kimlik yeniden doğrulanır (reauth) → auth_time
+         tazelenir. Token'ı yenileyip "taze giriş" gerektiren işlemlerin
+         hemen çalışmasını sağla. */
+      try {
+        const s = await FB().refreshToken();
+        if (s) state.session = s;
+      } catch (e) { /* yoksay */ }
+      startIdleWatch();
+      emit();
+      return ok;
     },
 
     updateEmail: async function (currentPassword, newEmail) {
@@ -407,6 +551,7 @@
       state.profile = null;
       state.bindings = null;
       resetDeviceAccess();
+      stopIdleWatch();
       state.ready = true;
       emit();
       return true;
@@ -428,6 +573,7 @@
     },
 
     setRole: async function (id, role) {
+      requireFresh(STEP_UP_MIN, 'rol değiştirme');
       await FB().rest('profiles?id=eq.' + encodeURIComponent(id) + '&role=in.(admin,user)', {
         method: 'PATCH',
         prefer: 'return=representation',
@@ -449,6 +595,7 @@
     createUser: async function (email, password, role, displayName) {
       const me = state.session && state.session.user;
       if (!me) throw err('Giriş yapmalısınız.', 'Bu işlem için giriş yapmalısınız.');
+      requireFresh(STEP_UP_MIN, 'kullanıcı oluşturma');
       // İkincil Firebase uygulaması ile oluştur → mevcut admin oturumu KORUNUR
       const r = await FB().adminCreateUser(email, password, role, displayName);
       try { await FB().addAuditLog('create_user', r.user.id, { role: r.role, email: r.user.email }); } catch (e) { /* yoksay */ }
@@ -463,12 +610,14 @@
     consumeInvite: async function (code, uid) { return FB().consumeInvite(code, uid); },
 
     createInvite: async function (email, role, createdBy) {
+      requireFresh(STEP_UP_MIN, 'davet oluşturma');
       const inv = await FB().createInvite(email, role, createdBy);
       try { await FB().addAuditLog('create_invite', inv.code, { role: role, email: email }); } catch (e) { /* yoksay */ }
       return inv;
     },
 
     revokeInvite: async function (code) {
+      requireFresh(STEP_UP_MIN, 'davet iptali');
       await FB().revokeInvite(code);
       try { await FB().addAuditLog('revoke_invite', code, null); } catch (e) { /* yoksay */ }
     },
@@ -671,6 +820,8 @@
     bindDevice: async function (deviceId, ownerId, label) {
       const me = state.session && state.session.user;
       if (!me) throw err('Giriş yapmalısınız.', 'Giriş yapmalısınız.');
+      requireFresh(RECENT_MIN, 'cihaz bağlama');
+      requireVerified('cihaz bağlama');
       const owner = ownerId || me.id;
 
       const st = await App.Auth.checkDevice(deviceId);
@@ -699,6 +850,8 @@
     activateDevice: async function (deviceId, code) {
       const me = state.session && state.session.user;
       if (!me) throw err('Giriş yapmalısınız.', 'Bu işlem için giriş yapmalısınız.');
+      requireFresh(RECENT_MIN, 'cihaz bağlama');
+      requireVerified('cihaz bağlama');
       code = String(code || '').trim();
       if (!code) throw err('Kod boş.', 'Lütfen cihazın aktivasyon kodunu girin.');
 
@@ -739,6 +892,7 @@
     requestRelease: async function (deviceId) {
       const me = state.session && state.session.user;
       if (!me) throw err('Giriş yapmalısınız.', 'Giriş yapmalısınız.');
+      requireFresh(RECENT_MIN, 'cihaz bağlantısını kesme');
       await FB().requestRelease(deviceId, me.id);
       try { await FB().addAuditLog('device_release_request', deviceId, null); } catch (e) { /* yoksay */ }
       await App.Auth.listBindings();
@@ -748,6 +902,7 @@
 
     // Talebi geri al (sahibi) → bağlantı yeniden aktif.
     cancelRelease: async function (deviceId) {
+      requireFresh(RECENT_MIN, 'talebi geri alma');
       await FB().cancelRelease(deviceId);
       await App.Auth.listBindings();
       await App.Auth.checkDevice(deviceId);
@@ -756,6 +911,7 @@
 
     // Onayla (admin) → cihaz serbest kalır, artık başka bir hesap bağlanabilir.
     approveRelease: async function (deviceId) {
+      requireFresh(STEP_UP_MIN, 'bağlantı kesme onayı');
       await FB().approveRelease(deviceId);
       forgetOwner(deviceId);
       try { await FB().addAuditLog('device_release_approved', deviceId, null); } catch (e) { /* yoksay */ }
@@ -766,6 +922,7 @@
 
     // Reddet (admin) → bağlantı kesme iptal, yeniden aktif.
     rejectRelease: async function (deviceId) {
+      requireFresh(STEP_UP_MIN, 'talebi reddetme');
       await FB().cancelRelease(deviceId);
       try { await FB().addAuditLog('device_release_rejected', deviceId, null); } catch (e) { /* yoksay */ }
       await App.Auth.listBindings();
@@ -775,6 +932,7 @@
 
     // Zorla serbest bırak (admin) → sahibinden bağımsız.
     freeDevice: async function (deviceId) {
+      requireFresh(STEP_UP_MIN, 'cihazı zorla serbest bırakma');
       await FB().approveRelease(deviceId);
       forgetOwner(deviceId);
       try { await FB().addAuditLog('device_force_free', deviceId, null); } catch (e) { /* yoksay */ }
@@ -786,6 +944,7 @@
     // Admin: cihazı doğrudan başka bir hesaba ata (hesap değiştirme).
     reassignDevice: async function (deviceId, ownerId) {
       const me = state.session && state.session.user;
+      requireFresh(STEP_UP_MIN, 'cihazı yeniden atama');
       await FB().reassignBinding(deviceId, ownerId, me && me.id);
       if (me && ownerId === me.id) rememberOwner(deviceId, me.id, me.email, '');
       else forgetOwner(deviceId);
@@ -812,6 +971,7 @@
     setDeviceCode: async function (deviceId, code, label) {
       const me = state.session && state.session.user;
       if (!App.Auth.isAdmin()) throw err('Yetki yok.', 'Yalnızca admin kod tanımlayabilir.');
+      requireFresh(STEP_UP_MIN, 'aktivasyon kodu tanımlama');
       const c = await FB().setDeviceCode(deviceId, code, label, me && me.id);
       try { await FB().addAuditLog('set_device_code', deviceId, { label: label || '' }); } catch (e) { /* yoksay */ }
       return c;
@@ -819,6 +979,7 @@
 
     deleteDeviceCode: async function (deviceId) {
       if (!App.Auth.isAdmin()) throw err('Yetki yok.', 'Yalnızca admin silebilir.');
+      requireFresh(STEP_UP_MIN, 'aktivasyon kodu silme');
       await FB().deleteDeviceCode(deviceId);
       try { await FB().addAuditLog('delete_device_code', deviceId, null); } catch (e) { /* yoksay */ }
     },

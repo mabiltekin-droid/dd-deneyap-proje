@@ -266,3 +266,76 @@ curl.exe -s -X POST "https://<proje>.vercel.app/api/push" `
 Boş bırakılırsa özellik kapalıdır (derleme boyutuna hiç yansımaz). Doldurulunca
 cihaz; alev, gaz tehlikesi, su baskını ve sarsıntı anında göndericiye haber
 verir (aynı türden 30 sn'de bir). Telegram'dan bağımsızdır.
+
+---
+
+## 7) Oturum güvenliği (adım yükseltme / step-up)
+
+**Amaç:** çalınmış veya uzun süredir açık bırakılmış bir oturumla kritik işlem
+yapılmasını engellemek. Kural **sunucu tarafında** (`firestore.rules`) zorlanır;
+istemci yalnızca aynı denetimi önceden gösterip kullanıcıyı yönlendirir.
+
+### 7.1) Kural nasıl çalışır?
+
+Firebase ID token'ı `auth_time` adlı bir damga taşır: kullanıcının **en son
+kimlik doğruladığı** an. `firestore.rules` bu değeri `request.time` ile
+karşılaştırır:
+
+| Kademe | Süre | Kapsam |
+| --- | --- | --- |
+| `freshSignIn()` | **15 dk** | Rol değiştirme, kullanıcı oluşturma, davet oluşturma/iptali, aktivasyon kodu yazma/silme, cihaz bağlantı onayı/reddi, zorla serbest bırakma, yeniden atama, ilk-kurulum işareti |
+| `recentSignIn()` | **60 dk** | Cihaz bağlama, bağlantı kesme talebi/geri alma, kod doğrulama kaydı |
+
+Ayrıca cihaz bağlarken e-posta **doğrulanmış** olmalıdır
+(`request.auth.token.email_verified == true`).
+
+`auth_time` yalnızca **yeniden kimlik doğrulamayla** tazelenir; token yenilemek
+(veya sayfayı yenilemek) yetmez — bu yüzden koruma gerçektir.
+
+> Günlük işlemler (ad/avatar güncelleme, ayar kaydetme, telemetri, geçmiş)
+> **etkilenmez**; kilitlenme yaşanmaz.
+
+### 7.2) Panelde ne olur?
+
+Ayarlar → Profilim → **Oturum Güvenliği**:
+
+- **Durum rozeti:** `TAZE` (15 dk içinde) / `KISMEN` (60 dk içinde) / `ESKİ`.
+- Kritik bir işlem denenip süre geçmişse panel **kendiliğinden** şifre
+  penceresini açar ("Tekrar Doğrula"); şifre girilince işlem tekrar denenebilir.
+- **Hareketsizlikte otomatik çıkış:** varsayılan **30 dk** (15/30/60/120 veya
+  kapalı). Yalnızca kullanıcı etkileşimi sayılır; telemetri akışı oturumu
+  canlı tutmaz.
+- **Son Giriş Etkinlikleri** tablosu: giriş/çıkış/**tekrar doğrulama**
+  (`step_up`) kayıtları; tarayıcı ve işletim sistemi ile birlikte.
+
+### 7.3) Şifre politikası
+
+Kayıt, yönetici kullanıcı oluşturma ve şifre değiştirme aynı kuralı kullanır:
+**en az 8 karakter, en az bir harf ve bir rakam**, tahmin edilebilir
+şifreler (`1234…`, `password`, `deneyap`…) reddedilir
+(`pwa/js/config.js` → `App.passwordIssue`).
+
+### 7.4) Kuralları sınamak (isteğe bağlı, önerilir)
+
+```powershell
+npm run test:rules
+```
+
+Bu, **Firestore emülatörünü** başlatır (kurallar başlarken derlenir — sözdizimi
+denetimi) ve 29 senaryoyu gerçek kural motorunda çalıştırır: taze/bayat oturumla
+kritik yazmalar, doğrulanmamış e-posta, kodsuz bağlama, rol yükseltme denemesi…
+
+> Emülatör **Java 21+** ister (firebase-tools 15.x). Sarmalayıcı uygun Java'yı
+> kendisi arar (JAVA_HOME → PATH → yaygın kurulumlar). Android Studio'nun
+> Java'sı yeterlidir.
+
+### 7.5) Bilinçli sınırlama: gerçek 2FA
+
+Authenticator (TOTP) veya SMS ile **ikinci faktör sunucuda doğrulanmalıdır**;
+bu da ya Cloud Functions ya da Identity Platform/Blaze planı gerektirir. Bu
+proje **Cloud Functions kullanmaz**; Firestore kuralları da HMAC/TOTP
+hesaplayamaz. Tarayıcıda yapılan bir TOTP kontrolü atlatılabilir (saldırgan
+SDK'yı doğrudan kullanır) ve gerçek bir güvenlik sınırı oluşturmaz. Bu yüzden
+burada **adım yükseltme + oturum sertleştirme** uygulanmıştır. Gerçek MFA
+istenirse: Blaze + Identity Platform açılıp istemciye `multiFactor` akışı
+eklenmelidir (sunucu tarafı yapılandırması zorunludur).

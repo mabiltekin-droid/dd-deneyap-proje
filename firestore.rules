@@ -26,6 +26,33 @@ service cloud.firestore {
 
     function isSelf(u) { return signedIn() && uid() == u; }
 
+    // ---------------------------------------------------------------
+    // ADIM YUKSELTME (step-up) - kritik yazmalar icin TAZE GIRIS sarti
+    //
+    //  auth_time = ID token'in "son kimlik dogrulama" damgasidir (saniye).
+    //  Token'i Firebase imzalar; istemci bu degeri DEGISTIREMEZ. Boylece
+    //  calinmis/uzun suredir acik bir oturum; rol degistirme, davet uretme,
+    //  aktivasyon kodu yazma veya cihaz baglama gibi islemleri yapamaz;
+    //  kullanicinin sifresini yeniden girmesi (reauthenticate) gerekir.
+    //
+    //  Iki kademe vardir:
+    //    freshSignIn()  = 15 dk → yonetici/kritik islemler
+    //    recentSignIn() = 60 dk → gunluk cihaz islemleri (baglama/birakma)
+    // ---------------------------------------------------------------
+    function signInWithin(seconds) {
+      return signedIn()
+          && 'auth_time' in request.auth.token
+          && (request.auth.token.auth_time * 1000) > (request.time.toMillis() - seconds * 1000);
+    }
+
+    function freshSignIn() { return signInWithin(900); }    // 15 dakika
+    function recentSignIn() { return signInWithin(3600); }  // 60 dakika
+
+    // E-posta dogrulanmis mi? (ID token claim'i; kritik yazmalarda istenir.)
+    function verifiedEmail() {
+      return signedIn() && request.auth.token.email_verified == true;
+    }
+
     // Profil rolu (alan yoksa 'user' varsayilir) ---------------------------
     function roleOf(d) { return 'role' in d ? d.role : 'user'; }
 
@@ -100,6 +127,7 @@ service cloud.firestore {
       // GUVENLIK: 'admin' rolu yalnizca admin, ilk-kurulum sahibi veya gecerli
       // bir ADMIN daveti ile verilebilir -> kendi kendine yetki yukseltme yok.
       allow create: if (isSelf(userId) || isAdmin())
+                    && freshSignIn()
                     && (!('id' in request.resource.data) || request.resource.data.id == userId)
                     && (
                       isAdmin()
@@ -110,9 +138,11 @@ service cloud.firestore {
                       )
                     );
 
-      // Guncelleme: admin her sey. Kullanici KENDI profilini guncelleyebilir
-      // ama 'id' ve 'role' alanlarini DEGISTIREMEZ (yetki yukseltme engellenir).
-      allow update: if isAdmin()
+      // Guncelleme: admin her sey (ancak TAZE GIRIS ile; rol degistirmek
+      // kritik bir islemdir). Kullanici KENDI profilini guncelleyebilir ama
+      // 'id'/'role' alanlarini DEGISTIREMEZ; bu alanlar korundugu icin
+      // gunluk profil duzenlemesi adim yukseltme istemez.
+      allow update: if (isAdmin() && freshSignIn())
                     || (
                       isSelf(userId)
                       && (!('id' in request.resource.data) || request.resource.data.id == userId)
@@ -131,6 +161,7 @@ service cloud.firestore {
       // Yalnizca BIR KEZ olusturulur (var olan dokuman guncellenemez/silinemez)
       // ve yazan kisiye kilitlenir.
       allow create: if signedIn()
+                    && freshSignIn()
                     && request.resource.data.uid == uid()
                     && !exists(/databases/$(database)/documents/config/bootstrap);
       allow update, delete: if false;
@@ -163,7 +194,10 @@ service cloud.firestore {
       // Bagla: yalnizca BOSTA bir cihazi kendi adina, 'active' durumuyla.
       // Sahibi olabilmek icin cihazin AKTIVASYON KODUNU dogru girmis olmasi
       // gerekir (device_unlocks kaydi). Admin kod olmadan atayabilir.
+      // Ayrica: e-posta dogrulanmis ve son 60 dk icinde giris yapilmis olmali.
       allow create: if signedIn()
+                    && recentSignIn()
+                    && verifiedEmail()
                     && !deviceExists(deviceId)
                     && request.resource.data.owner_id == uid()
                     && request.resource.data.status == 'active'
@@ -173,24 +207,27 @@ service cloud.firestore {
                     );
 
       // Guncelle:
-      //  * admin  -> her sey (onay, yeniden atama, serbest birakma)
+      //  * admin  -> her sey (onay, yeniden atama, serbest birakma) + TAZE GIRIS
       //  * sahibi -> YALNIZCA active <-> release_pending gecisi yapabilir
+      //              (son 60 dk icinde giris yapmis olmali)
       //  * baskasi -> KESINLIKLE HAYIR
       allow update: if signedIn() && (
         (
           deviceExists(deviceId)
           && deviceOwner(deviceId) == uid()
+          && recentSignIn()
           && request.resource.data.owner_id == uid()
           && (
             (!deviceReleased(deviceId) && request.resource.data.status == 'release_pending')
             || (deviceReleased(deviceId) && request.resource.data.status == 'active')
           )
         )
-        || isAdmin()
+        || (isAdmin() && freshSignIn())
       );
 
-      // Silme = baglanti kesme onayi -> cihazi serbest birakir. Yalnizca admin.
-      allow delete: if isAdmin();
+      // Silme = baglanti kesme onayi -> cihazi serbest birakir. Yalnizca admin
+      // ve TAZE GIRIS ile (cihaz sahipligi degistiren kritik islem).
+      allow delete: if isAdmin() && freshSignIn();
     }
 
     // ================================================================
@@ -201,7 +238,9 @@ service cloud.firestore {
     //    kurallari (device_bindings.create) kodu sunucu tarafinda karsilastirir.
     // ================================================================
     match /device_codes/{deviceId} {
-      allow read, write: if isAdmin();
+      allow read: if isAdmin();
+      // Duz metin parola yazma/silme: yalnizca admin ve TAZE GIRIS ile.
+      allow write: if isAdmin() && freshSignIn();
     }
 
     // ================================================================
@@ -216,6 +255,7 @@ service cloud.firestore {
       allow get, list: if false;
 
       allow create, update: if signedIn()
+        && recentSignIn()
         && request.resource.data.uid == uid()
         && codeExists(deviceId)
         && codeData(deviceId).active == true
@@ -264,14 +304,15 @@ service cloud.firestore {
     match /invites/{code} {
       // Tek dokuman okuma serbest: kayit oncesi (henuz oturum yokken) dogrulanir.
       allow get: if true;
-      // Liste/olusturma/silme yalnizca admin.
+      // Liste/olusturma/silme yalnizca admin (ve TAZE GIRIS ile: davet
+      // uretmek rol dagitmak demektir).
       allow list: if isAdmin();
-      allow create, delete: if isAdmin();
+      allow create, delete: if isAdmin() && freshSignIn();
 
-      // Guncelleme: admin serbest; ayrica kayit olan kullanici KENDI adina,
-      // yalnizca kullanilmamis bir daveti "kullanildi" isaretleyebilir.
-      // Rol/kod/olusturan alanlari degistirilemez (yetki yukseltmesi engellenir).
-      allow update: if isAdmin() || (
+      // Guncelleme: admin serbest (taze giris ile); ayrica kayit olan kullanici
+      // KENDI adina, yalnizca kullanilmamis bir daveti "kullanildi"
+      // isaretleyebilir. Rol/kod/olusturan alanlari degistirilemez.
+      allow update: if (isAdmin() && freshSignIn()) || (
         signedIn()
         && resource.data.used == false
         && request.resource.data.used == true

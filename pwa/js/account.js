@@ -184,7 +184,8 @@
     const email = $('authEmail').value.trim();
     const pass = $('authPass').value;
     if (!email) return setResult('E-posta girin.', 'err');
-    if (!pass || pass.length < 6) return setResult('Şifre en az 6 karakter olmalı.', 'err');
+    const sorun = App.passwordIssue ? App.passwordIssue(pass) : '';
+    if (sorun) return setResult(sorun, 'err');
     busy = true;
     $('authSignUpBtn').disabled = true;
     setResult('Hesap açılıyor…');
@@ -292,7 +293,8 @@
     const pass = $('newUserPass').value;
     const role = $('newUserRole').value;
     if (!email) return setResult('E-posta girin.', 'err');
-    if (!pass || pass.length < 6) return setResult('Şifre en az 6 karakter olmalı.', 'err');
+    const sorun = App.passwordIssue ? App.passwordIssue(pass) : '';
+    if (sorun) return setResult(sorun, 'err');
     busy = true;
     $('createUserBtn').disabled = true;
     setResult('Hesap oluşturuluyor…');

@@ -161,6 +161,37 @@
     }
   }
 
+  /* ------------------------------------------------------------------
+     OTURUM TAZELIGI (adim yukseltme / step-up)
+     Firestore kurallari kritik yazmalarda ID token'in "auth_time" claim'ini
+     denetler (son kimlik dogrulama zamani). Istemci ayni degeri okuyarak
+     kullaniciya ONCEDEN "tekrar dogrulama gerekiyor" diyebilir.
+     ------------------------------------------------------------------ */
+
+  function tokenAuthTime(idToken) {
+    try {
+      const parts = String(idToken || '').split('.');
+      if (parts.length < 2) return 0;
+      let b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      while (b64.length % 4) b64 += '=';
+      const payload = JSON.parse(atob(b64));
+      return (payload && typeof payload.auth_time === 'number') ? payload.auth_time * 1000 : 0;
+    } catch (e) { return 0; }
+  }
+
+  /* Token'i zorla yenile (claim'ler guncellenir; auth_time DEGISMEZ —
+     gercek adim yukseltme icin reauthenticate gerekir). */
+  async function refreshToken() {
+    ensureFirebase();
+    const user = auth.currentUser;
+    if (!user) return null;
+    try {
+      await user.reload();
+    } catch (e) { /* yoksay */ }
+    const token = await user.getIdToken(true);
+    return saveSession(user, token);
+  }
+
   function saveSession(firebaseUser, idToken) {
     const now = Math.floor(Date.now() / 1000);
     const sess = {
@@ -903,6 +934,9 @@
 
     ensureSession: ensureSession,
     refreshUser: refreshUser,
+    refreshToken: refreshToken,
+    tokenAuthTime: tokenAuthTime,
+    reauth: reauth,
 
     probeSetup: async function () {
       if (!App.FB.hasConfig()) return false;

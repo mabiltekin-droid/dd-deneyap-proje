@@ -118,6 +118,7 @@
     }
 
     if (!loading) loadLoginLogs();
+    renderSession();
   }
 
   /* -------------------------------------------------- Avatar --------------- */
@@ -224,7 +225,8 @@
     const conf = ($('confirmPassword') || {}).value || '';
     if (!cur || !neu || !conf) { setResult('Tüm şifre alanlarını doldurun.', 'err'); return; }
     if (neu !== conf) { setResult('Yeni şifreler eşleşmiyor.', 'err'); return; }
-    if (neu.length < 6) { setResult('Yeni şifre en az 6 karakter olmalı.', 'err'); return; }
+    const sorun = sifreSorunu(neu);
+    if (sorun) { setResult(sorun, 'err'); return; }
 
     setResult('Şifre değiştiriliyor…');
     try {
@@ -233,11 +235,104 @@
       ['currentPassword', 'newPassword', 'confirmPassword'].forEach(function (id) {
         const el = $(id); if (el) el.value = '';
       });
-      setResult('Şifre güncellendi.', 'ok');
+      setResult('Şifre güncellendi. Kimlik doğrulamanız tazelendi.', 'ok');
       if (App.sound && App.sound.chime) App.sound.chime();
+      renderSession();
     } catch (err) {
       setResult('Şifre değiştirilemedi: ' + (err.human || err.message), 'err');
     }
+  }
+
+  /* -------------------------------------------------- Oturum güvenliği ---- */
+  /* Adım yükseltme: kritik işlemler (rol, davet, aktivasyon kodu, cihaz
+     bağlama/onayı) için "son giriş" tazeliğini gösterir ve şifreyle yeniden
+     doğrulama imkânı verir. Sunucu tarafı da aynı kuralı zorlar
+     (firestore.rules → freshSignIn/recentSignIn). */
+
+  function setSessionResult(text, kind) {
+    const el = $('sessionResult');
+    if (!el) return;
+    el.textContent = text || '';
+    el.className = 'result' + (kind ? ' ' + kind : '');
+  }
+
+  function yasMetni(ms) {
+    if (!ms) return 'bilinmiyor';
+    const dk = Math.floor(ms / 60000);
+    if (dk < 1) return 'az önce';
+    if (dk < 60) return dk + ' dakika önce';
+    const sa = Math.floor(dk / 60);
+    if (sa < 24) return sa + ' saat önce';
+    return Math.floor(sa / 24) + ' gün önce';
+  }
+
+  function renderSession() {
+    const chip = $('sessionFreshChip');
+    if (!chip) return;
+    if (!App.Auth.signedIn || !App.Auth.signedIn()) return;
+
+    const yas = App.Auth.authAgeMs();
+    const taze = App.Auth.isFresh(App.Auth.stepUpMinutes());
+    const gunluk = App.Auth.isFresh(App.Auth.recentMinutes());
+
+    chip.dataset.state = taze ? 'normal' : (gunluk ? 'warning' : 'danger');
+    chip.textContent = taze ? 'TAZE' : (gunluk ? 'KISMEN' : 'ESKİ');
+
+    const text = $('sessionAgeText');
+    if (text) {
+      text.textContent = 'Son giriş doğrulaması: ' + yasMetni(yas) + '. ' + (
+        taze ? 'Yönetici işlemleri ve cihaz bağlama şu an açık.'
+          : gunluk ? 'Yönetici işlemleri için tekrar doğrulama gerekir (cihaz bağlama açık).'
+            : 'Kritik işlemler için tekrar doğrulama gerekir.'
+      );
+    }
+
+    const start = $('stepUpStartBtn');
+    if (start) start.hidden = taze;
+
+    const sel = $('sessionIdleSel');
+    if (sel && document.activeElement !== sel) {
+      sel.value = String(App.settings().sessionIdleMin || 0);
+    }
+  }
+
+  function openStepUp(what, dk) {
+    const card = $('profileCard');
+    if (card && card.hidden) card.hidden = false;
+    toggle('stepUpRow', true);
+    if (what) {
+      setSessionResult('“' + what + '” için son ' + (dk || App.Auth.stepUpMinutes()) +
+        ' dakika içinde giriş yapmış olmanız gerekiyor. Şifrenizi girin.', 'err');
+    }
+    if (card && card.scrollIntoView) {
+      try { card.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) { /* yoksay */ }
+    }
+    const inp = $('stepUpPass');
+    if (inp) { try { inp.focus(); } catch (e) { /* yoksay */ } }
+    renderSession();
+  }
+
+  async function doStepUp() {
+    const inp = $('stepUpPass');
+    const pass = inp ? inp.value : '';
+    if (!pass) { setSessionResult('Şifrenizi girin.', 'err'); return; }
+    setSessionResult('Doğrulanıyor…');
+    try {
+      await App.Auth.reauth(pass);
+      if (inp) inp.value = '';
+      toggle('stepUpRow', false);
+      setSessionResult('Kimlik doğrulandı. Kritik işlemleri şimdi yapabilirsiniz.', 'ok');
+      if (App.sound && App.sound.chime) App.sound.chime();
+      renderSession();
+    } catch (err) {
+      setSessionResult('Doğrulanamadı: ' + (err.human || err.message), 'err');
+    }
+  }
+
+  /* Şifre gücü: ortak politika (config.js → App.passwordIssue). */
+  function sifreSorunu(pw) {
+    if (App.passwordIssue) return App.passwordIssue(pw);
+    return String(pw || '').length < 8 ? 'Şifre en az 8 karakter olmalı.' : '';
   }
 
   /* -------------------------------------------------- Şifre sıfırlama ------ */
@@ -308,6 +403,31 @@
     if ($('cancelPasswordBtn')) $('cancelPasswordBtn').addEventListener('click', function () { toggle('changePasswordRow', false); });
     if ($('savePasswordBtn')) $('savePasswordBtn').addEventListener('click', savePassword);
     if ($('sendResetBtn')) $('sendResetBtn').addEventListener('click', sendReset);
+
+    /* --- Oturum güvenliği --- */
+    if ($('stepUpStartBtn')) $('stepUpStartBtn').addEventListener('click', function () { openStepUp(); });
+    if ($('stepUpBtn')) $('stepUpBtn').addEventListener('click', doStepUp);
+    if ($('stepUpCancelBtn')) {
+      $('stepUpCancelBtn').addEventListener('click', function () {
+        toggle('stepUpRow', false);
+        setSessionResult('');
+      });
+    }
+    if ($('stepUpPass')) {
+      $('stepUpPass').addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); doStepUp(); }
+      });
+    }
+    if ($('sessionIdleSel')) {
+      $('sessionIdleSel').addEventListener('change', function (e) {
+        const dk = Number(e.target.value) || 0;
+        App.saveSettings({ sessionIdleMin: dk });
+        if (App.Auth.restartIdleWatch) App.Auth.restartIdleWatch();
+        setSessionResult(dk > 0
+          ? 'Hareketsizlik süresi ' + dk + ' dakika olarak ayarlandı.'
+          : 'Otomatik çıkış kapatıldı.', 'ok');
+      });
+    }
     if ($('signOutThisDeviceBtn')) {
       $('signOutThisDeviceBtn').addEventListener('click', function () {
         App.Auth.signOut().catch(function () {});
@@ -320,6 +440,9 @@
   }
 
   window.App.initProfile = init;
+  /* Kritik bir işlem "taze giriş" istediğinde auth katmanı bu pencereyi açar
+     (bkz. auth-firebase.js → requireFresh). */
+  window.App.openStepUp = openStepUp;
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();

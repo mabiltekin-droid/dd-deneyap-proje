@@ -9,7 +9,7 @@
 
   const App = (window.App = window.App || {});
 
-  App.VERSION = '2.17.0';
+  App.VERSION = '2.18.0';
   App.STORAGE_KEY = 'deneyap.settings.v2';
 
   /* Evrensel Ortam Tespiti: Standalone PWA / Normal Web ayrımı */
@@ -115,10 +115,34 @@
                        konusunu yayınlar; firmware MQTT_TOPIC ile aynı olmalı).
        Yereldir: konu bilgisi tarayıcıya özgüdür. Bkz. pwa/js/devices.js */
     activeDeviceId: '',
-    deviceTopics: {}
+    deviceTopics: {},
+
+    /* --- Oturum güvenliği ---
+       sessionIdleMin: hareketsizlikte otomatik çıkış (dakika; 0 = kapalı).
+       Yalnızca kullanıcı ETKİLEŞİMİ sayılır (telemetri akışı oturumu canlı
+       tutmaz). Kritik işlemler için "taze giriş" (step-up) kuralı sunucu
+       tarafında ayrıca zorlanır: bkz. firestore.rules → freshSignIn(). */
+    sessionIdleMin: 30
   };
 
   App.GAS_FS_MAX = 10000; // Sensör tam skalası (10.000 PPM)
+
+  /* --------------------------------------------------------- şifre politikası
+     Firebase en az 6 karakter ister; konsol daha güçlü bir eşik uygular:
+     8+ karakter, en az bir harf ve bir rakam. Kayıt, yönetici kullanıcı
+     oluşturma ve şifre değiştirme aynı işlevi kullanır.
+     Dönüş: sorun varsa açıklama metni, yoksa boş metin (''). */
+  App.passwordIssue = function (pw) {
+    const s = String(pw == null ? '' : pw);
+    if (!s) return 'Şifre girin.';
+    if (s.length < 8) return 'Şifre en az 8 karakter olmalı.';
+    if (!/[A-Za-zÇĞİÖŞÜçğıöşü]/.test(s)) return 'Şifre en az bir harf içermeli.';
+    if (!/[0-9]/.test(s)) return 'Şifre en az bir rakam içermeli.';
+    if (/(1234|123456|password|parola|qwerty|deneyap)/i.test(s)) {
+      return 'Şifre çok tahmin edilebilir; farklı bir şifre seçin.';
+    }
+    return '';
+  };
 
   /* ------------------------------------------------------- Web Push (VAPID) */
   /* Genel anahtar (private DEĞİL) — tarayıcı aboneliği bununla imzalanır.
@@ -126,7 +150,6 @@
      Üretmek için:  node tools/gen-vapid.js
      Boşsa panelde "arka plan bildirimi" düğmesi kapalı görünür. */
   App.VAPID_PUBLIC_KEY = 'BEuziLAOcLECKODrGCd8KiVvtNFqYJYZiLedzsILXFDqhVPZRVVcOV2tii7NUBGAeHWcSpgpx8kusgzEbvHGlh0';
-
   /* ------------------------------------------------------------ ayar deposu */
 
   function loadSettings() {
