@@ -291,6 +291,9 @@
     const btn = $('voiceBtn');
     if (!btn) return;
     btn.addEventListener('click', function () {
+      if (window.speechSynthesis && window.speechSynthesis.cancel) {
+        try { window.speechSynthesis.cancel(); } catch (e) {}
+      }
       if (listening) { stop(); setListening(false, ''); }
       else start();
     });

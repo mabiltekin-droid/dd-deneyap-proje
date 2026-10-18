@@ -6,12 +6,25 @@
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "orientation": "portrait",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "any",
   "lang": "tr",
   "dir": "ltr",
-  "categories": ["utilities", "lifestyle"],
+  "categories": ["utilities", "smart-home", "lifestyle"],
   "background_color": "#121212",
   "theme_color": "#121212",
+  "shortcuts": [
+    {
+      "name": "Canlı Sensörler",
+      "url": "./index.html#telemetry",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Sistem Ayarları",
+      "url": "./settings.html",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
   "icons": [
     {
       "src": "icons/icon-192.png",

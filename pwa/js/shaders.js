@@ -606,6 +606,31 @@
     }
   });
 
+  /* Ekran Boyutu & Yön Değişimi (Debounced Resize & Orientation) */
+  let resizeTimer = null;
+  function handleResize() {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function () {
+      if (!isInitialized) return;
+
+      const tier = (window.App.Tier && window.App.Tier.get()) || 'mid';
+      if (tier === 'low') return;
+
+      const isUltra = tier === 'ultra';
+      const dprScale = isUltra ? Math.min(window.devicePixelRatio || 1, 1.8) : 0.5;
+      const elapsed = performance.now() - startTime;
+
+      requestAnimationFrame(function () {
+        if (gasRenderer) gasRenderer.render(elapsed, dprScale);
+        if (rainRenderer) rainRenderer.render(elapsed, dprScale);
+        if (glitchRenderer) glitchRenderer.render(elapsed, isUltra ? 1.0 : 0.5);
+      });
+    }, 150);
+  }
+
+  window.addEventListener('resize', handleResize, { passive: true });
+  window.addEventListener('orientationchange', handleResize, { passive: true });
+
   /* Donanım Kademesi Değişimi */
   if (window.App.Tier && window.App.Tier.onChange) {
     window.App.Tier.onChange(function (newTier) {

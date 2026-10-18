@@ -28,7 +28,28 @@
   let pushed = null;
   const statusSubs = new Set();
 
+  /* Çift Gönderim Kilidi (In-Flight Command Throttling) */
+  const inFlightControls = new Map();
+  const CONTROL_THROTTLE_MS = 500;
+
+  /* HTTPS / Mixed Content Koruması */
+  function checkMixedContent() {
+    if (typeof window !== 'undefined' && window.location && window.location.protocol === 'https:') {
+      const s = App.settings();
+      if (s.transport === 'http' || (s.host && String(s.host).startsWith('http://'))) {
+        console.warn('[api] HTTPS üzerinde HTTP mixed-content engeline takılmamak için otomatik olarak MQTT moduna yönlendirildi.');
+        App.saveSettings({ transport: 'mqtt' });
+        if (typeof App.toast === 'function') {
+          App.toast('HTTPS altında yerel HTTP engellendiğinden otomatik olarak güvenli MQTT moduna geçildi.', { kind: 'warn', duration: 6000 });
+        }
+        return true;
+      }
+    }
+    return false;
+  }
+
   function usingMqtt() {
+    checkMixedContent();
     const s = App.settings();
     return s.transport === 'mqtt' || (!!s.mqttUrl && s.transport !== 'http');
   }
@@ -40,6 +61,11 @@
   /* ---------------------------------------------------------- HTTP taşıma */
 
   async function httpRequest(path, options) {
+    if (checkMixedContent()) {
+      const e = new Error('HTTPS altında HTTP istekleri engellendi. MQTT moduna yönlendirildi.');
+      e.network = true;
+      throw e;
+    }
     const o = options || {};
     const s = App.settings();
     const controller = new AbortController();
@@ -109,11 +135,33 @@
     },
 
     control: function (device, action, value) {
-      if (usingMqtt()) return App.mqtt.control(device, action, value);
-      return httpRequest('/api/control', {
-        method: 'POST',
-        json: { device: device, action: action, value: value !== undefined ? Number(value) : 0 }
+      const lockKey = String(device) + ':' + String(action) + ':' + (value !== undefined ? String(value) : '');
+      const existing = inFlightControls.get(lockKey);
+      const now = Date.now();
+      if (existing && (now - existing.time < CONTROL_THROTTLE_MS)) {
+        return existing.promise;
+      }
+
+      const p = (async function () {
+        if (usingMqtt()) return App.mqtt.control(device, action, value);
+        return httpRequest('/api/control', {
+          method: 'POST',
+          json: { device: device, action: action, value: value !== undefined ? Number(value) : 0 }
+        });
+      })();
+
+      inFlightControls.set(lockKey, { promise: p, time: now });
+
+      p.finally(function () {
+        setTimeout(function () {
+          const cur = inFlightControls.get(lockKey);
+          if (cur && cur.promise === p) {
+            inFlightControls.delete(lockKey);
+          }
+        }, CONTROL_THROTTLE_MS);
       });
+
+      return p;
     },
 
     saveSettings: function (payload) {

@@ -1235,16 +1235,100 @@
     if (heroVer) heroVer.textContent = 'SCADA v' + App.VERSION;
   }
 
+  /* --------------------------------- Sanal Klavye Yönetimi (Virtual Keyboard) */
+  function setupVirtualKeyboardHandler() {
+    if (!window.visualViewport) return;
+
+    let initialHeight = window.visualViewport.height;
+
+    window.visualViewport.addEventListener('resize', function () {
+      const bottomNav = document.querySelector('.bottom-nav');
+      if (!bottomNav) return;
+      const currentHeight = window.visualViewport.height;
+      // Yükseklik 160px'ten fazla azaldıysa sanal klavye açılmıştır
+      const isKeyboardOpen = (initialHeight - currentHeight) > 160;
+      if (isKeyboardOpen) {
+        bottomNav.classList.add('nav-hidden-keyboard');
+      } else {
+        bottomNav.classList.remove('nav-hidden-keyboard');
+        initialHeight = currentHeight;
+      }
+    });
+  }
+
+  /* -------------------------------- Ağ Durumu Senkronizasyonu (Online / Offline) */
+  function setupNetworkSyncHandler() {
+    window.addEventListener('offline', function () {
+      online = false;
+      App.setConnBadge('offline', 'Çevrimdışı (Önbellek)');
+      App.toast('İnternet bağlantısı kesildi. Veriler yerel önbellekten okunuyor.', { kind: 'warn', duration: 4000 });
+    });
+
+    window.addEventListener('online', function () {
+      App.setConnBadge('connecting', 'Canlıya Geçiliyor…');
+      App.toast('Ağ bağlantısı kuruldu. Telemetri senkronize ediliyor...', { kind: 'ok', duration: 3000 });
+      if (App.api && typeof App.api.status === 'function') {
+        App.api.status().then(function (data) {
+          markOnline();
+          render(data);
+        }).catch(function (err) {
+          markOffline(err);
+        });
+      }
+      if (App.api && App.api.transport() && typeof App.api.startMqtt === 'function') {
+        try { App.api.startMqtt(); } catch (e) {}
+      }
+    });
+  }
+
+  /* ------------------------------- Akıllı PWA Yükleme Butonu Yönetimi */
+  function setupSmartInstallButton() {
+    const btn = document.getElementById('pwaInstallBtn');
+    if (!btn) return;
+    if (App.isStandalone) {
+      btn.hidden = true;
+      btn.style.display = 'none';
+      return;
+    }
+    if (typeof App.setupPwaInstall === 'function') {
+      App.setupPwaInstall();
+    }
+  }
+
+  /* ---------------------- Evrensel Buton Etkileşim ve Dinamik Geri Bildirim */
+  function setupUniversalButtonFeedback() {
+    document.addEventListener('click', function (e) {
+      const btn = e.target.closest('.btn[data-action], .mode-btn, .drill-btn, [data-sched="del"]');
+      if (!btn || btn.classList.contains('is-busy')) return;
+
+      btn.classList.add('is-busy');
+      if (typeof App.haptic === 'function') App.haptic(15);
+      setTimeout(function () {
+        btn.classList.remove('is-busy');
+      }, 700); // 700ms debounce kilidi
+    }, true);
+  }
+
+  function bootGlobalFeatures() {
+    setupVirtualKeyboardHandler();
+    setupNetworkSyncHandler();
+    setupSmartInstallButton();
+    setupUniversalButtonFeedback();
+  }
+
   window.App.initDashboard = init;
   window.App.destroyDashboard = destroy;
+  window.App.setupVirtualKeyboardHandler = setupVirtualKeyboardHandler;
   /* Sesli komut / otomasyon modülleri için son telemetri erişimi */
   window.App.lastTelemetry = function () { return lastData; };
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () {
+      bootGlobalFeatures();
       if ($('homeWidget')) init();
     });
   } else {
+    bootGlobalFeatures();
     if ($('homeWidget')) init();
   }
 })();

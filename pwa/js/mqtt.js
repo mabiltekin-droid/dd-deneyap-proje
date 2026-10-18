@@ -316,6 +316,20 @@
     }, wait);
   }
 
+  function reconnect() {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+    dropClient();
+    connect();
+  }
+
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden && (!connected || !client || !client.connected)) {
+      console.info('[mqtt] Mobil uyku sonrasi baglanti tazeleniyor...');
+      reconnect();
+    }
+  });
+
   function publish(topic, payload) {
     if (!client || !connected) {
       const e = new Error('Yayıncıya bağlı değil (cihaz bulunamadı)');

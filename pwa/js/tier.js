@@ -52,11 +52,17 @@
     }
   }
 
+  function isMobileDevice() {
+    return ('ontouchstart' in window) ||
+           (navigator.maxTouchPoints && navigator.maxTouchPoints > 0) ||
+           (window.matchMedia && window.matchMedia('(max-width: 980px)').matches);
+  }
+
   function stepUp() {
     var baseline = detectInitialTier();
     if (currentTier === 'low' && (baseline === 'mid' || baseline === 'ultra')) {
       setTier('mid');
-    } else if (currentTier === 'mid' && baseline === 'ultra') {
+    } else if (currentTier === 'mid' && baseline === 'ultra' && !isMobileDevice()) {
       setTier('ultra');
     }
   }
@@ -73,6 +79,11 @@
     /* Düşük donanım / eski mobil */
     if (cores <= 2 || mem <= 2) {
       return 'low';
+    }
+
+    /* Mobil/Dokunmatik cihazlar asla ultra olamaz, maksimum mid */
+    if (isMobileDevice()) {
+      return 'mid';
     }
 
     /* Güçlü PC / Amiral gemisi */
