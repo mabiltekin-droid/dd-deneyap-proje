@@ -70,6 +70,16 @@
     const sndVolEl = $('sndVolume');
     if (sndVolEl) sndVolEl.value = String(s.sndVolume !== undefined ? s.sndVolume : 70);
 
+    /* Panel bildirimleri — yerel tercihler; cihaza GÖNDERİLMEZ. */
+    setChk('notifyEnabled', s.notifyEnabled, false);
+    setChk('notifySound', s.notifySound, true);
+    setChk('notifyGas', s.notifyGas, true);
+    setChk('notifyWarn', s.notifyWarn, true);
+    setChk('notifyFlood', s.notifyFlood, true);
+    setChk('notifyFlame', s.notifyFlame, true);
+    setChk('notifyVib', s.notifyVib, true);
+    setChk('notifyOffline', s.notifyOffline, false);
+
     const themeRadio = document.querySelector('input[name="theme"][value="' + (s.theme || 'dark') + '"]');
     if (themeRadio) themeRadio.checked = true;
 
@@ -114,6 +124,15 @@
       flameUseAnalog: $('flameUseAnalog') ? $('flameUseAnalog').checked : false,
       flameTg: $('flameTg') ? $('flameTg').checked : true,
       sndVolume: $('sndVolume') ? Number($('sndVolume').value) : 70,
+      /* Panel bildirim tercihleri — cihaza gönderilmez (aşağıda hw'ye konmaz) */
+      notifyEnabled: $('notifyEnabled') ? $('notifyEnabled').checked : false,
+      notifySound: $('notifySound') ? $('notifySound').checked : true,
+      notifyGas: $('notifyGas') ? $('notifyGas').checked : true,
+      notifyWarn: $('notifyWarn') ? $('notifyWarn').checked : true,
+      notifyFlood: $('notifyFlood') ? $('notifyFlood').checked : true,
+      notifyFlame: $('notifyFlame') ? $('notifyFlame').checked : true,
+      notifyVib: $('notifyVib') ? $('notifyVib').checked : true,
+      notifyOffline: $('notifyOffline') ? $('notifyOffline').checked : false,
       theme: themeEl ? themeEl.value : 'dark'
     };
   }
@@ -493,6 +512,121 @@
   }
 
   /* Bağlantı & Gecikme Testi */
+  /* ------------------------------------------------- Bildirim paneli ------ */
+  /* Yerel sistem bildirimi + arka plan (Web Push) aboneliği durumunu tazeler.
+     Bildirim tercihleri cihaza gönderilmez; yalnızca bu tarayıcıda tutulur. */
+  function notifyPermLabel(p) {
+    if (p === 'granted') return 'izin verildi';
+    if (p === 'denied') return 'engellendi';
+    if (p === 'unsupported') return 'desteklenmiyor';
+    return 'sorulmadı';
+  }
+
+  async function refreshNotifyPanel() {
+    if (!App.notify) {
+      setResult($('notifyResult'), 'Bildirim modülü yüklenmedi (notify.js).', 'fail');
+      return;
+    }
+    const s = App.settings();
+    const p = App.notify.permission();
+
+    if (!App.notify.supported()) {
+      setResult($('notifyResult'), 'Bu tarayıcı sistem bildirimini desteklemiyor.', 'fail');
+    } else {
+      setResult($('notifyResult'),
+        'İzin: ' + notifyPermLabel(p) + ' · yerel bildirim ' +
+        (s.notifyEnabled ? 'AÇIK' : 'kapalı'),
+        p === 'granted' && s.notifyEnabled ? 'ok' : (p === 'denied' ? 'fail' : ''));
+    }
+
+    const btn = $('pushToggleBtn');
+    const res = $('pushResult');
+    if (!btn || !App.notify.pushState) return;
+    try {
+      const st = await App.notify.pushState();
+      if (!st.supported) {
+        btn.disabled = true;
+        setResult(res, p === 'denied'
+          ? 'Arka plan bildirimi: bildirim izni engellenmiş.'
+          : 'Arka plan bildirimi için VAPID genel anahtarı tanımlı değil (bkz. FIREBASE.md).', '');
+      } else {
+        btn.disabled = false;
+        btn.textContent = st.subscribed
+          ? 'Arka Plan Bildirimini Kapat'
+          : 'Arka Plan Bildirimini Aç';
+        setResult(res, st.subscribed
+          ? 'Arka plan bildirimi AÇIK — panel kapalıyken de bildirim gelir.'
+          : 'Arka plan bildirimi kapalı — panel kapalıyken bildirim gelmez.',
+          st.subscribed ? 'ok' : '');
+      }
+    } catch (e) {
+      setResult(res, 'Durum okunamadı: ' + e.message, 'fail');
+    }
+  }
+
+  async function onNotifyPerm() {
+    const btn = $('notifyPermBtn');
+    if (btn) btn.disabled = true;
+    try {
+      const r = await App.notify.enable();
+      if (!r.ok) {
+        setResult($('notifyResult'),
+          'İzin verilmedi — tarayıcı adres çubuğundaki kilit simgesinden açabilirsiniz.', 'fail');
+      } else {
+        setResult($('notifyResult'), 'Bildirim izni verildi. "Test Bildirimi" ile deneyin.', 'ok');
+        App.sound.chime();
+      }
+    } catch (e) {
+      setResult($('notifyResult'), 'İzin alınamadı: ' + e.message, 'fail');
+    } finally {
+      if (btn) btn.disabled = false;
+      const el = $('notifyEnabled');
+      if (el) el.checked = App.settings().notifyEnabled === true;
+      refreshNotifyPanel();
+    }
+  }
+
+  async function onNotifyTest() {
+    const btn = $('notifyTestBtn');
+    if (btn) btn.disabled = true;
+    try {
+      await App.notify.test();
+      setResult($('notifyResult'), 'Test bildirimi gönderildi.', 'ok');
+    } catch (e) {
+      setResult($('notifyResult'), 'Test başarısız: ' + e.message, 'fail');
+      App.sound.alarm();
+    } finally {
+      if (btn) btn.disabled = false;
+      const el = $('notifyEnabled');
+      if (el) el.checked = App.settings().notifyEnabled === true;
+      refreshNotifyPanel();
+    }
+  }
+
+  async function onPushToggle() {
+    const btn = $('pushToggleBtn');
+    if (btn) btn.disabled = true;
+    try {
+      const st = await App.notify.pushState();
+      if (st.subscribed) {
+        await App.notify.unsubscribe();
+        setResult($('pushResult'), 'Arka plan bildirimi kapatıldı.', 'ok');
+      } else {
+        await App.notify.push();
+        setResult($('pushResult'), 'Arka plan bildirimi açıldı — panel kapalıyken de bildirim gelir.', 'ok');
+        App.sound.chime();
+      }
+    } catch (e) {
+      setResult($('pushResult'), 'İşlem başarısız: ' + e.message, 'fail');
+      App.sound.alarm();
+    } finally {
+      if (btn) btn.disabled = false;
+      const el = $('notifyEnabled');
+      if (el) el.checked = App.settings().notifyEnabled === true;
+      refreshNotifyPanel();
+    }
+  }
+
   async function testConnection() {
     const btn = $('testBtn');
     const out = $('testResult');
@@ -706,6 +840,40 @@
     if (tgD) tgD.addEventListener('click', function () { tgTest(true); });
     const tgF = $('tgForgetBtn');
     if (tgF) tgF.addEventListener('click', tgForget);
+
+    /* Bildirim paneli — tercihler yereldir, cihazla senkron edilmez. */
+    const nPerm = $('notifyPermBtn');
+    if (nPerm) nPerm.addEventListener('click', onNotifyPerm);
+    const nTest = $('notifyTestBtn');
+    if (nTest) nTest.addEventListener('click', onNotifyTest);
+    const pToggle = $('pushToggleBtn');
+    if (pToggle) pToggle.addEventListener('click', onPushToggle);
+
+    ['notifySound', 'notifyGas', 'notifyWarn', 'notifyFlood',
+      'notifyFlame', 'notifyVib', 'notifyOffline'].forEach(function (id) {
+      const el = $(id);
+      if (!el) return;
+      el.addEventListener('change', function () {
+        const patch = {};
+        patch[id] = el.checked;
+        App.saveSettings(patch);
+        refreshNotifyPanel();
+      });
+    });
+    const nEnabled = $('notifyEnabled');
+    if (nEnabled) nEnabled.addEventListener('change', function () {
+      if (!nEnabled.checked) {
+        App.notify.disable();
+        refreshNotifyPanel();
+        return;
+      }
+      /* Onay kutusu açıldıysa hemen izin iste — izin yoksa kutu geri kapanır. */
+      App.notify.enable().then(function (r) {
+        if (!r.ok) nEnabled.checked = false;
+        refreshNotifyPanel();
+      });
+    });
+    refreshNotifyPanel();
 
     /* Yöntem ya da yayıncı bilgisi değişince bağlantıyı tazele:
        eski yayıncıya bağlı kalmış bir istemci kalmasın. */

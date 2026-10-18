@@ -30,6 +30,9 @@
   let pumpArmTimer = null;
   let sndVolumeActive = false;
   let prevAlarm = { danger: false, warn: false, flood: false, vib: false, flame: false };
+  /* Sistem bildirimi için ayrı kenar-durumu: sesli anons kapalıyken de
+     (App.voice yoksa announceAlarms erken döner) bildirim üretilebilsin. */
+  let prevNotify = { danger: false, warn: false, flood: false, vib: false, flame: false };
 
   /* Canlı Uptime Takibi (Cihaz sorguları arasında saniye saniye artar) */
   let baseUptimeMs = 0;
@@ -449,6 +452,41 @@
     prevAlarm = { danger: danger, warn: warn, flood: flood, vib: vib, flame: flame };
   }
 
+  /* Alarm geçişlerinde masaüstü/telefon sistem bildirimi (App.notify).
+     Sesli anonstan (App.voice) bağımsızdır: ses kapalı olsa da bildirim gider.
+     Aynı anda birden çok olay varsa en kritik olan bildirilir. */
+  function notifyAlarms(data, state) {
+    if (!App.notify || !App.notify.supported()) return;
+    const danger = state === 'danger';
+    const warn = state === 'warning';
+    const flood = !!(data && data.flood);
+    const vib = !!(data && data.vib);
+    const flame = !!(data && data.flame);
+
+    if (flame && !prevNotify.flame) {
+      App.notify.alarm('flame', 'ALEV / YANGIN ALGILANDI',
+        'Siren çalıyor, pencere kapatıldı; fan ve su motoru durduruldu. Yangın güvenliğinizi kontrol edin.',
+        { urgent: true });
+    } else if (danger && !prevNotify.danger) {
+      App.notify.alarm('gas', 'GAZ KAÇAĞI (TEHLİKE)',
+        'Tahliye fanı çalıştırıldı, su motoru kilitlendi ve pencere kapatıldı.',
+        { urgent: true });
+    } else if (flood && !prevNotify.flood) {
+      App.notify.alarm('flood', 'SU BASKINI ALGILANDI',
+        'Pencere kapatıldı. Su motorunu ve tahliye önlemlerini kontrol edin.',
+        { urgent: true });
+    } else if (vib && !prevNotify.vib) {
+      App.notify.alarm('vib', 'SARSINTI / KURCALAMA ALGILANDI',
+        'Siren çalıyor. Evdeki durumu kontrol edin.',
+        { urgent: true });
+    } else if (warn && !prevNotify.warn) {
+      App.notify.alarm('warn', 'Gaz Yoğunluğu Yükseliyor',
+        'Uyarı eşiği aşıldı. Ortamı havalandırın.', {});
+    }
+
+    prevNotify = { danger: danger, warn: warn, flood: flood, vib: vib, flame: flame };
+  }
+
   function renderSystem(data, state) {
     App.renderDeviceInfo(data);
     setChip('sysChip', state, STATE_LABEL[state]);
@@ -692,6 +730,7 @@
     renderLockHint();
     setControlsEnabled(controlsAllowed());
     announceAlarms(data, state);
+    notifyAlarms(data, state);
 
     /* Olay günlüğü: alarm/olay geçişlerini kalıcı kayda al */
     if (window.App.Events && window.App.Events.note) {

@@ -9,7 +9,7 @@
 
   const App = (window.App = window.App || {});
 
-  App.VERSION = '2.15.1';
+  App.VERSION = '2.16.0';
   App.STORAGE_KEY = 'deneyap.settings.v2';
 
   /* Evrensel Ortam Tespiti: Standalone PWA / Normal Web ayrımı */
@@ -94,10 +94,30 @@
     mode: 'home',
     modeAuto: false,
     modeSync: true,
-    modeSchedule: []
+    modeSchedule: [],
+
+    /* --- Panel bildirimleri (PWA yerel; cihaza GÖNDERİLMEZ) ---
+       Masaüstü/telefon sistem bildirimi + Web Push aboneliği tercihleri.
+       Bkz. pwa/js/notify.js */
+    notifyEnabled: false,  // sistem bildirimleri açık mı (izin verildikten sonra)
+    notifySound: true,     // bildirim sesli mi
+    notifyGas: true,       // gaz tehlikesi (danger)
+    notifyWarn: true,      // gaz uyarı seviyesi (warning)
+    notifyFlood: true,     // su baskını
+    notifyFlame: true,     // alev / yangın
+    notifyVib: true,       // sarsıntı / kurcalama
+    notifyOffline: false,  // cihaz bağlantısı kesildi
+    pushEnabled: false     // arka plan Web Push aboneliği (Vercel gönderici)
   };
 
   App.GAS_FS_MAX = 10000; // Sensör tam skalası (10.000 PPM)
+
+  /* ------------------------------------------------------- Web Push (VAPID) */
+  /* Genel anahtar (private DEĞİL) — tarayıcı aboneliği bununla imzalanır.
+     Özel anahtar yalnızca göndericide (Vercel ortam değişkeni) durur.
+     Üretmek için:  node tools/gen-vapid.js
+     Boşsa panelde "arka plan bildirimi" düğmesi kapalı görünür. */
+  App.VAPID_PUBLIC_KEY = '';
 
   /* ------------------------------------------------------------ ayar deposu */
 

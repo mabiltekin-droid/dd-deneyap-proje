@@ -283,6 +283,13 @@
       record('online', lastDev, 'Cihaz bağlantısı kuruldu.');
     } else {
       record('offline', lastDev, 'Cihaz bağlantısı kesildi' + (reason ? ' (' + reason + ')' : '') + '.');
+      /* Sistem bildirimi (tercih kapalıysa App.notify sessizce atlar). */
+      if (App.notify && App.notify.alarm) {
+        try {
+          App.notify.alarm('offline', 'Cihaz Bağlantısı Kesildi',
+            'Deneyap Kart yanıt vermiyor' + (reason ? ' (' + reason + ')' : '') + '.');
+        } catch (e) { /* bildirim hatası günlüğü bozmasın */ }
+      }
     }
   }
 

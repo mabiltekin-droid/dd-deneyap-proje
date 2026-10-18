@@ -211,6 +211,7 @@
   const COL_INVITES = 'invites';
   const COL_AUDIT = 'audit_logs';
   const COL_EVENTS = 'alarm_events';
+  const COL_PUSH = 'push_subs';
 
   function profilesRef() { return db.collection(COL_PROFILES); }
   function bindingsRef() { return db.collection(COL_BINDINGS); }
@@ -220,6 +221,53 @@
   function invitesRef() { return db.collection(COL_INVITES); }
   function auditRef() { return db.collection(COL_AUDIT); }
   function eventsRef() { return db.collection(COL_EVENTS); }
+  function pushRef() { return db.collection(COL_PUSH); }
+
+  /* Push abonelik kimliği: uid + uç nokta özeti. Böylece aynı hesabın birden
+     fazla cihazı/tarayıcısı ayrı kayıt olur ve tekrar abone olmak aynı kaydı
+     günceller. Firestore kimliklerinde '/' bulunamaz; uç nokta özetlenir. */
+  function pushDocId(uid, endpoint) {
+    let h = 5381;
+    const s = String(endpoint || '');
+    for (let i = 0; i < s.length; i++) h = (((h << 5) + h) + s.charCodeAt(i)) >>> 0;
+    return uid + '__' + h.toString(36);
+  }
+
+  async function savePushSubscription(uid, sub) {
+    if (!uid || !sub || !sub.endpoint) {
+      const e = new Error('Abonelik bilgisi eksik.');
+      e.code = 'invalid'; e.human = e.message;
+      throw e;
+    }
+    const ref = pushRef().doc(pushDocId(uid, sub.endpoint));
+    await ref.set({
+      id: ref.id,
+      uid: uid,
+      endpoint: sub.endpoint,
+      keys: sub.keys || {},
+      ua: (typeof navigator !== 'undefined' ? navigator.userAgent : ''),
+      lang: (typeof navigator !== 'undefined' ? navigator.language : ''),
+      updated_at: firebase.firestore.FieldValue.serverTimestamp(),
+      created_at: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+    return ref.id;
+  }
+
+  async function deletePushSubscription(uid) {
+    if (!uid) return false;
+    /* Özel anahtar yalnızca bu tarayıcıda olduğundan uç noktayı oradan alıp
+       ilgili kaydı sileriz; bulunamazsa hesabın tüm kayıtları taranmaz
+       (kurallar listeyi yalnızca sahibine açar). */
+    let endpoint = '';
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      endpoint = sub ? sub.endpoint : '';
+    } catch (e) { /* yoksay */ }
+    if (!endpoint) return false;
+    await pushRef().doc(pushDocId(uid, endpoint)).delete();
+    return true;
+  }
 
   /* Profiles collection: doc ID = user.uid */
   async function createProfile(user, role, displayName, inviteCode) {
@@ -764,6 +812,10 @@
     conf: getFirebaseConfig,
     human: human,
     hasConfig: function () { return !!getFirebaseConfig(); },
+
+    /* --- Push abonelikleri (arka plan bildirimi) --- */
+    savePushSubscription: savePushSubscription,
+    deletePushSubscription: deletePushSubscription,
 
     token: async function () {
       const s = await ensureSession();

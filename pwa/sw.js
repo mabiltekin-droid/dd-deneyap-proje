@@ -17,7 +17,7 @@
      • Yeni sürüm sayfayı zorla değiştirmez; panel "Yenile" bildirimi gösterir.
    ========================================================================== */
 
-const VERSION = '2.15.1';
+const VERSION = '2.16.0';
 const CACHE = 'deneyap-pwa-v' + VERSION;
 const SHELL = './index.html';
 const NETWORK_TIMEOUT = 4000;   // cihaz yanıt vermezse cache'e düş (ms)
@@ -37,6 +37,7 @@ const PRECACHE = [
   './js/vendor/lenis.min.js',
   './js/api.js',
   './js/mqtt.js',
+  './js/notify.js',
   './js/app.js',
   './js/settings.js',
   './js/firebase.js',
@@ -103,6 +104,60 @@ self.addEventListener('message', function (event) {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
+});
+
+/* --------------------------------------------------------------- bildirimler */
+
+/* Bildirime tıklanınca: açık bir pencere varsa odakla, yoksa yeni pencere aç. */
+self.addEventListener('notificationclick', function (event) {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || './';
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (list) {
+      for (let i = 0; i < list.length; i++) {
+        const c = list[i];
+        if (c && 'focus' in c) {
+          /* Zaten açık bir panel varsa onu öne al; rota değiştirmeye çalışma
+             (cihaz yerel adreste olduğu için navigate bazı tarayıcılarda
+             sayfayı yeniden yükleyip bağlantıyı koparabilir). */
+          return c.focus();
+        }
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(url);
+      return null;
+    })
+  );
+});
+
+/* Web Push (uzak gönderici): yük JSON'dur — {title, body, tag, urgent, url}.
+   Gönderici: api/push.js (Vercel + web-push + VAPID). */
+self.addEventListener('push', function (event) {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch (e) {
+    data = { body: event.data ? event.data.text() : '' };
+  }
+  const title = data.title || 'Deneyap Ev Koruma';
+  const body = data.body || 'Yeni bir uyarı var.';
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body: body,
+      tag: data.tag || 'dd-push',
+      renotify: true,
+      icon: './icons/icon-192.png',
+      badge: './icons/icon-192.png',
+      requireInteraction: data.urgent === true,
+      data: { url: data.url || './', kind: data.kind || '' }
+    })
+  );
+});
+
+/* Tarayıcı aboneliği kendi kendine yenilerse panelin haberi olmaz; sayfa
+   açıldığında notify.js zaten yeniden abone olup Firestore'u günceller.
+   Burada yalnızca eşleşmeyi sessizce işaretliyoruz. */
+self.addEventListener('pushsubscriptionchange', function (event) {
+  event.waitUntil(Promise.resolve());
 });
 
 /* -------------------------------------------------------------------- fetch */

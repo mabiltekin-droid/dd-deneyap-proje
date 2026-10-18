@@ -71,6 +71,7 @@
       <a href="#thresholdSection" class="nav-item">Eşikler</a>
       <a href="#automationSection" class="nav-item">Modlar</a>
       <a href="#telegramSection" class="nav-item">Telegram</a>
+      <a href="#notifySection" class="nav-item">Bildirimler</a>
       <a href="#themeSection" class="nav-item">Görünüm</a>
       <a href="#backupSection" class="nav-item">Bakım</a>
     </nav>
@@ -130,7 +131,7 @@
       <div class="hero-badge">
         <span class="badge-pulse"></span>
         <span class="badge-text">DENEYAP KART // MERKEZİ YAPILANDIRMA STÜDYOSU</span>
-        <span class="badge-version" id="studioVersion">v2.15.1</span>
+        <span class="badge-version" id="studioVersion">v2.16.0</span>
       </div>
       <p class="studio-intro-sub">
         NVS flash kayıtları, MQTT bulut köprüsü, telemetri eşikleri ve alarm kuralları.
@@ -1282,10 +1283,127 @@
         </div>
       </section>
 
+      <!-- ==================== SİSTEM BİLDİRİMLERİ ==================== -->
+      <section class="config-panel" aria-labelledby="h-notify" id="notifySection">
+        <div class="panel-header">
+          <span class="panel-tag">[CONFIG 08 // MASAÜSTÜ &amp; TELEFON BİLDİRİMİ]</span>
+          <div class="panel-title-row">
+            <div class="head-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+              <h3 id="h-notify">Sistem Bildirimleri</h3>
+            </div>
+          </div>
+          <p class="panel-desc">Alarm anında işletim sisteminin bildirim merkezinde uyarı gösterir.</p>
+        </div>
+
+        <div class="panel-content">
+          <p class="help">
+            <strong>İki katman:</strong> <em>Yerel</em> bildirim, panel açıkken anında gelir (sunucu gerekmez).
+            <em>Arka plan</em> bildirimi (Web Push) panel kapalıyken de gelir ve hesabınıza bağlıdır.
+            Telegram'dan farkı: Telegram cihazdan doğrudan gider; bu bildirimler panelin/hesabın tarafında yönetilir.
+          </p>
+
+          <label class="switch">
+            <input type="checkbox" id="notifyEnabled" name="notifyEnabled">
+            <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+            <span class="switch-body">
+              <strong>Masaüstü / Telefon Bildirimleri</strong>
+              <small>Panel açıkken alarmları sistem bildirimi olarak gösterir; tarayıcı izni gerekir.</small>
+            </span>
+          </label>
+
+          <label class="switch">
+            <input type="checkbox" id="notifySound" name="notifySound">
+            <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+            <span class="switch-body">
+              <strong>Bildirim Sesi</strong>
+              <small>Kapalıysa bildirim sessiz gelir (gece / izleme modu için).</small>
+            </span>
+          </label>
+
+          <p class="help"><strong>Bildirilecek olaylar</strong> — yalnızca seçili türler bildirim üretir.</p>
+
+          <label class="switch">
+            <input type="checkbox" id="notifyGas" name="notifyGas">
+            <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+            <span class="switch-body">
+              <strong>Gaz Tehlikesi</strong>
+              <small>Tehlike eşiği aşıldığında (fan + siren + pencere kapatma) bildirir.</small>
+            </span>
+          </label>
+
+          <label class="switch">
+            <input type="checkbox" id="notifyWarn" name="notifyWarn">
+            <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+            <span class="switch-body">
+              <strong>Gaz Uyarı Seviyesi</strong>
+              <small>Uyarı eşiği aşıldığında (tehlike değil) bildirir.</small>
+            </span>
+          </label>
+
+          <label class="switch">
+            <input type="checkbox" id="notifyFlood" name="notifyFlood">
+            <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+            <span class="switch-body">
+              <strong>Su Baskını</strong>
+              <small>Yağmur/taşma algılandığında bildirir.</small>
+            </span>
+          </label>
+
+          <label class="switch">
+            <input type="checkbox" id="notifyFlame" name="notifyFlame">
+            <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+            <span class="switch-body">
+              <strong>Alev / Yangın</strong>
+              <small>Alev algılandığında bildirir (en yüksek öncelik).</small>
+            </span>
+          </label>
+
+          <label class="switch">
+            <input type="checkbox" id="notifyVib" name="notifyVib">
+            <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+            <span class="switch-body">
+              <strong>Sarsıntı / Kurcalama</strong>
+              <small>Titreşim sensörü olay ürettiğinde bildirir.</small>
+            </span>
+          </label>
+
+          <label class="switch">
+            <input type="checkbox" id="notifyOffline" name="notifyOffline">
+            <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+            <span class="switch-body">
+              <strong>Bağlantı Kesildi</strong>
+              <small>Cihaz yanıt vermeyi bıraktığında bildirir (varsayılan kapalı).</small>
+            </span>
+          </label>
+
+          <div class="btn-row">
+            <button class="btn" type="button" id="notifyPermBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+              İzin Ver / Durumu Yenile
+            </button>
+            <button class="btn ghost" type="button" id="notifyTestBtn">Test Bildirimi</button>
+            <button class="btn ghost" type="button" id="pushToggleBtn">Arka Plan Bildirimi</button>
+          </div>
+          <p class="result" id="notifyResult" role="status" aria-live="polite"></p>
+          <p class="result" id="pushResult" role="status" aria-live="polite"></p>
+          <p class="help">
+            Arka plan bildirimi için <code>App.VAPID_PUBLIC_KEY</code> dolu olmalı ve Vercel
+            göndericisi (<code>api/push.js</code>) yapılandırılmalıdır — bkz. FIREBASE.md.
+            Telegram zaten cihazdan bağımsız çalıştığı için bu adım isteğe bağlıdır.
+          </p>
+        </div>
+      </section>
+
       <!-- ==================== GÖRÜNÜM & TEMA ==================== -->
       <section class="config-panel" aria-labelledby="h-theme" id="themeSection">
         <div class="panel-header">
-          <span class="panel-tag">[CONFIG 08 // GÖRSEL ATMOSFER &amp; MATRİS]</span>
+          <span class="panel-tag">[CONFIG 09 // GÖRSEL ATMOSFER &amp; MATRİS]</span>
           <div class="panel-title-row">
             <div class="head-title">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -1361,7 +1479,7 @@
       <!-- ==================== YEDEKLEME & BAKIM ==================== -->
       <section class="config-panel" aria-labelledby="h-backup" id="backupSection">
         <div class="panel-header">
-          <span class="panel-tag">[CONFIG 09 // YEDEKLEME &amp; FLASH BAKIMI]</span>
+          <span class="panel-tag">[CONFIG 10 // YEDEKLEME &amp; FLASH BAKIMI]</span>
           <div class="panel-title-row">
             <div class="head-title">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -1469,6 +1587,7 @@
   <script src="./js/blackbox.js"></script>
   <script src="./js/api.js"></script>
   <script src="./js/mqtt.js"></script>
+  <script src="./js/notify.js"></script>
   <script src="./js/firebase.js"></script>
   <script src="./js/auth-firebase.js"></script>
   <script src="./js/events.js"></script>

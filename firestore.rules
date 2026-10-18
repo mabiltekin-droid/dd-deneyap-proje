@@ -291,6 +291,24 @@ service cloud.firestore {
     }
 
     // ================================================================
+    // PUSH_SUBS - Web Push abonelikleri (arka plan bildirimi)
+    // Panel yalnızca KENDİ aboneliğini yazar/siler. Gönderici (Vercel
+    // fonksiyonu) servis hesabıyla okur; servis hesabı kuralları atlar.
+    // Belge kimliği: <uid>__<uç nokta özeti>  (bkz. firebase.js pushDocId)
+    // ================================================================
+    match /push_subs/{subId} {
+      allow read: if signedIn() && resource.data.uid == uid();
+      allow create: if signedIn()
+        && request.resource.data.uid == uid()
+        && request.resource.data.endpoint is string
+        && request.resource.data.endpoint.size() > 20;
+      allow update: if signedIn()
+        && resource.data.uid == uid()
+        && request.resource.data.uid == uid();
+      allow delete: if signedIn() && resource.data.uid == uid();
+    }
+
+    // ================================================================
     // Diger her sey varsayilan olarak kapali
     // ================================================================
     match /{document=**} {

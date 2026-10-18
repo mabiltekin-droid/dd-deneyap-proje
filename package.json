@@ -1,6 +1,6 @@
 {
   "name": "nambir",
-  "version": "2.15.1",
+  "version": "2.16.0",
   "private": true,
   "description": "Deneyap Ev Koruma — ESP32 firmware + PWA kontrol paneli",
   "license": "UNLICENSED",

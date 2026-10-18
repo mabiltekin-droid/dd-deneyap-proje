@@ -629,7 +629,8 @@
       /* 3. SCROLLSPY (Aktif Navigasyon Bölüm Takibi — Hem Index Hem Settings) */
       var spyTargets = [
         'hero', 'telemetry', 'command-center', 'analytics', 'diagnostics',
-        'accountCard', 'connSection', 'thresholdSection', 'telegramSection', 'themeSection', 'backupSection'
+        'accountCard', 'connSection', 'thresholdSection', 'telegramSection',
+        'notifySection', 'themeSection', 'backupSection'
       ];
       spyTargets.forEach(function (secId) {
         var el = document.getElementById(secId);
