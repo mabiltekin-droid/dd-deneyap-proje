@@ -9,7 +9,7 @@
 
   const App = (window.App = window.App || {});
 
-  App.VERSION = '2.16.0';
+  App.VERSION = '2.17.0';
   App.STORAGE_KEY = 'deneyap.settings.v2';
 
   /* Evrensel Ortam Tespiti: Standalone PWA / Normal Web ayrımı */
@@ -107,7 +107,15 @@
     notifyFlame: true,     // alev / yangın
     notifyVib: true,       // sarsıntı / kurcalama
     notifyOffline: false,  // cihaz bağlantısı kesildi
-    pushEnabled: false     // arka plan Web Push aboneliği (Vercel gönderici)
+    pushEnabled: false,     // arka plan Web Push aboneliği (Vercel gönderici)
+
+    /* --- Çoklu cihaz (device manager) ---
+       activeDeviceId: panelin şu an konuştuğu cihaz (boş = otomatik/ilk görülen).
+       deviceTopics:   cihaz kimliği -> MQTT konusu eşlemesi (her kart kendi
+                       konusunu yayınlar; firmware MQTT_TOPIC ile aynı olmalı).
+       Yereldir: konu bilgisi tarayıcıya özgüdür. Bkz. pwa/js/devices.js */
+    activeDeviceId: '',
+    deviceTopics: {}
   };
 
   App.GAS_FS_MAX = 10000; // Sensör tam skalası (10.000 PPM)

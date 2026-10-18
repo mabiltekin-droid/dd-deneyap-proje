@@ -680,8 +680,9 @@
       }
 
       try {
-        if (st.state === 'free') await FB().bindDevice(deviceId, owner, label || '', me.id);
-        else await FB().reassignBinding(deviceId, owner, me.id);
+        const topic = (App.settings ? App.settings().mqttTopic : '') || '';
+        if (st.state === 'free') await FB().bindDevice(deviceId, owner, label || '', me.id, topic);
+        else await FB().reassignBinding(deviceId, owner, me.id, topic);
       } catch (e) {
         throw err(e.human || e.message, bindingBlockedText(st));
       }
@@ -719,7 +720,7 @@
          reddedebilir; önce profili garanti altına al. */
       if (!state.profile) { try { await refreshProfile(); } catch (e2) { /* yoksay */ } }
       try {
-        await FB().bindDevice(deviceId, me.id, '');
+        await FB().bindDevice(deviceId, me.id, '', '', (App.settings ? App.settings().mqttTopic : '') || '');
       } catch (e) {
         const help = await bindFailureHelp(deviceId, e);
         try { await FB().clearUnlock(deviceId); } catch (e2) { /* yoksay */ }

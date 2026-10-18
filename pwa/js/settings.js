@@ -627,6 +627,135 @@
     }
   }
 
+  /* ------------------------------------------------- Cihazlarım paneli --- */
+  /* Çoklu cihaz: hesaba bağlı kartlar arasında geçiş. Panel her an tek
+     cihaza bağlıdır; seçim bir MQTT konusuna karşılık gelir. */
+  let devSig = '';
+
+  function devEsc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
+    });
+  }
+
+  function devBadge(status) {
+    if (status === 'release_pending') return { t: 'serbest bırakılıyor', k: 'warn' };
+    if (status === 'unbound') return { t: 'bağlanmamış', k: '' };
+    return { t: 'bağlı', k: 'ok' };
+  }
+
+  async function refreshDevices(force) {
+    const box = $('devList');
+    if (!box || !App.Devices) return;
+
+    let rows = [];
+    try {
+      rows = await App.Devices.list();
+    } catch (e) {
+      setResult($('devResult'), 'Cihaz listesi alınamadı: ' + e.message, 'fail');
+      return;
+    }
+
+    const info = App.Devices.activeInfo();
+    const act = $('devActive');
+    if (act) {
+      act.textContent = info.id
+        ? (info.id + '  ·  konu: ' + (info.topic || '—'))
+        : 'otomatik (ilk görülen cihaz)';
+    }
+
+    /* Liste değişmediyse formu yeniden çizme (yazılan konu kaybolmasın). */
+    const sig = rows.map(function (d) { return d.id + ':' + d.status + ':' + (d.active ? 1 : 0); }).join('|');
+    if (!force && sig === devSig) return;
+    devSig = sig;
+
+    if (!rows.length) {
+      box.innerHTML = '<p class="help">Hesabınıza bağlı cihaz yok. Bağlamak için ' +
+        '<a href="#accountCard">Hesap &amp; Roller</a> bölümünü kullanın. Panel bir cihazı ' +
+        'gördüğünde (MQTT durumu) cihaz buraya otomatik eklenir.</p>';
+      return;
+    }
+
+    box.innerHTML = rows.map(function (d) {
+      const st = devBadge(d.status);
+      return '' +
+        '<div class="dev-row' + (d.active ? ' is-active' : '') + '" role="listitem">' +
+          '<div class="dev-main">' +
+            '<strong>' + devEsc(d.id) + '</strong>' +
+            ' <span class="dev-badge ' + st.k + '">' + st.t + '</span>' +
+            (d.active ? ' <span class="dev-badge ok">aktif</span>' : '') +
+            (d.label ? '<div class="help" style="margin:0.3rem 0 0;">' + devEsc(d.label) + '</div>' : '') +
+            '<label class="dev-topic">MQTT konusu' +
+              '<input type="text" data-dev-topic="' + devEsc(d.id) + '" value="' + devEsc(d.topic) + '" ' +
+                'placeholder="deneyap/kart1" spellcheck="false" autocomplete="off">' +
+            '</label>' +
+          '</div>' +
+          '<div class="dev-actions">' +
+            '<button class="btn' + (d.active ? ' ghost' : '') + '" type="button" ' +
+              'data-dev-use="' + devEsc(d.id) + '"' + (d.active ? ' disabled' : '') + '>' +
+              (d.active ? 'Kullanımda' : 'Bu Cihazı Kullan') +
+            '</button>' +
+          '</div>' +
+        '</div>';
+    }).join('');
+
+    setResult($('devResult'), rows.length + ' cihaz listelendi.', 'ok');
+  }
+
+  function wireDevices() {
+    const box = $('devList');
+    if (!box) return;
+
+    box.addEventListener('click', async function (e) {
+      const btn = e.target.closest ? e.target.closest('[data-dev-use]') : null;
+      if (!btn) return;
+      const id = btn.getAttribute('data-dev-use');
+      try {
+        const topic = App.Devices.activate(id);
+        const mt = $('mqttTopic');
+        if (mt && topic) mt.value = topic;
+        if (App.sound && App.sound.chime) App.sound.chime();
+        setResult($('devResult'), id + ' aktif edildi' + (topic ? ' — konu: ' + topic : '') +
+          '. Panel yeni cihaza bağlanıyor.', 'ok');
+        await refreshDevices(true);
+      } catch (err) {
+        setResult($('devResult'), 'Aktif edilemedi: ' + err.message, 'fail');
+      }
+    });
+
+    box.addEventListener('change', function (e) {
+      const inp = e.target.closest ? e.target.closest('[data-dev-topic]') : null;
+      if (!inp) return;
+      const id = inp.getAttribute('data-dev-topic');
+      const topic = String(inp.value || '').trim();
+      App.Devices.setTopic(id, topic);
+      /* Aktif cihazın konusu değiştiyse taşımayı hemen yönlendir. */
+      if (App.Devices.currentId() === id) {
+        App.saveSettings({ mqttTopic: topic });
+        const mt = $('mqttTopic');
+        if (mt) mt.value = topic;
+        try { if (App.mqtt) App.mqtt.restart(); } catch (err) { /* yoksay */ }
+      }
+      setResult($('devResult'), 'Konu kaydedildi: ' + id + ' → ' + (topic || '(boş)'), 'ok');
+    });
+
+    const r = $('devRefreshBtn');
+    if (r) r.addEventListener('click', function () { refreshDevices(true); });
+
+    const a = $('devAutoBtn');
+    if (a) a.addEventListener('click', async function () {
+      App.Devices.clearActive();
+      setResult($('devResult'),
+        'Aktif seçim bırakıldı — panel ilk gördüğü cihazı otomatik seçer.', 'ok');
+      await refreshDevices(true);
+    });
+
+    /* Yeni cihaz görülürse (MQTT durumu) liste kendiliğinden güncellensin;
+       değişiklik yoksa form yeniden çizilmez. */
+    refreshDevices(true);
+    setInterval(function () { refreshDevices(false); }, 10000);
+  }
+
   async function testConnection() {
     const btn = $('testBtn');
     const out = $('testResult');
@@ -874,6 +1003,9 @@
       });
     });
     refreshNotifyPanel();
+
+    /* Cihazlarım (çoklu cihaz) paneli */
+    wireDevices();
 
     /* Yöntem ya da yayıncı bilgisi değişince bağlantıyı tazele:
        eski yayıncıya bağlı kalmış bir istemci kalmasın. */

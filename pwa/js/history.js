@@ -23,10 +23,22 @@
   const App = window.App;
   const $ = function (id) { return document.getElementById(id); };
 
-  const LOCAL_KEY = 'deneyap.history.v1';
+  const LOCAL_KEY_BASE = 'deneyap.history.v1';
   const LOCAL_MAX = 6000;      /* en fazla bu kadar yerel örnek saklanır */
   const LOCAL_STEP = 60000;    /* yerel örnek aralığı (ms) */
   const STEP_SEC = 60;         /* kartın örnek aralığı (sn) */
+
+  /* Çoklu cihaz: her cihazın geçmişi AYRI saklanır; aksi hâlde cihaz
+     değiştirildiğinde iki kartın örnekleri tek grafikte karışırdı.
+     Cihaz kimliği bilinmiyorsa eski (cihazsız) anahtar kullanılır. */
+  function localKey() {
+    let id = '';
+    try {
+      if (App.Devices && App.Devices.currentId) id = App.Devices.currentId() || '';
+      else if (App.settings) id = App.settings().activeDeviceId || '';
+    } catch (e) { id = ''; }
+    return id ? (LOCAL_KEY_BASE + '.' + id) : LOCAL_KEY_BASE;
+  }
 
   let spanMin = 1440;          /* seçili aralık (dakika) */
   let busy = false;
@@ -36,7 +48,7 @@
 
   function readLocal() {
     try {
-      const a = JSON.parse(localStorage.getItem(LOCAL_KEY) || '[]');
+      const a = JSON.parse(localStorage.getItem(localKey()) || '[]');
       return Array.isArray(a) ? a : [];
     } catch (e) { return []; }
   }
@@ -44,7 +56,7 @@
   function writeLocal(arr) {
     try {
       if (arr.length > LOCAL_MAX) arr = arr.slice(arr.length - LOCAL_MAX);
-      localStorage.setItem(LOCAL_KEY, JSON.stringify(arr));
+      localStorage.setItem(localKey(), JSON.stringify(arr));
     } catch (e) { /* kota dolu — sessiz geç */ }
   }
 

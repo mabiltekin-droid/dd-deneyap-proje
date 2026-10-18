@@ -707,6 +707,12 @@
     lastUpdateTs = Date.now();
     ensureDeviceAccess(data && data.dev);
 
+    /* Çoklu cihaz: görülen cihazın MQTT konusunu öğren; aktif cihaz yoksa
+       bu cihazı aktif yap (tek cihazlı kurulumda davranış değişmez). */
+    if (data && data.dev && App.Devices && App.Devices.learn) {
+      try { App.Devices.learn(data.dev, App.settings().mqttTopic); } catch (e) { /* yoksay */ }
+    }
+
     /* Erişim yoksa hiçbir telemetri/kumanda/alarm gösterilmez. */
     if (!deviceVisible(data && data.dev)) {
       paintNoDevice(data && data.dev);

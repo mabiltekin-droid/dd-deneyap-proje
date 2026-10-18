@@ -339,15 +339,19 @@
     return snap.exists ? snap.data() : null;
   }
 
-  async function setBinding(deviceId, ownerId, label, boundBy) {
-    await bindingsRef().doc(deviceId).set({
+  async function setBinding(deviceId, ownerId, label, boundBy, topic) {
+    const data = {
       device_id: deviceId,
       owner_id: ownerId,
       label: label || '',
       status: 'active',
       bound_at: firebase.firestore.FieldValue.serverTimestamp(),
       bound_by: boundBy
-    }, { merge: true });
+    };
+    /* Cihazin MQTT konusu baglama kaydina da yazilir (panel coklu cihazda
+       gecis yaparken hangi konuya baglanacagini bilir). Bossa dokunulmaz. */
+    if (topic) data.topic = String(topic);
+    await bindingsRef().doc(deviceId).set(data, { merge: true });
   }
 
   async function deleteBinding(deviceId) {
@@ -1084,9 +1088,9 @@
       try { return await getBinding(deviceId); } catch (e) { throw toError(e); }
     },
 
-    bindDevice: async function (deviceId, ownerId, label, boundBy) {
+    bindDevice: async function (deviceId, ownerId, label, boundBy, topic) {
       ensureFirebase();
-      try { await setBinding(deviceId, ownerId, label, boundBy); return await getBinding(deviceId); }
+      try { await setBinding(deviceId, ownerId, label, boundBy, topic); return await getBinding(deviceId); }
       catch (e) { throw toError(e); }
     },
 
@@ -1107,15 +1111,17 @@
     },
 
     // Admin: cihazi belirli bir hesaba ata (hesap degistirme).
-    reassignBinding: async function (deviceId, ownerId, byUid) {
+    reassignBinding: async function (deviceId, ownerId, byUid, topic) {
       ensureFirebase();
       try {
-        await updateBinding(deviceId, {
+        const patch = {
           owner_id: ownerId,
           status: 'active',
           bound_by: byUid || null,
           bound_at: firebase.firestore.FieldValue.serverTimestamp()
-        });
+        };
+        if (topic) patch.topic = String(topic);
+        await updateBinding(deviceId, patch);
         return await getBinding(deviceId);
       } catch (e) { throw toError(e); }
     },

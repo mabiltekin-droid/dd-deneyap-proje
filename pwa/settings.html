@@ -67,6 +67,7 @@
       <a href="#accountCard" class="nav-item active">Hesap &amp; Roller</a>
       <a href="#profileCard" class="nav-item" id="navProfile" hidden>Profilim</a>
       <a href="#inviteCard" class="nav-item" id="navInvites" hidden>Davetler</a>
+      <a href="#devicesSection" class="nav-item">Cihazlarım</a>
       <a href="#connSection" class="nav-item">Cihaz &amp; Ağ</a>
       <a href="#thresholdSection" class="nav-item">Eşikler</a>
       <a href="#automationSection" class="nav-item">Modlar</a>
@@ -131,7 +132,7 @@
       <div class="hero-badge">
         <span class="badge-pulse"></span>
         <span class="badge-text">DENEYAP KART // MERKEZİ YAPILANDIRMA STÜDYOSU</span>
-        <span class="badge-version" id="studioVersion">v2.16.0</span>
+        <span class="badge-version" id="studioVersion">v2.17.0</span>
       </div>
       <p class="studio-intro-sub">
         NVS flash kayıtları, MQTT bulut köprüsü, telemetri eşikleri ve alarm kuralları.
@@ -785,10 +786,49 @@
           <span class="sgl-line" aria-hidden="true"></span>
         </h2>
 
+      <!-- ==================== CİHAZLARIM (ÇOKLU CİHAZ) ==================== -->
+      <section class="config-panel" aria-labelledby="h-devices" id="devicesSection">
+        <div class="panel-header">
+          <span class="panel-tag">[CONFIG 04 // CİHAZ FİLOSU &amp; AKTİF SEÇİM]</span>
+          <div class="panel-title-row">
+            <div class="head-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="3" y="3" width="7" height="7" rx="1"/>
+                <rect x="14" y="3" width="7" height="7" rx="1"/>
+                <rect x="3" y="14" width="7" height="7" rx="1"/>
+                <rect x="14" y="14" width="7" height="7" rx="1"/>
+              </svg>
+              <h3 id="h-devices">Cihazlarım</h3>
+            </div>
+          </div>
+          <p class="panel-desc">Hesabınıza bağlı Deneyap kartları arasında geçiş yapın; panel her an tek kartla konuşur.</p>
+        </div>
+
+        <div class="panel-content">
+          <p class="help">
+            Panel aynı anda <strong>tek cihaza</strong> bağlanır (tek MQTT konusu). Bir cihazı seçtiğinizde panel
+            o kartın konusuna bağlanır; telemetri, olaylar ve geçmiş <strong>cihaz bazında ayrı</strong> tutulur.
+            Cihazın firmware'indeki <code>MQTT_TOPIC</code> değeri ile buradaki konu aynı olmalıdır.
+          </p>
+
+          <p class="help">
+            <strong>Aktif cihaz:</strong> <span id="devActive">—</span>
+          </p>
+
+          <div id="devList" class="dev-list" role="list"></div>
+
+          <div class="btn-row">
+            <button class="btn" type="button" id="devRefreshBtn">Cihazları Yenile</button>
+            <button class="btn ghost" type="button" id="devAutoBtn">Aktif Seçimi Bırak (Otomatik)</button>
+          </div>
+          <p class="result" id="devResult" role="status" aria-live="polite"></p>
+        </div>
+      </section>
+
       <!-- ==================== CİHAZ BAĞLANTISI ==================== -->
       <section class="config-panel" aria-labelledby="h-conn" id="connSection">
         <div class="panel-header">
-          <span class="panel-tag">[CONFIG 04 // TAŞIYICI &amp; BULUT RÖLESİ]</span>
+          <span class="panel-tag">[CONFIG 05 // TAŞIYICI &amp; BULUT RÖLESİ]</span>
           <div class="panel-title-row">
             <div class="head-title">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -941,7 +981,7 @@
       <!-- ==================== EŞİKLER & DONANIM OTOMASYONU ==================== -->
       <section class="config-panel" aria-labelledby="h-th" id="thresholdSection">
         <div class="panel-header">
-          <span class="panel-tag">[CONFIG 05 // EŞİKLER &amp; OTONOM KORUMA]</span>
+          <span class="panel-tag">[CONFIG 06 // EŞİKLER &amp; OTONOM KORUMA]</span>
           <div class="panel-title-row">
             <div class="head-title">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -1152,7 +1192,7 @@
       <!-- ==================== MODLAR & ZAMANLANMIŞ OTOMASYON ==================== -->
       <section class="config-panel" aria-labelledby="h-auto" id="automationSection">
         <div class="panel-header">
-          <span class="panel-tag">[CONFIG 06 // MODLAR &amp; ZAMANLANMIŞ OTOMASYON]</span>
+          <span class="panel-tag">[CONFIG 07 // MODLAR &amp; ZAMANLANMIŞ OTOMASYON]</span>
           <div class="panel-title-row">
             <div class="head-title">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -1216,7 +1256,7 @@
       <!-- ==================== TELEGRAM BİLDİRİMLERİ ==================== -->
       <section class="config-panel" aria-labelledby="h-tg" id="telegramSection">
         <div class="panel-header">
-          <span class="panel-tag">[CONFIG 07 // ANLIK TELEGRAM ALARM MOTORU]</span>
+          <span class="panel-tag">[CONFIG 08 // ANLIK TELEGRAM ALARM MOTORU]</span>
           <div class="panel-title-row">
             <div class="head-title">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -1286,7 +1326,7 @@
       <!-- ==================== SİSTEM BİLDİRİMLERİ ==================== -->
       <section class="config-panel" aria-labelledby="h-notify" id="notifySection">
         <div class="panel-header">
-          <span class="panel-tag">[CONFIG 08 // MASAÜSTÜ &amp; TELEFON BİLDİRİMİ]</span>
+          <span class="panel-tag">[CONFIG 09 // MASAÜSTÜ &amp; TELEFON BİLDİRİMİ]</span>
           <div class="panel-title-row">
             <div class="head-title">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -1403,7 +1443,7 @@
       <!-- ==================== GÖRÜNÜM & TEMA ==================== -->
       <section class="config-panel" aria-labelledby="h-theme" id="themeSection">
         <div class="panel-header">
-          <span class="panel-tag">[CONFIG 09 // GÖRSEL ATMOSFER &amp; MATRİS]</span>
+          <span class="panel-tag">[CONFIG 10 // GÖRSEL ATMOSFER &amp; MATRİS]</span>
           <div class="panel-title-row">
             <div class="head-title">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -1479,7 +1519,7 @@
       <!-- ==================== YEDEKLEME & BAKIM ==================== -->
       <section class="config-panel" aria-labelledby="h-backup" id="backupSection">
         <div class="panel-header">
-          <span class="panel-tag">[CONFIG 10 // YEDEKLEME &amp; FLASH BAKIMI]</span>
+          <span class="panel-tag">[CONFIG 11 // YEDEKLEME &amp; FLASH BAKIMI]</span>
           <div class="panel-title-row">
             <div class="head-title">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -1588,6 +1628,7 @@
   <script src="./js/api.js"></script>
   <script src="./js/mqtt.js"></script>
   <script src="./js/notify.js"></script>
+  <script src="./js/devices.js"></script>
   <script src="./js/firebase.js"></script>
   <script src="./js/auth-firebase.js"></script>
   <script src="./js/events.js"></script>
