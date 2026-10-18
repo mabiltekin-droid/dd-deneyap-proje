@@ -1,12 +1,14 @@
 {
   "name": "nambir",
-  "version": "2.14.3",
+  "version": "2.14.4",
   "private": true,
   "description": "Deneyap Ev Koruma — ESP32 firmware + PWA kontrol paneli",
   "license": "UNLICENSED",
   "scripts": {
     "dev": "node tools/dev-server.js",
     "check": "node tools/check-js.js",
+    "test:roles": "node tools/test-roles.js",
+    "verify": "node tools/check-js.js && node tools/test-roles.js",
     "build": "node tools/build-web.js",
     "icons": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/make-icons.ps1",
     "deploy:rules": "npx --yes firebase-tools deploy --only firestore:rules",

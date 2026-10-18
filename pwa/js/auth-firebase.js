@@ -237,7 +237,7 @@
         try {
           const existing = await FB().profile();
           if (existing && existing.__setupRequired) {
-            await FB().ensureOwnProfile(sess.user.id, sess.user.email, sess.user.displayName, invite.role);
+            await FB().ensureOwnProfile(sess.user.id, sess.user.email, sess.user.displayName, invite.role, code);
           }
           await FB().consumeInvite(code, sess.user.id);
           localStorage.removeItem('deneyap.invite');

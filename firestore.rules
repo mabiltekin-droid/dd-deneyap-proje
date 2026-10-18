@@ -26,6 +26,40 @@ service cloud.firestore {
 
     function isSelf(u) { return signedIn() && uid() == u; }
 
+    // Profil rolu (alan yoksa 'user' varsayilir) ---------------------------
+    function roleOf(d) { return 'role' in d ? d.role : 'user'; }
+
+    // DAVET KODU YARDIMCILARI ---------------------------------------------
+    // 'admin' rolu YALNIZCA gecerli bir ADMIN davetiyle veya ilk-kurulum
+    // isaretiyle verilebilir. Boylece kayitli bir kullanici kendi profilini
+    // 'admin' yaparak yetki yukseltemez.
+    function inviteExists(code) {
+      return exists(/databases/$(database)/documents/invites/$(code));
+    }
+    function inviteData(code) {
+      return get(/databases/$(database)/documents/invites/$(code)).data;
+    }
+    // data: yazilmak istenen profil dokumani. Once alanin VARLIGI kontrol
+    // edilir; sonra exists() ile korunur (exists olmayan dokumanda get() hata
+    // verir ve tum kurali reddederdi).
+    function hasAdminInvite(data) {
+      return data.keys().hasAny(['invite_code'])
+          && data.invite_code is string
+          && data.invite_code.size() > 0
+          && inviteExists(data.invite_code)
+          && inviteData(data.invite_code).role == 'admin'
+          && inviteData(data.invite_code).used == false;
+    }
+
+    // ILK-KURULUM ISARETI -------------------------------------------------
+    // Kural motoru koleksiyon SAYAMADIGI icin "ilk kullanici" bir isaret
+    // dokumaniyla belirlenir: config/bootstrap yalnizca BIR KEZ olusturulabilir
+    // ve yazan kisiye kilitlenir; sunucu tarafi bu uid'yi dogrular.
+    function bootstrapOwner() {
+      return exists(/databases/$(database)/documents/config/bootstrap)
+          && get(/databases/$(database)/documents/config/bootstrap).uid == uid();
+    }
+
     // Cihaz baglama yardimcilari
     function deviceExists(id) {
       return exists(/databases/$(database)/documents/device_bindings/$(id));
@@ -61,16 +95,45 @@ service cloud.firestore {
       // ilk-kullanici tespiti ve kullanici adi gosterimi icin gerekli).
       allow read: if signedIn();
 
-      // Kendi profilini olusturabilir (kayit akisi). Rol beyani sinirli.
-      allow create: if isSelf(userId)
-                    && request.resource.data.id == userId
-                    && request.resource.data.role in ['user', 'admin'];
+      // Olusturma: kayit akisinda KENDI profilini, panelden ADMIN baska bir
+      // kullanici icin olusturabilir.
+      // GUVENLIK: 'admin' rolu yalnizca admin, ilk-kurulum sahibi veya gecerli
+      // bir ADMIN daveti ile verilebilir -> kendi kendine yetki yukseltme yok.
+      allow create: if (isSelf(userId) || isAdmin())
+                    && (!('id' in request.resource.data) || request.resource.data.id == userId)
+                    && (
+                      isAdmin()
+                      || roleOf(request.resource.data) == 'user'
+                      || (
+                        roleOf(request.resource.data) == 'admin'
+                        && (bootstrapOwner() || hasAdminInvite(request.resource.data))
+                      )
+                    );
 
-      // Kendi profilini veya admin herhangi birini guncelleyebilir.
-      allow update: if isSelf(userId) || isAdmin();
+      // Guncelleme: admin her sey. Kullanici KENDI profilini guncelleyebilir
+      // ama 'id' ve 'role' alanlarini DEGISTIREMEZ (yetki yukseltme engellenir).
+      allow update: if isAdmin()
+                    || (
+                      isSelf(userId)
+                      && (!('id' in request.resource.data) || request.resource.data.id == userId)
+                      && roleOf(request.resource.data) == roleOf(resource.data)
+                    );
 
       // Silme yalnizca admin.
       allow delete: if isAdmin();
+    }
+
+    // ================================================================
+    // CONFIG - sistem isaretleri (yalnizca ilk-kurulum icin)
+    // ================================================================
+    match /config/bootstrap {
+      allow get: if signedIn();
+      // Yalnizca BIR KEZ olusturulur (var olan dokuman guncellenemez/silinemez)
+      // ve yazan kisiye kilitlenir.
+      allow create: if signedIn()
+                    && request.resource.data.uid == uid()
+                    && !exists(/databases/$(database)/documents/config/bootstrap);
+      allow update, delete: if false;
     }
 
     // ================================================================

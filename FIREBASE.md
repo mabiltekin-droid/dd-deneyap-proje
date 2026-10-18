@@ -66,6 +66,7 @@ Apple, ücretli **Apple Developer Program** üyeliği ve bir Service ID ister:
 #### Ortak notlar
 > • Sosyal girişle **ilk giren** hesap (profil hiç yoksa) **otomatik ADMIN** olur.
 > • `?invite=KOD` bağlantısıyla gelip sosyal girişle katılan kullanıcı davetin rolünü alır.
+>   **`admin` rolü yalnızca `role: admin` bir davetle verilebilir** (bkz. bölüm 4).
 > • Sosyal hesapların e-postası doğrulanmış kabul edilir; ek doğrulama adımı yoktur.
 > • Aynı e-posta şifre ile de kayıtlıysa `auth/account-exists-with-different-credential`
 >   verir → önce e-posta + şifre ile giriş yapılmalıdır.
@@ -119,6 +120,7 @@ Kuralların kapsadığı koleksiyonlar:
 | `alarm_events` | Olay günlüğü / alarm geçmişi |
 | `invites` | Davet kodları |
 | `audit_logs` | Yönetici işlem kayıtları |
+| `config/bootstrap` | İlk-kurulum işareti (yalnızca bir kez oluşturulur) |
 
 ### 2.2) Bileşik (composite) indeksler
 
@@ -149,10 +151,32 @@ Gereken indeksler:
 
 ---
 
-## 4) Bilinen sınırlamalar
+## 4) Rol modeli (yetki güvenliği)
 
-- **İstemci tarafı rol ataması** bilinen bir yetki yükseltme (privilege
-  escalation) açığıdır. Sertleştirme ancak **Cloud Functions** ile yapılır.
+`admin` rolü **sunucu tarafında** korunur (`firestore.rules`). Bir kullanıcı
+kendi profilini `admin` yaparak yetki yükseltemez:
+
+| İşlem | Kural |
+| --- | --- |
+| Kayıt (create) — rol `user` | Serbest (her kullanıcı kendisi için) |
+| Kayıt (create) — rol `admin` | Yalnızca **geçerli, kullanılmamış, `role: admin`** bir davet kodu ile (`profiles/{uid}.invite_code`) **veya** ilk-kurulum işaretiyle |
+| Güncelleme (update) — rol değişmeden | Kendi profilini güncelleyebilir (ad, avatar, tercihler) |
+| Güncelleme (update) — `role`/`id` değiştirme | **Yalnızca admin** |
+| Admin başka kullanıcı oluşturma | Admin panelinden serbest (`isAdmin()`) |
+
+**İlk kurulum:** Firestore kural motoru koleksiyon *sayamadığı* için "ilk
+kullanıcı admin olur" kuralı `config/bootstrap` işaretiyle uygulanır. Bu işaret
+yalnızca **bir kez** oluşturulabilir ve yazan kişiye kilitlenir; ilk kayıt olan
+kullanıcı bu işareti alır ve admin olur, sonraki kullanıcılar alamaz.
+
+> **Yeni (boş) bir projeye sıfırdan başlarken** admin'i Console'dan da
+> atayabilirsiniz: Firestore'da `profiles/{uid}` dokümanını açıp `role` alanını
+> `admin` yapın (Console yazmaları kurallara takılmaz).
+
+---
+
+## 5) Bilinen sınırlamalar
+
 - `device_codes` düz metin parolayı yalnızca **admin** okuyabilir; normal
   kullanıcı ve anonim erişim kapalıdır.
 - Cihaz bir hesaba bağlıysa, diğer hesaplar ve çıkış yapmış kullanıcılar için

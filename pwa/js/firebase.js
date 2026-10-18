@@ -222,17 +222,40 @@
   function eventsRef() { return db.collection(COL_EVENTS); }
 
   /* Profiles collection: doc ID = user.uid */
-  async function createProfile(user, role, displayName) {
+  async function createProfile(user, role, displayName, inviteCode) {
     const ref = profilesRef().doc(user.uid);
-    await ref.set({
+    const data = {
       id: user.uid,
       email: user.email,
       role: role,
       display_name: displayName || user.email?.split('@')[0] || '',
       created_at: firebase.firestore.FieldValue.serverTimestamp(),
       last_seen_at: firebase.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
+    };
+    // 'admin' rolu kurallarda KANIT ister; kurallar davet dokumanini sunucu
+    // tarafinda okur, bu yuzden kodu profil dokumanina yazmak zorundayiz.
+    if (role === 'admin' && inviteCode) data.invite_code = inviteCode;
+    await ref.set(data, { merge: true });
     return (await ref.get()).data();
+  }
+
+  // Ilk-kurulum isareti: yalnizca ILK kayit olan kullanici basarili olur
+  // (kurallar dokumanin bir kez olusturulmasina izin verir).
+  async function claimBootstrap(uid) {
+    ensureFirebase();
+    await db.collection('config').doc('bootstrap').set({
+      uid: uid,
+      created_at: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    return true;
+  }
+
+  // 'admin' rolunu KANITLAYARAK almaya calisir: admin daveti varsa onu
+  // kullanir, yoksa ilk-kurulum isaretini almayi dener. Basarisizsa false
+  // doner ve cagiran taraf 'user' rolune duser (hesap asla rolsuz kalmaz).
+  async function claimAdminRole(uid, inviteCode) {
+    if (inviteCode) return true; // davet dogrulamasi kurallarda yapilir
+    try { return await claimBootstrap(uid); } catch (e) { return false; }
   }
 
   async function getProfile(uid) {
@@ -529,8 +552,8 @@
 
   /* -------------------------------------------------- Profil / hesap --------- */
 
-  async function createUserProfile(uid, email, role, displayName) {
-    await profilesRef().doc(uid).set({
+  async function createUserProfile(uid, email, role, displayName, inviteCode) {
+    const data = {
       id: uid,
       email: (email || '').toLowerCase(),
       role: role === 'admin' ? 'admin' : 'user',
@@ -539,14 +562,16 @@
       preferences: {},
       created_at: firebase.firestore.FieldValue.serverTimestamp(),
       last_seen_at: firebase.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
+    };
+    if (data.role === 'admin' && inviteCode) data.invite_code = inviteCode;
+    await profilesRef().doc(uid).set(data, { merge: true });
     return getProfile(uid);
   }
 
   // Oturum açan kullanıcının profili yoksa yeniden oluşturur.
   // (Kullanıcı Firestore verisini silse bile hesabı kurtarır.) İlk kullanıcı admin olur.
   // `role` verilirse (ör. davet kodu) o rol kullanılır.
-  async function ensureOwnProfile(uid, email, displayName, role) {
+  async function ensureOwnProfile(uid, email, displayName, role, inviteCode) {
     const existing = await getProfile(uid);
     if (existing) return existing;
     let desired = (role === 'admin' || role === 'user') ? role : null;
@@ -556,7 +581,14 @@
       catch (e) { isFirst = false; }
       desired = isFirst ? 'admin' : 'user';
     }
-    return createUserProfile(uid, email, desired, displayName);
+    // 'admin' icin kanit sart; yoksa guvenli sekilde 'user' olarak devam et.
+    if (desired === 'admin' && !(await claimAdminRole(uid, inviteCode))) desired = 'user';
+    try {
+      return await createUserProfile(uid, email, desired, displayName, inviteCode);
+    } catch (e) {
+      if (desired === 'admin') return createUserProfile(uid, email, 'user', displayName);
+      throw e;
+    }
   }
 
   // Admin tarafından kullanıcı oluşturma — İKİNCİL app ile, admin oturumu korunur.
@@ -767,11 +799,28 @@
       let isFirst = false;
       try { isFirst = (await listProfiles()).length === 0; }
       catch (e) { isFirst = false; }
+      const inviteCode = (data && data.invite_code) || null;
       const desired = data && (data.role === 'admin' || data.role === 'user') ? data.role : null;
-      const role = desired || (isFirst ? 'admin' : 'user');
+      let role = desired || (isFirst ? 'admin' : 'user');
+
+      // GÜVENLİK: 'admin' rolü için kurallar kanıt ister (admin daveti veya
+      // ilk-kurulum işareti). Kanıt yoksa güvenli biçimde 'user' olarak devam
+      // edilir; hesap asla rolsüz kalmaz.
+      if (role === 'admin' && !(await claimAdminRole(cred.user.uid, inviteCode))) {
+        role = 'user';
+      }
 
       // Profil oluştur (e-posta doğrulanmadan da oluşturulabilir; kurallar izin verir)
-      await createProfile(cred.user, role, data && data.display_name);
+      try {
+        await createProfile(cred.user, role, data && data.display_name, inviteCode);
+      } catch (e) {
+        if (role === 'admin') {
+          // Davet/işaret sunucuda reddedildi → normal kullanıcı olarak devam et
+          await createProfile(cred.user, 'user', data && data.display_name);
+        } else {
+          throw toError(e);
+        }
+      }
 
       // Davet kodunu, yeni kullanıcı oturumdayken tüket (kurallar used_by == uid ister)
       if (data && data.invite_code) {
@@ -1059,14 +1108,14 @@
       catch (e) { throw toError(e); }
     },
 
-    createUserProfile: async function (uid, email, role, displayName) {
+    createUserProfile: async function (uid, email, role, displayName, inviteCode) {
       ensureFirebase();
-      return createUserProfile(uid, email, role, displayName);
+      return createUserProfile(uid, email, role, displayName, inviteCode);
     },
 
-    ensureOwnProfile: async function (uid, email, displayName) {
+    ensureOwnProfile: async function (uid, email, displayName, role, inviteCode) {
       ensureFirebase();
-      return ensureOwnProfile(uid, email, displayName);
+      return ensureOwnProfile(uid, email, displayName, role, inviteCode);
     },
 
     adminCreateUser: adminCreateUser,
