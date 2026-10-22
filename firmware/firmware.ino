@@ -27,6 +27,7 @@
    üretilir (aşağıdaki servoDrive/servoRelease). Harici kütüphane gerekmez. */
 #include <LittleFS.h>
 #include <Preferences.h>
+#include <ArduinoOTA.h>   /* kablosuz guncelleme - ESP32 cekirdegiyle gelir */
 
 #include "config.h"
 
@@ -918,6 +919,43 @@ static void serveStatic() {
 
 /* ------------------------------------------------------------------ kurulum */
 
+/* ------------------------------------------------------------------- OTA */
+/* Kablosuz firmware guncellemesi. Kartin AP'sine bagli bir bilgisayardan:
+       npm run fw:ota -- 192.168.4.1
+   Sifre: config.h -> OTA_PASSWORD. Bos ise OTA kapali kalir; yerel agda
+   kimligi dogrulanmamis birinin firmware yazmasini istemiyoruz. */
+static void otaBegin() {
+#if OTA_ENABLED
+  if (OTA_PASSWORD[0] == '\0') {
+    Serial.println(F("[ota] OTA_PASSWORD bos - kablosuz guncelleme kapali"));
+    return;
+  }
+  ArduinoOTA.setHostname(OTA_HOST);
+  ArduinoOTA.setPort(OTA_PORT);
+  ArduinoOTA.setPassword(OTA_PASSWORD);
+  ArduinoOTA.onStart([]() { Serial.println(F("[ota] guncelleme basliyor")); });
+  ArduinoOTA.onEnd([]() { Serial.println(F("\n[ota] tamam, yeniden baslatiliyor")); });
+  ArduinoOTA.onProgress([](unsigned int ilerleme, unsigned int toplam) {
+    static int sonYuzde = -10;
+    int yuzde = (int)(((uint64_t)ilerleme * 100ULL) / (toplam ? toplam : 1));
+    if (yuzde >= sonYuzde + 10) {
+      sonYuzde = yuzde;
+      Serial.printf("[ota] %d%%\n", yuzde);
+    }
+  });
+  ArduinoOTA.onError([](ota_error_t hata) {
+    Serial.printf("[ota] hata: %u\n", (unsigned)hata);
+  });
+  ArduinoOTA.begin();
+  Serial.print(F("[ota] hazir: "));
+  Serial.print(OTA_HOST);
+  Serial.print(F(".local:"));
+  Serial.println(OTA_PORT);
+#else
+  Serial.println(F("[ota] devre disi"));
+#endif
+}
+
 void setup() {
   Serial.begin(115200);
   delay(200);
@@ -998,6 +1036,9 @@ void setup() {
   Serial.print(F("[http] kontrol koruma: "));
   Serial.println(strlen(API_TOKEN) ? "acik (token zorunlu)" : "kapali (API_TOKEN bos)");
 
+  /* 6b) Kablosuz guncelleme (ArduinoOTA) - AP modunda da calisir */
+  otaBegin();
+
   /* 7) Rotalar */
   server.on("/api/status",   HTTP_GET,  handleStatus);
   server.on("/api/control",  HTTP_POST, handleControlPost);
@@ -1019,6 +1060,9 @@ void setup() {
 }
 
 void loop() {
+#if OTA_ENABLED
+  ArduinoOTA.handle();
+#endif
   server.handleClient();
 
   const uint32_t now = millis();

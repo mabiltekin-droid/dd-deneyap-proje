@@ -79,9 +79,24 @@
   }
   function nowMin(d) { d = d || new Date(); return d.getHours() * 60 + d.getMinutes(); }
 
+  /* Bir ucun (start/end) gerçek dakikası. Kural sabit saat kullanabilir veya
+     "gün doğumu / gün batımı ± N dk" diyebilir. Konum yoksa yazılı saate düşer
+     (kural sessizce ölü kalmasın). */
+  function refMinute(rule, which, date) {
+    const ref = rule[which + 'Ref'];
+    if (ref !== 'sunrise' && ref !== 'sunset') return hmToMin(rule[which]);
+
+    const t = App.sunTimes ? App.sunTimes(date || new Date(), S().latitude, S().longitude) : null;
+    if (!t) return hmToMin(rule[which]);
+    const base = which === 'start' ? t.sunriseMin : t.sunsetMin;
+    if (base == null) return null;          /* kutup günü/gecesi */
+    const off = Number(rule[which + 'Offset']) || 0;
+    return ((base + off) % 1440 + 1440) % 1440;
+  }
+
   function ruleActive(rule, date) {
     if (!rule || rule.enabled === false) return false;
-    const start = hmToMin(rule.start), end = hmToMin(rule.end);
+    const start = refMinute(rule, 'start', date), end = refMinute(rule, 'end', date);
     if (start === null || end === null || start === end) return false;
     const days = (Array.isArray(rule.days) && rule.days.length) ? rule.days : [0, 1, 2, 3, 4, 5, 6];
     const t = nowMin(date);
@@ -245,6 +260,56 @@
     return out;
   }
 
+  function hhmm(min) {
+    if (min == null) return '\u2014';
+    return String(Math.floor(min / 60)).padStart(2, '0') + ':' + String(min % 60).padStart(2, '0');
+  }
+
+  /* Konum ipucu: bugünün gerçek gün doğumu/batımı saatlerini gösterir. */
+  function renderGeoHint() {
+    const el = $('geoHint');
+    if (!el) return;
+    const lat = S().latitude, lon = S().longitude;
+    const t = (lat != null && lon != null && App.sunTimes)
+      ? App.sunTimes(new Date(), lat, lon) : null;
+    const temel = 'Konum girilirse kurallarda sabit saat yerine ' +
+      '<strong>gün doğumu</strong> veya <strong>gün batımı</strong> seçilebilir ' +
+      '(ör. “gün batımından 30 dk sonra”). Konum girilmezse yazılı saat kullanılır; ' +
+      'konum yalnızca bu cihazda saklanır.';
+    if (!t) { el.innerHTML = temel; return; }
+    const bugun = (t.sunriseMin == null)
+      ? 'bugün güneş doğmuyor/batmıyor (kutup bölgesi)'
+      : 'bugün doğuş <strong>' + hhmm(t.sunriseMin) + '</strong> · batış <strong>' +
+        hhmm(t.sunsetMin) + '</strong>';
+    el.innerHTML = 'Konum kayıtlı — ' + bugun + '. ' + temel;
+  }
+
+  /* Bir ucun (başlangıç/bitiş) editörü: zaman kaynağı (Saat / Doğuş / Batış)
+     + sabit saat alanı VEYA gün doğumu-batımına eklenecek ± dakika alanı. */
+  function endCell(which, r) {
+    const ref = (r[which + 'Ref'] === 'sunrise' || r[which + 'Ref'] === 'sunset')
+      ? r[which + 'Ref'] : 'time';
+    const off = Number(r[which + 'Offset']) || 0;
+    const lbl = which === 'start' ? 'Başlangıç' : 'Bitiş';
+    const varsayilan = which === 'start' ? '23:00' : '07:00';
+    const gizli = ref === 'time' ? ' hidden' : '';
+    return '<span class="sched-end" data-end="' + which + '">' +
+      '<select class="sched-ref" data-sched="' + which + 'Ref" aria-label="' + lbl +
+        ' zaman kaynağı" title="' + lbl + ' zaman kaynağı">' +
+        '<option value="time"' + (ref === 'time' ? ' selected' : '') + '>Saat</option>' +
+        '<option value="sunrise"' + (ref === 'sunrise' ? ' selected' : '') + '>Doğuş</option>' +
+        '<option value="sunset"' + (ref === 'sunset' ? ' selected' : '') + '>Batış</option>' +
+      '</select>' +
+      '<input class="sched-time" type="time" data-sched="' + which + '" value="' +
+        esc(r[which] || varsayilan) + '" aria-label="' + lbl + ' saati"' +
+        (ref === 'time' ? '' : ' hidden') + '>' +
+      '<input class="sched-off" type="number" data-sched="' + which + 'Offset" value="' +
+        off + '" min="-180" max="180" step="5" aria-label="' + lbl +
+        ' sapması (dakika)" title="Gün doğumu/batımına eklenecek dakika (eksi olabilir)"' +
+        gizli + '>' +
+      '</span>';
+  }
+
   function renderSchedule() {
     const host = $('scheduleList');
     if (!host) return;
@@ -260,9 +325,9 @@
           '<input type="checkbox" data-sched="enabled"' + (r.enabled === false ? '' : ' checked') + '>' +
         '</label>' +
         '<select class="sched-mode" data-sched="mode" aria-label="Mod">' + modeOptions(r.mode) + '</select>' +
-        '<input class="sched-time" type="time" data-sched="start" value="' + esc(r.start || '23:00') + '" aria-label="Başlangıç">' +
+        endCell('start', r) +
         '<span class="sched-arrow" aria-hidden="true">→</span>' +
-        '<input class="sched-time" type="time" data-sched="end" value="' + esc(r.end || '07:00') + '" aria-label="Bitiş">' +
+        endCell('end', r) +
         '<div class="sched-days">' + dayButtons(r) + '</div>' +
         '<button type="button" class="sched-del" data-sched="del" title="Kuralı sil" aria-label="Kuralı sil">' +
           '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14"/></svg>' +
@@ -270,6 +335,7 @@
       '</div>';
     });
     host.innerHTML = html;
+    renderGeoHint();
   }
 
   function newRuleId() { return 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
@@ -322,6 +388,16 @@
       else if (key === 'mode') updateRule(id, { mode: t.value });
       else if (key === 'start') updateRule(id, { start: t.value });
       else if (key === 'end') updateRule(id, { end: t.value });
+      else if (key === 'startRef' || key === 'endRef') {
+        const p = {}; p[key] = t.value;
+        updateRule(id, p);
+        /* Kaynak değişti → saat alanı yerine ± dakika alanı görünsün */
+        renderSchedule();
+      } else if (key === 'startOffset' || key === 'endOffset') {
+        const n = Math.max(-180, Math.min(180, Number(t.value) || 0));
+        const p = {}; p[key] = n;
+        updateRule(id, p);
+      }
     });
 
     host.addEventListener('click', function (e) {
@@ -346,6 +422,40 @@
 
     const add = $('scheduleAddBtn');
     if (add) add.addEventListener('click', addRule);
+
+    /* --- Konum (gün doğumu / batımı) --- */
+    const latInp = $('geoLat'), lonInp = $('geoLon');
+    if (latInp) latInp.value = (S().latitude != null) ? S().latitude : '';
+    if (lonInp) lonInp.value = (S().longitude != null) ? S().longitude : '';
+
+    const saveGeo = function () {
+      const la = latInp && latInp.value !== '' ? Number(latInp.value) : null;
+      const lo = lonInp && lonInp.value !== '' ? Number(lonInp.value) : null;
+      App.saveSettings({
+        latitude: (la != null && isFinite(la) && Math.abs(la) <= 89) ? la : null,
+        longitude: (lo != null && isFinite(lo) && Math.abs(lo) <= 180) ? lo : null
+      });
+      renderGeoHint();
+      renderSchedule();
+      flash('Konum güncellendi.');
+    };
+    if (latInp) latInp.addEventListener('change', saveGeo);
+    if (lonInp) lonInp.addEventListener('change', saveGeo);
+
+    const locate = $('geoLocateBtn');
+    if (locate) locate.addEventListener('click', function () {
+      if (!navigator.geolocation) { flash('Bu tarayıcı konum desteklemiyor; elle girin.'); return; }
+      flash('Konum alınıyor…');
+      navigator.geolocation.getCurrentPosition(function (pos) {
+        if (latInp) latInp.value = pos.coords.latitude.toFixed(4);
+        if (lonInp) lonInp.value = pos.coords.longitude.toFixed(4);
+        saveGeo();
+      }, function () {
+        flash('Konum alınamadı (izin verildi mi?). Enlem/boylamı elle girebilirsiniz.');
+      }, { timeout: 12000, maximumAge: 600000 });
+    });
+
+    renderGeoHint();
 
     const autoInp = $('modeAuto');
     if (autoInp) {

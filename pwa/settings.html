@@ -14,21 +14,7 @@
   <link rel="prefetch" href="./index.html">
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="stylesheet" href="./css/style.css">
-  <script>
-    (function () {
-      try {
-        var s = JSON.parse(localStorage.getItem('deneyap.settings.v2') || '{}');
-        var t = s.theme || 'dark';
-        var dark = t === 'dark' || t === 'amoled' ||
-                   (t === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
-        var resolved = (t === 'system') ? (dark ? 'dark' : 'light') : t;
-        document.documentElement.setAttribute('data-theme', resolved);
-        document.documentElement.setAttribute('data-color-scheme', dark ? 'dark' : 'light');
-      } catch (e) {
-        document.documentElement.setAttribute('data-theme', 'dark');
-      }
-    })();
-  </script>
+  <script src="./js/theme-boot.js"></script>
 </head>
 <body class="mission-control-body settings-studio-body">
   <!-- Ambient Ekran Kenarı Işığı -->
@@ -132,7 +118,7 @@
       <div class="hero-badge">
         <span class="badge-pulse"></span>
         <span class="badge-text">DENEYAP KART // MERKEZİ YAPILANDIRMA STÜDYOSU</span>
-        <span class="badge-version" id="studioVersion">v2.18.0</span>
+        <span class="badge-version" id="studioVersion">v2.19.0</span>
       </div>
       <p class="studio-intro-sub">
         NVS flash kayıtları, MQTT bulut köprüsü, telemetri eşikleri ve alarm kuralları.
@@ -1069,6 +1055,28 @@
             Bu eşikler doğrudan Deneyap Kart NVS (Flash) hafızasına yazılır ve donanımın bağımsız çalışmasını yönetir.
           </p>
 
+          <!-- Gaz sensörü kalibrasyon sihirbazı -->
+          <div class="calib-box" id="gasCalibBox">
+            <div class="calib-head">
+              <strong>Gaz Sensörü Kalibrasyon Sihirbazı</strong>
+              <button class="btn sm" type="button" id="gasCalibBtn">Başlat</button>
+            </div>
+            <p class="help" style="margin:0.4rem 0 0;">
+              60 saniye boyunca <strong>temiz hava</strong> ölçümü yapar, sensörün normal
+              seviyesini bulur ve eşikleri ona göre önerir. Sihirbaz hiçbir şeyi kendiliğinden
+              kaydetmez; öneriyi onaylarsanız eşikler forma yazılıp normal kaydetme akışıyla
+              cihaz belleğine gönderilir.
+            </p>
+            <div id="gasCalibOut" hidden>
+              <div class="calib-bar" aria-hidden="true"><span id="gasCalibBar"></span></div>
+              <p class="calib-msg" id="gasCalibMsg" role="status" aria-live="polite"></p>
+              <div class="btn-row">
+                <button class="btn sm primary" type="button" id="gasCalibApply" hidden>Eşikleri Uygula</button>
+                <button class="btn sm" type="button" id="gasCalibCancel" hidden>İptal</button>
+              </div>
+            </div>
+          </div>
+
           <div class="switch-grid">
             <!-- Yağmur Ters Çevirme -->
             <label class="switch">
@@ -1278,6 +1286,35 @@
               </span>
             </label>
           </div>
+
+          <!-- Konum: gün doğumu / gün batımı zamanlaması için -->
+          <div class="field-row" style="margin-top:0.9rem;">
+            <div class="field">
+              <label for="geoLat">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="field-icon"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                <span>Enlem <span class="opt">(gün doğumu/batımı için)</span></span>
+              </label>
+              <input type="number" id="geoLat" step="0.0001" min="-89" max="89" inputmode="decimal" placeholder="ör. 41.0082">
+            </div>
+            <div class="field">
+              <label for="geoLon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="field-icon"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                <span>Boylam</span>
+              </label>
+              <input type="number" id="geoLon" step="0.0001" min="-180" max="180" inputmode="decimal" placeholder="ör. 28.9784">
+            </div>
+          </div>
+          <div class="btn-row">
+            <button class="btn sm" type="button" id="geoLocateBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+              Konumumu Kullan
+            </button>
+          </div>
+          <p class="help" id="geoHint">
+            Konum girilirse kurallarda sabit saat yerine <strong>gün doğumu</strong> veya
+            <strong>gün batımı</strong> seçilebilir (ör. “gün batımından 30 dk sonra”).
+            Konum girilmezse yazılı saat kullanılır; konum yalnızca bu cihazda saklanır.
+          </p>
 
           <div class="sched-head">
             <p class="section-sub" style="margin:0;">Zamanlanmış Kurallar</p>
@@ -1667,6 +1704,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check-compat.js"></script>
 
   <!-- MQTT Taşıması -->
   <script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>

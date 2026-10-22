@@ -35,6 +35,7 @@
 #include <Preferences.h>
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
+#include <ArduinoOTA.h>   /* kablosuz guncelleme - ESP32 cekirdegiyle gelir */
 #include <driver/i2s.h>
 
 #include "config.h"
@@ -1425,6 +1426,43 @@ static void connectWiFi() {
 }
 
 /* ----------------------------------------------------------------- setup */
+/* ------------------------------------------------------------------- OTA */
+/* Kablosuz firmware guncellemesi (ArduinoOTA). Kart yerinde kalsa da
+   guncellenebilir:
+       npm run fw:ota -- 192.168.1.50
+   Sifre: config.h -> OTA_PASSWORD. Bos ise OTA kapali kalir. */
+static void otaBegin() {
+#if OTA_ENABLED
+  if (OTA_PASSWORD[0] == '\0') {
+    Serial.println(F("[ota] OTA_PASSWORD bos - kablosuz guncelleme kapali"));
+    return;
+  }
+  ArduinoOTA.setHostname(OTA_HOST);
+  ArduinoOTA.setPort(OTA_PORT);
+  ArduinoOTA.setPassword(OTA_PASSWORD);
+  ArduinoOTA.onStart([]() { Serial.println(F("[ota] guncelleme basliyor")); });
+  ArduinoOTA.onEnd([]() { Serial.println(F("\n[ota] tamam, yeniden baslatiliyor")); });
+  ArduinoOTA.onProgress([](unsigned int ilerleme, unsigned int toplam) {
+    static int sonYuzde = -10;
+    int yuzde = (int)(((uint64_t)ilerleme * 100ULL) / (toplam ? toplam : 1));
+    if (yuzde >= sonYuzde + 10) {
+      sonYuzde = yuzde;
+      Serial.printf("[ota] %d%%\n", yuzde);
+    }
+  });
+  ArduinoOTA.onError([](ota_error_t hata) {
+    Serial.printf("[ota] hata: %u\n", (unsigned)hata);
+  });
+  ArduinoOTA.begin();
+  Serial.print(F("[ota] hazir: "));
+  Serial.print(OTA_HOST);
+  Serial.print(F(".local:"));
+  Serial.println(OTA_PORT);
+#else
+  Serial.println(F("[ota] devre disi"));
+#endif
+}
+
 void setup() {
   /* USB beslemesi marjinalken Wi-Fi TX ani akımı voltajı brownout eşiğine
      çekiyor ve kart sürekli resetleniyordu. Detektörü kapatıyoruz; tepe akımı
@@ -1474,6 +1512,7 @@ void setup() {
   warmUpUntilMs = millis() + GAS_WARMUP_MS;
 
   connectWiFi();
+  otaBegin();
 
   mqttClient.setCallback(mqttCallback);
   mqttClient.setBufferSize(MQTT_BUFFER_SIZE);
@@ -1489,6 +1528,9 @@ void setup() {
 
 /* ------------------------------------------------------------------ loop */
 void loop() {
+#if OTA_ENABLED
+  ArduinoOTA.handle();
+#endif
   uint32_t now = millis();
 
   /* Yeniden başlatma isteği (komut üzerinden) */

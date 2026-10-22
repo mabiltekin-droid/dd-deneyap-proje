@@ -28,7 +28,7 @@
    Örnek: "gizli-anahtar" -> PWA'da Ayarlar > Cihaz Token alanına aynısını yaz. */
 #define API_TOKEN          ""
 
-#define FW_VERSION         "2.18.0"  // package.json / config.js / sw.js ile aynı olmalı
+#define FW_VERSION         "2.19.0"  // package.json / config.js / sw.js ile aynı olmalı
 
 /* ============================ PIN HARİTASI ============================= */
 /* Analog girişler ADC1 kanalında olmalı (Wi-Fi açıkken ADC2 kullanılamaz). */
@@ -138,5 +138,14 @@
    kullanıcıyı bilgilendiren bir sayfa gösterir. */
 #define FS_LABEL            "LittleFS"
 #define WEB_ROOT            "/"
+
+/* ==================== KABLOSUZ GUNCELLEME (OTA) ======================= */
+/* AP modunda da calisir: bilgisayari kartin AP'sine baglayip
+     npm run fw:ota -- 192.168.4.1
+   ile guncelleyebilirsiniz. OTA_PASSWORD bos ise OTA HIC acilmaz. */
+#define OTA_ENABLED        1
+#define OTA_HOST           "deneyap-ev"          // mDNS: deneyap-ev.local
+#define OTA_PASSWORD       "deneyap-ota-2026"    // <<< degistirin (en az 8 karakter)
+#define OTA_PORT           3232
 
 #endif // CONFIG_H

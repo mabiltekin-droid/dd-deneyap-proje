@@ -93,6 +93,30 @@
       }
 
       firebaseApp = firebase.initializeApp(config);
+
+      /* --- App Check (isteğe bağlı, önerilir) ----------------------------
+         Tarayıcıya gömülen Firebase yapılandırması herkese açıktır. App Check
+         olmadan biri kendi betiğini yazıp panel dışından Firestore'a istek
+         atabilir (kurallar yazmayı engeller ama okuma/kota/aktivasyon kodu
+         deneme yüzeyi açık kalır). Site anahtarı tanımlıysa her isteğe
+         reCAPTCHA v3 kanıtı eklenir. Konsolda "Enforce" açılana kadar istek
+         engellenmez; bu yüzden güvenle kademeli açılabilir.
+         Anahtar boşsa hiçbir şey değişmez. Kurulum: FIREBASE.md §8 */
+      if (App.APP_CHECK_KEY && typeof firebase.appCheck === 'function') {
+        try {
+          const yerel = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+          if (yerel && App.APP_CHECK_DEBUG !== false) {
+            /* Geliştirmede hata ayıklama jetonu üretilir ve konsola yazılır;
+               bir kez App Check > Uygulamalar > hata ayıklama jetonlarına
+               eklenmesi gerekir (yoksa yerelde istekler reddedilir). */
+            self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+          }
+          firebase.appCheck().activate(App.APP_CHECK_KEY, true);
+        } catch (e) {
+          console.warn('[fb] App Check başlatılamadı:', e);
+        }
+      }
+
       auth = firebaseApp.auth();
       db = firebaseApp.firestore();
       

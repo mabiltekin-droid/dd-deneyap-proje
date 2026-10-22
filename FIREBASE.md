@@ -339,3 +339,90 @@ SDK'yı doğrudan kullanır) ve gerçek bir güvenlik sınırı oluşturmaz. Bu 
 burada **adım yükseltme + oturum sertleştirme** uygulanmıştır. Gerçek MFA
 istenirse: Blaze + Identity Platform açılıp istemciye `multiFactor` akışı
 eklenmelidir (sunucu tarafı yapılandırması zorunludur).
+
+## 8) App Check (isteğe bağlı, önerilir)
+
+Tarayıcıya gömülen Firebase yapılandırması (`apiKey`, `projectId`) herkese
+açıktır. App Check olmadan biri kendi betiğini yazıp **panel dışından**
+Firestore'a istek atabilir: kurallar yazmayı engeller ama okuma denemeleri, kota
+tüketimi ve aktivasyon kodu deneme yüzeyi açık kalır. App Check her isteğe
+reCAPTCHA v3 kanıtı ekler; konsolda **Enforce** açıldığında kanıtsız istek
+reddedilir.
+
+Kod tarafı hazır (`pwa/js/firebase.js`): `App.APP_CHECK_KEY` **boşken hiçbir şey
+değişmez**. Doldurulunca App Check otomatik başlar.
+
+1. Firebase Console → **App Check** → uygulamayı seç → **reCAPTCHA v3**.
+2. Site anahtarı oluştur; **alan adlarına** `ddproje.vercel.app` ve `127.0.0.1`
+   (yerel test) ekle.
+3. `pwa/js/config.js`:
+   ```js
+   App.APP_CHECK_KEY = '6L...';   // reCAPTCHA v3 site anahtarı
+   ```
+4. Yerelde ilk açılışta konsola bir **hata ayıklama jetonu** yazılır
+   (`FIREBASE_APPCHECK_DEBUG_TOKEN`). App Check → Uygulamalar → **Hata ayıklama
+   jetonları** bölümüne ekle; yoksa localhost istekleri reddedilir.
+5. Yeniden deploy et, birkaç gün **İzleme (monitor)** modunda çalıştır. İstekler
+   `doğrulanmış` görünüyorsa Firestore için **Enforce**'u aç. (Auth için App
+   Check gerekmez.)
+
+> Enforce'u açmadan önce Vercel alan adının reCAPTCHA anahtarında kayıtlı
+> olduğundan emin ol; aksi hâlde panel `permission-denied` verir.
+
+## 9) Haftalık özet bildirimi (Vercel Cron)
+
+`api/digest.js` her pazartesi 09:00 (TRT) son 7 günün `alarm_events`
+kayıtlarını toplar ve tek bir Web Push gönderir:
+`Bu hafta 12 olay · 3 gaz · 2 alev · En yoğun: Salı 21:00`.
+
+`vercel.json` içinde zamanlama hazırdır:
+`"crons": [{ "path": "/api/digest", "schedule": "0 6 * * 1" }]` (06:00 UTC = 09:00 TRT).
+
+Tek ek adım: Vercel → Settings → Environment Variables → **`CRON_SECRET`**
+(rastgele uzun bir dize). Vercel, cron isteğine bu değeri
+`Authorization: Bearer ...` olarak kendisi ekler; yoksa endpoint 401 verir.
+
+Elle deneme:
+
+```powershell
+# Göndermeden önizleme (kaç olay, hangi türler)
+curl.exe -H "x-dd-secret: <PUSH_TRIGGER_SECRET>" "https://ddproje.vercel.app/api/digest?dry=1"
+# Gerçekten gönder
+curl.exe -H "x-dd-secret: <PUSH_TRIGGER_SECRET>" "https://ddproje.vercel.app/api/digest"
+```
+
+> Vercel Hobby planında cron günde birden sık çalışamaz; haftalık ifade uygundur.
+
+## 10) Kablosuz firmware güncellemesi (OTA)
+
+İki firmware de `ArduinoOTA` içerir: kart yerinde kalsa da USB kablo olmadan
+güncellenebilir. Şifre `config.h` → `OTA_PASSWORD` (boşsa OTA kapalı kalır).
+
+```powershell
+npm run fw:ota -- 192.168.1.50        # MQTT firmware (kartın Wi-Fi IP'si)
+npm run fw:ota:legacy -- 192.168.4.1  # HTTP/AP firmware (kartın AP adresi)
+```
+
+Komut önce derler, sonra ESP32 çekirdeğindeki `espota.exe` ile kablosuz yükler
+(`tools/build-firmware.ps1 -UploadNetwork`). Arduino IDE'den de
+**Araçlar → Port → ağ portu** (`deneyap-ev.local`) seçilerek yüklenebilir.
+
+- Kart en az bir kez **OTA destekli** firmware ile USB'den yüklenmiş olmalı.
+- Aynı ağda olmak gerekir; `OTA_PASSWORD` varsayılanını değiştirin.
+- Yükleme bitince cihaz kendini yeniden başlatır.
+
+## 11) Panel yenilikleri (2.19.0)
+
+- **Gün doğumu / gün batımı zamanlaması** — Ayarlar → Çalışma Modları: konum
+  (enlem/boylam veya “Konumumu Kullan”) girilince kural başlangıç/bitişi
+  `Saat / Doğuş / Batış ± dakika` olarak seçilebilir. Konum yoksa yazılı saat
+  kullanılır (kural sessizce ölü kalmaz). Hesap NOAA formülü, ~±2 dk hata;
+  `npm run test:sun` ile sınanır.
+- **Gaz sensörü kalibrasyon sihirbazı** — Ayarlar → Donanım Eşikleri: 60 sn
+  temiz hava ölçümü, medyan taban ve önerilen uyarı/tehlike eşikleri. Onay
+  verilmeden hiçbir şey kaydedilmez.
+- **Güvenlik başlıkları** — `vercel.json`: CSP, HSTS, `X-Frame-Options`,
+  `Referrer-Policy`, `Permissions-Policy`. CSP'yi `'unsafe-inline'` olmadan
+  uygulayabilmek için satır içi tema betiği `pwa/js/theme-boot.js` dosyasına
+  taşındı; geliştirme sunucusu (`npm run dev`) aynı başlıkları uygular, böylece
+  CSP yayına çıkmadan test edilir.

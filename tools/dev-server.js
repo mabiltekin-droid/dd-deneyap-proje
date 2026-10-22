@@ -209,7 +209,35 @@ const MIME = {
   '.webmanifest': 'application/manifest+json'
 };
 
+/* Vercel'deki güvenlik başlıklarını geliştirmede de uygula; böylece CSP
+   yayına çıkmadan burada (gerçek tarayıcıda) test edilebilir.
+   HSTS ve upgrade-insecure-requests DEVRE DIŞI: http://127.0.0.1 üzerinde
+   alt kaynakları https'e yükseltmeye çalışıp her şeyi kırardı. */
+function readSecurityHeaders() {
+  const out = {};
+  try {
+    const cfg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'vercel.json'), 'utf8'));
+    const rule = (cfg.headers || [])[0] || {};
+    (rule.headers || []).forEach(function (h) {
+      if (h.key === 'Strict-Transport-Security') return;
+      let v = h.value;
+      if (h.key === 'Content-Security-Policy') {
+        v = v.replace(/;\s*upgrade-insecure-requests\s*;?/, ';');
+      }
+      out[h.key] = v;
+    });
+  } catch (e) { /* vercel.json yok — başlıksız devam */ }
+  return out;
+}
+
+const SEC = readSecurityHeaders();
+
+function applySecurity(res) {
+  Object.keys(SEC).forEach(function (k) { res.setHeader(k, SEC[k]); });
+}
+
 function sendJson(res, code, obj) {
+  applySecurity(res);
   const body = JSON.stringify(obj);
   res.writeHead(code, {
     'Content-Type': 'application/json; charset=utf-8',
@@ -220,6 +248,7 @@ function sendJson(res, code, obj) {
 }
 
 function serveStatic(req, res, pathname) {
+  applySecurity(res);
   let rel = decodeURIComponent(pathname);
   if (rel === '/' || rel === '') rel = '/index.html';
 

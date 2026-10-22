@@ -939,8 +939,148 @@
     pendingTimers = [];
   }
 
+  /* ---------------------------------------------- Gaz sensörü kalibrasyonu --
+     MQ gaz sensörleri temiz havada sabit bir taban (baseline) verir; eşikler
+     bu tabanın üstünde olmalıdır. Sihirbaz 60 sn canlı ölçüm alır, medyanı
+     taban kabul eder ve iki eşik önerir. Hiçbir şey kendiliğinden kaydedilmez:
+     kullanıcı onaylarsa değerler forma yazılır ve mevcut kaydetme akışı
+     (doğrulama + cihaz NVS) çalışır. */
+
+  const calib = {
+    timer: null, samples: [], kalan: 0, toplam: 60,
+    son: null, sonIstek: 0, warn: 0, danger: 0
+  };
+
+  function calibMsg(msg, kind) {
+    const el = $('gasCalibMsg');
+    if (!el) return;
+    el.textContent = msg || '';
+    el.className = 'calib-msg' + (kind ? ' ' + kind : '');
+  }
+
+  function calibStop(msg, kind) {
+    if (calib.timer) { clearInterval(calib.timer); calib.timer = null; }
+    const btn = $('gasCalibBtn');
+    if (btn) { btn.disabled = false; btn.textContent = 'Başlat'; }
+    const cancel = $('gasCalibCancel');
+    if (cancel) cancel.hidden = true;
+    if (msg) calibMsg(msg, kind);
+  }
+
+  function calibFinish() {
+    if (calib.samples.length < 15) {
+      calibStop('Yalnızca ' + calib.samples.length + ' örnek alındı (en az 15 gerekli). ' +
+        'Kart bağlı mı? Tekrar deneyin.', 'warn');
+      return;
+    }
+
+    const arr = calib.samples.slice().sort(function (a, b) { return a - b; });
+    const med = arr[Math.floor(arr.length / 2)];
+    const enAz = arr[0], enCok = arr[arr.length - 1];
+    const base = Math.round(med);
+
+    /* Öneri: tabanın 1.5 katı + 60 PPM (küçük dalgalanmalar alarm üretmesin).
+       Sınırlar firmware'in kabul ettiği aralıklarla aynı: 50-600 / 100-1500. */
+    const warn = Math.max(60, Math.min(600, Math.round((base * 1.5 + 60) / 10) * 10));
+    const danger = Math.max(warn + 50, Math.min(1500, Math.round((warn * 1.6) / 10) * 10));
+    calib.warn = warn; calib.danger = danger;
+
+    const dalgali = (enCok - enAz) > Math.max(25, base * 0.5);
+
+    calibStop('', null);
+    const apply = $('gasCalibApply');
+    if (apply) {
+      apply.hidden = false;
+      apply.textContent = 'Eşikleri Uygula (' + warn + ' / ' + danger + ' PPM)';
+    }
+    const cancel = $('gasCalibCancel');
+    if (cancel) cancel.hidden = false;
+
+    calibMsg('Temiz hava tabanı: ' + base + ' PPM (' + calib.samples.length + ' örnek, ' +
+      Math.round(enAz) + '–' + Math.round(enCok) + ' aralığı). Öneri: uyarı ' + warn +
+      ' PPM, tehlike ' + danger + ' PPM.' +
+      (dalgali ? ' Ölçüm dalgalıydı — sensör ısınmamış olabilir; birkaç dakika sonra tekrar denemek daha sağlıklı olur.' : ''),
+      dalgali ? 'warn' : 'ok');
+  }
+
+  async function calibTick() {
+    calib.kalan -= 1;
+
+    const bar = $('gasCalibBar');
+    if (bar) {
+      const yuzde = Math.max(0, Math.min(100,
+        Math.round((1 - (calib.kalan / calib.toplam)) * 100)));
+      bar.style.width = yuzde + '%';
+    }
+
+    const kalanSn = Math.max(0, calib.kalan);
+
+    /* Örnek toplama SAYACI ASLA BLOKLAMAZ. MQTT/HTTP durum isteği yanıt
+       vermezse (cihaz kapalı) bekleme yerine 2 sn sonra yeni istek denenir;
+       böylece sihirbaz her koşulda 60 sn'de biter ve dürüst sonuç verir. */
+    if (Date.now() - calib.sonIstek >= 2000) {
+      calib.sonIstek = Date.now();
+      App.api.status().then(function (s) {
+        const v = s ? Number(s.gasPpm) : NaN;
+        if (isFinite(v) && v >= 0) { calib.samples.push(v); calib.son = v; }
+      }).catch(function () { /* cihaz yok — sessizce devam */ });
+    }
+
+    if (calib.son != null) {
+      calibMsg('Ölçülüyor… ' + kalanSn + ' sn kaldı · şu an ' +
+        Math.round(calib.son) + ' PPM', null);
+    } else if (kalanSn > 3) {
+      calibMsg('Cihazdan veri bekleniyor… (' + kalanSn + ' sn) — kart açık ve bağlı mı?', 'warn');
+    }
+
+    if (calib.kalan <= 0) calibFinish();
+  }
+
+  function calibStart() {
+    if (calib.timer) return;
+    calib.samples = [];
+    calib.kalan = calib.toplam;
+    calib.son = null;
+    calib.sonIstek = 0;
+
+    const box = $('gasCalibOut');
+    if (box) box.hidden = false;
+    const apply = $('gasCalibApply');
+    if (apply) apply.hidden = true;
+    const cancel = $('gasCalibCancel');
+    if (cancel) cancel.hidden = false;
+    const btn = $('gasCalibBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Ölçülüyor…'; }
+    const bar = $('gasCalibBar');
+    if (bar) bar.style.width = '0%';
+
+    calibMsg('Temiz hava ölçümü başladı. Sensörün yanında sprey, is veya duman olmasın.', null);
+    calibTick();
+    calib.timer = setInterval(calibTick, 1000);
+  }
+
+  function calibApply() {
+    const w = $('gasWarn'), d = $('gasDanger');
+    if (!w || !d) return;
+    w.value = calib.warn;
+    d.value = calib.danger;
+    w.dispatchEvent(new Event('change', { bubbles: true }));
+    d.dispatchEvent(new Event('change', { bubbles: true }));
+    try { w.focus(); } catch (e) { /* yoksay */ }
+
+    const apply = $('gasCalibApply');
+    if (apply) apply.hidden = true;
+    calibMsg('Eşikler forma yazıldı; cihaz belleğine gönderiliyor…', 'ok');
+
+    const form = $('settingsForm');
+    if (!form) return;
+    if (typeof form.requestSubmit === 'function') form.requestSubmit();
+    else form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  }
+
   function destroy() {
     clearPendingTimers();
+    if (calib.timer) { clearInterval(calib.timer); calib.timer = null; }
     boundForm = null;
   }
 
@@ -962,6 +1102,16 @@
     $('settingsForm').addEventListener('submit', save);
     $('testBtn').addEventListener('click', testConnection);
     $('transport').addEventListener('change', applyTransportVisibility);
+
+    /* Gaz sensörü kalibrasyon sihirbazı */
+    const cStart = $('gasCalibBtn');
+    if (cStart) cStart.addEventListener('click', calibStart);
+    const cApply = $('gasCalibApply');
+    if (cApply) cApply.addEventListener('click', calibApply);
+    const cCancel = $('gasCalibCancel');
+    if (cCancel) cCancel.addEventListener('click', function () {
+      calibStop('Kalibrasyon iptal edildi; eşikler değişmedi.', null);
+    });
 
     const tgT = $('tgTestBtn');
     if (tgT) tgT.addEventListener('click', function () { tgTest(false); });

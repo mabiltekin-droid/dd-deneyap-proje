@@ -9,7 +9,7 @@
 
   const App = (window.App = window.App || {});
 
-  App.VERSION = '2.18.0';
+  App.VERSION = '2.19.0';
   App.STORAGE_KEY = 'deneyap.settings.v2';
 
   /* Evrensel Ortam Tespiti: Standalone PWA / Normal Web ayrımı */
@@ -117,6 +117,11 @@
     activeDeviceId: '',
     deviceTopics: {},
 
+    /* --- Konum (gün doğumu/batımı zamanlaması; yalnızca bu cihazda saklanır).
+       null = konum yok → kurallar yazılı saati kullanır. --- */
+    latitude: null,
+    longitude: null,
+
     /* --- Oturum güvenliği ---
        sessionIdleMin: hareketsizlikte otomatik çıkış (dakika; 0 = kapalı).
        Yalnızca kullanıcı ETKİLEŞİMİ sayılır (telemetri akışı oturumu canlı
@@ -142,6 +147,66 @@
       return 'Şifre çok tahmin edilebilir; farklı bir şifre seçin.';
     }
     return '';
+  };
+
+  /* ------------------------------------------------------- App Check (App Check) */
+  /* reCAPTCHA v3 site anahtarı. BOŞ = App Check kapalı (varsayılan, güvenli).
+     Doldurulunca her Firestore isteğine kanıt eklenir; konsolda "Enforce"
+     açılana kadar istekleri ENGELLEMEZ, bu yüzden kademeli açılabilir.
+     Kurulum adımları: FIREBASE.md §8 */
+  App.APP_CHECK_KEY = '';
+  /* localhost'ta hata ayıklama jetonu üretilsin mi (konsola yazdırılır). */
+  App.APP_CHECK_DEBUG = true;
+
+  /* ------------------------------------------- gün doğumu / gün batımı ----
+     Verilen gün için, konumdan (enlem/boylam) gün doğumu ve gün batımını
+     hesaplar. Yerel saate göre DAKİKA (0–1439) döndürür. Kutup günü/gecesinde
+     değerler null olur. Algoritma: NOAA'nın kısa güneş konumu formülü
+     (~±2 dk hata — zamanlanmış otomasyon için fazlasıyla yeterli).
+     Dönüş: { sunriseMin, sunsetMin, sunrise: Date, sunset: Date } | null */
+  App.sunTimes = function (date, lat, lon) {
+    /* null/undefined/'' → konum yok. Number(null) 0 olduğu için açıkça ele alınır;
+       yoksa "konum girilmemiş" hâli sıfır-nokta sanılıp yanlış saat üretilirdi. */
+    if (lat === null || lat === undefined || lat === '' ||
+        lon === null || lon === undefined || lon === '') return null;
+    const la = Number(lat), lo = Number(lon);
+    if (!isFinite(la) || !isFinite(lo) || Math.abs(la) > 89) return null;
+
+    const d = (date instanceof Date) ? date : new Date(date == null ? Date.now() : date);
+    const RAD = Math.PI / 180;
+    /* J2000'den (2000-01-01 00:00 UT) geçen GÜN sayısı — yerel gece yarısına göre.
+       J2000 sabiti 2451545.0 = 2000-01-01 12:00 UT olduğu için +0.5 EKLENMEZ;
+       eklenirse hesap 12 saat kayar (gün doğumu gece yarısına düşer). */
+    const gunMs = Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
+    const n = Math.round((gunMs - Date.UTC(2000, 0, 1)) / 86400000);
+
+    const Js = n - lo / 360;                                  /* ortalama güneş öğlesi */
+    const M = ((357.5291 + 0.98560028 * Js) % 360 + 360) % 360;
+    const Mr = M * RAD;
+    const C = 1.9148 * Math.sin(Mr) + 0.02 * Math.sin(2 * Mr) + 0.0003 * Math.sin(3 * Mr);
+    const L = (((M + C + 180 + 102.9372) % 360) + 360) % 360 * RAD;
+    const Jt = 2451545.0 + Js + 0.0053 * Math.sin(Mr) - 0.0069 * Math.sin(2 * L);
+
+    const sinD = Math.sin(L) * Math.sin(23.4397 * RAD);
+    const cosD = Math.cos(Math.asin(sinD));
+    const cosW = (Math.sin(-0.833 * RAD) - Math.sin(la * RAD) * sinD) /
+                 (Math.cos(la * RAD) * cosD);
+
+    /* |cosW| > 1 → güneş hiç doğmuyor/batmıyor (kutup bölgesi) */
+    if (!(cosW >= -1 && cosW <= 1)) {
+      return { sunriseMin: null, sunsetMin: null, sunrise: null, sunset: null };
+    }
+
+    const W = Math.acos(cosW) * 180 / Math.PI;
+    const julianToDate = function (J) { return new Date((J - 2440587.5) * 86400000); };
+    const dakika = function (x) { return x.getHours() * 60 + x.getMinutes(); };
+
+    const rise = julianToDate(Jt - W / 360);
+    const set = julianToDate(Jt + W / 360);
+    return {
+      sunriseMin: dakika(rise), sunsetMin: dakika(set),
+      sunrise: rise, sunset: set
+    };
   };
 
   /* ------------------------------------------------------- Web Push (VAPID) */

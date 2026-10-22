@@ -5005,7 +5005,9 @@ main {
 .sched-row:hover { border-color: color-mix(in srgb, var(--primary) 40%, var(--border)); }
 
 .sched-mode,
-.sched-time {
+.sched-time,
+.sched-ref,
+.sched-off {
   padding: 0.34rem 0.5rem;
   border-radius: 8px;
   border: 1px solid var(--border);
@@ -5016,6 +5018,63 @@ main {
 }
 
 .sched-time { font-family: var(--font-mono); font-size: 0.82rem; }
+
+/* Saat / Gün doğumu / Gün batımı seçimi + ± dakika alanı (tek hücrede) */
+.sched-end { display: inline-flex; align-items: center; gap: 3px; min-width: 0; }
+.sched-ref { max-width: 5.6rem; font-size: 0.78rem; }
+.sched-off {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  width: 4.4rem;
+  text-align: center;
+}
+
+/* Gaz sensörü kalibrasyon sihirbazı */
+.calib-box {
+  margin-top: 0.9rem;
+  padding: 0.85rem 0.95rem;
+  border: 1px dashed color-mix(in srgb, var(--primary) 38%, var(--border));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--primary) 6%, transparent);
+}
+
+.calib-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.calib-head strong { font-size: 0.9rem; letter-spacing: 0.01em; }
+
+.calib-bar {
+  height: 6px;
+  margin: 0.7rem 0 0.45rem;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.calib-bar span {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--primary);
+  transition: width 0.9s linear;
+}
+
+.calib-msg {
+  margin: 0.25rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--text-dim);
+}
+
+.calib-msg.ok { color: var(--ok, #22c55e); }
+.calib-msg.warn { color: var(--warn, #f59e0b); }
+.calib-msg.fail { color: var(--danger, #ef4444); }
 .sched-arrow { color: var(--text-dim); }
 
 .sched-days { display: inline-flex; gap: 3px; margin-left: auto; }
@@ -5147,12 +5206,11 @@ main {
     justify-self: end;
   }
 
-  /* Saat seçiciler 2. satırda tam genişlik */
-  .sched-row [data-sched="start"] {
+  /* Zaman hücreleri 2. satırda tam genişlik */
+  .sched-row .sched-end[data-end="start"] {
     grid-column: 1;
     grid-row: 2;
     width: 100%;
-    text-align: center;
   }
   .sched-row .sched-arrow {
     grid-column: 2;
@@ -5160,12 +5218,20 @@ main {
     justify-self: center;
     text-align: center;
   }
-  .sched-row [data-sched="end"] {
+  .sched-row .sched-end[data-end="end"] {
     grid-column: 3;
     grid-row: 2;
     width: 100%;
+    justify-content: flex-end;
+  }
+  .sched-end .sched-time,
+  .sched-end .sched-off {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: auto;
     text-align: center;
   }
+  .sched-end .sched-ref { flex: 0 0 auto; max-width: 4.6rem; }
 
   /* 7 günlük buton çubuğu en alt satırda yayılsın */
   .sched-row .sched-days {

@@ -14,22 +14,7 @@
   <link rel="prefetch" href="./settings.html">
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="stylesheet" href="./css/style.css">
-  <script>
-    /* FOUC önleme: tema depodan anında yüklenir */
-    (function () {
-      try {
-        var s = JSON.parse(localStorage.getItem('deneyap.settings.v2') || '{}');
-        var t = s.theme || 'dark';
-        var dark = t === 'dark' || t === 'amoled' ||
-                   (t === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
-        var resolved = (t === 'system') ? (dark ? 'dark' : 'light') : t;
-        document.documentElement.setAttribute('data-theme', resolved);
-        document.documentElement.setAttribute('data-color-scheme', dark ? 'dark' : 'light');
-      } catch (e) {
-        document.documentElement.setAttribute('data-theme', 'dark');
-      }
-    })();
-  </script>
+  <script src="./js/theme-boot.js"></script>
 </head>
 <body class="mission-control-body">
   <!-- Ambient Ekran Kenarı Alarm & CRT Katmanları -->
@@ -164,7 +149,7 @@
           <div class="hero-badge">
             <span class="badge-pulse"></span>
             <span class="badge-text">OTONOM SİBER TEHDİT &amp; ÇEVRE GÜVENLİK HATTI</span>
-            <span class="badge-version" id="heroVersion">SCADA v2.18.0</span>
+            <span class="badge-version" id="heroVersion">SCADA v2.19.0</span>
           </div>
 
           <h2 class="hero-title">
@@ -1071,6 +1056,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check-compat.js"></script>
 
   <!-- MQTT Taşıyıcısı -->
   <script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>

@@ -26,11 +26,12 @@
    (karta özel, yeniden flaşta değişmez). Aynı MQTT_TOPIC'i kullanan iki
    kart olmasın! */
 #define DEVICE_ID          ""        // boş = otomatik "DK-XXXX"; istersen sabit ad yaz (örn. "kart1")
-#define FW_VERSION         "3.2.2"   // cihazın kendi sürümü; panel /status'te `fw` olarak gösterir
+#define FW_VERSION         "3.3.0"   // cihazın kendi sürümü; panel /status'te `fw` olarak gösterir
                                      // 3.1.0: titreşim sensörü + I2S hoparlör (MAX98357A) + sesli alarm
                                      // 3.2.0: alev (IR flame) sensörü — dijital + analog, tam alarm
                                      // 3.2.1: LEDC servo sürücüsü ESP32 çekirdeği 3.x uyumlu
                                      // 3.2.2: alarm anında Vercel göndericisine Web Push isteği (PUSH_URL)
+                                     // 3.3.0: kablosuz güncelleme (ArduinoOTA, şifreli)
                                      // (not: panel sürümü package.json/config.js/sw.js'ten ayrıdır)
 
 /* ============================ Wi-Fi (STA) ============================== */
@@ -246,5 +247,15 @@
 
 /* HTTP kontrol ucu için paylaşılan anahtar (boş = koruma kapalı) */
 #define API_TOKEN          ""
+
+/* ==================== KABLOSUZ GUNCELLEME (OTA) ======================= */
+/* Kart duvarda/yerinde kalsa da USB kablo olmadan firmware atmak icin.
+   Ayni Wi-Fi agindan erisilir; panelden bagimsizdir.
+     npm run fw:ota -- 192.168.1.50        (bkz. tools/build-firmware.ps1)
+   Guvenlik: OTA_PASSWORD bos ise OTA HIC acilmaz. Varsayilani degistirin. */
+#define OTA_ENABLED        1
+#define OTA_HOST           "deneyap-ev"          // mDNS: deneyap-ev.local
+#define OTA_PASSWORD       "deneyap-ota-2026"    // <<< degistirin (en az 8 karakter)
+#define OTA_PORT           3232
 
 #endif // CONFIG_H
