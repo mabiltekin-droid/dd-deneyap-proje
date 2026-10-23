@@ -17,7 +17,7 @@
      • Yeni sürüm sayfayı zorla değiştirmez; panel "Yenile" bildirimi gösterir.
    ========================================================================== */
 
-const VERSION = '2.19.0';
+const VERSION = '2.20.0';
 const CACHE = 'deneyap-pwa-v' + VERSION;
 const SHELL = './index.html';
 const NETWORK_TIMEOUT = 4000;   // cihaz yanıt vermezse cache'e düş (ms)
@@ -42,6 +42,7 @@ const PRECACHE = [
   './js/devices.js',
   './js/app.js',
   './js/settings.js',
+  './js/studio-nav.js',
   './js/firebase.js',
   './js/auth-firebase.js',
   './js/events.js',

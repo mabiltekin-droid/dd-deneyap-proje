@@ -426,3 +426,29 @@ Komut önce derler, sonra ESP32 çekirdeğindeki `espota.exe` ile kablosuz yükl
   uygulayabilmek için satır içi tema betiği `pwa/js/theme-boot.js` dosyasına
   taşındı; geliştirme sunucusu (`npm run dev`) aynı başlıkları uygular, böylece
   CSP yayına çıkmadan test edilir.
+
+## 12) Ayarlar stüdyosu menüsü (2.20.0)
+
+- **Hamburger menü + sekmeli paneller** — Ayarlar sayfasındaki 11 yapılandırma
+  paneli artık tek seferde alt alta gösterilmez. Üst çubuktaki **☰** düğmesi
+  gruplanmış bölüm listesini açar; seçilen panel gösterilir, diğerleri gizlenir.
+  Panel listesi HTML'de tekrar edilmez: `pwa/js/studio-nav.js` doğrudan
+  `section.config-panel` başlıklarından üretir (numara, ikon, açıklama dahil).
+- **Derin bağlantı uyumu** — `settings.html#accountCard`, `#devicesSection` ve
+  eski `#h-th` gibi başlık bağlantıları doğru sekmeyi açar. Aktif bölüm adresi
+  `history.replaceState` ile güncellenir; son sekme `localStorage`'da saklanır.
+- **Rol bazlı görünürlük** — Profilim ve Davetler panelleri `hidden` olduğunda
+  menüde de görünmez; panel görünürlüğü değişince menü `MutationObserver` ile
+  kendini günceller. Aktif panel gizlenirse ilk erişilebilir bölüme geçilir.
+- **Erişilebilirlik** — Çekmece `role="dialog"`, `aria-modal`, `inert`; Esc ile
+  kapanır, Tab odağı çekmece içinde döner, kapanınca odak menü düğmesine döner.
+  Aktif bölüm çubuğu önceki/sonraki oklarını ve `01 / 11` sayacını gösterir.
+- **SPA geçişleri** — `parallax.js` anlık sayfa değiştiricisi artık marka
+  başlığını/ikonunu da eşitler ve dashboard'a özel üst çubuk kontrollerini
+  (mod seçici, sesli komut, hesap) ayarlar sayfasında gizler; geri dönünce
+  düğümler korunduğu için olay dinleyicileri kaybolmaz. `pwa/js/settings.js`
+  ve `app.js` init'leri `studio-nav.js` tarafından sarmalanır, menü her
+  geçişte yeniden kurulur.
+- **Doğrulama** — `npm run check` (6/6), `npm run verify` (20 + 14 + 15 + 17
+  test) ve `npm run build`. Service worker `PRECACHE` listesine
+  `./js/studio-nav.js` eklendi; sürüm 6 noktada `2.20.0`.

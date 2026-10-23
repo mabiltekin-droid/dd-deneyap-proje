@@ -761,6 +761,13 @@
       if (newNav && oldNav) {
         oldNav.className = newNav.className;
         oldNav.innerHTML = newNav.innerHTML;
+      } else if (newNav && !oldNav) {
+        /* Ayarlar sayfasında üst kategori çubuğu yok; geri dönerken yeniden ekle */
+        var navAnchor = document.querySelector('.header-actions');
+        if (navAnchor && navAnchor.parentNode) navAnchor.parentNode.insertBefore(newNav, navAnchor);
+      } else if (!newNav && oldNav) {
+        /* Ayarlar sayfası bölümleri hamburger menüde; eski çubuğu kaldır */
+        oldNav.remove();
       }
 
       var newActions = doc.querySelector('.header-actions');
@@ -780,9 +787,64 @@
         if (newAcct && oldAcct) {
           oldAcct.replaceWith(newAcct);
         } else if (newAcct && !oldAcct) {
-          oldActions.insertBefore(newAcct, oldActions.firstChild);
+          var acctAnchor = oldActions.querySelector('#pwaInstallBtn');
+          if (acctAnchor) oldActions.insertBefore(newAcct, acctAnchor);
+          else oldActions.appendChild(newAcct);
         } else if (!newAcct && oldAcct) {
           oldAcct.remove();
+        }
+      }
+
+      /* Marka başlığı ve ikonu hedef sayfaya göre güncellenir; #conn rozeti
+         korunur ki bağlantı durumu "Bağlanıyor..."a dönmesin. */
+      var newBrand = doc.querySelector('.glass-header .brand') || doc.querySelector('header .brand');
+      var oldBrand = document.querySelector('.glass-header .brand') || document.querySelector('header .brand');
+      if (newBrand && oldBrand) {
+        var newH1 = newBrand.querySelector('h1');
+        var oldH1 = oldBrand.querySelector('h1');
+        if (newH1 && oldH1) oldH1.textContent = newH1.textContent;
+        var newIcon = newBrand.querySelector('.brand-icon');
+        var oldIcon = oldBrand.querySelector('.brand-icon');
+        if (newIcon && oldIcon) oldIcon.innerHTML = newIcon.innerHTML;
+      }
+
+      /* Dashboard'a özel üst çubuk kontrolleri ayarlar sayfasında gizlenir.
+         Düğümler DOM'da kalır; geri dönünce olay dinleyicileri korunur.
+         Doğrudan ayarlar sayfası açıldıysa indekse dönerken bu düğümler
+         hedef sayfanın başlığından alınır. */
+      if (newActions && oldActions) {
+        var dashboardOnly = ['modeSwitcher', 'voiceBtn', 'voiceHint'];
+        var onSettings = targetFile.indexOf('settings') !== -1;
+        var insertedDashboard = false;
+
+        if (!onSettings) {
+          var dashAnchor = oldActions.querySelector('#accountBtn') ||
+                           oldActions.querySelector('.nav-settings-pill') || null;
+          dashboardOnly.forEach(function (id) {
+            if (document.getElementById(id)) return;
+            var node = newActions.querySelector('#' + id);
+            if (!node) return;
+            if (dashAnchor) oldActions.insertBefore(node, dashAnchor);
+            else oldActions.appendChild(node);
+            insertedDashboard = true;
+          });
+        }
+
+        dashboardOnly.forEach(function (id) {
+          var el = document.getElementById(id);
+          if (!el) return;
+          el.style.display = onSettings ? 'none' : '';
+          if (onSettings) el.setAttribute('aria-hidden', 'true');
+          else el.removeAttribute('aria-hidden');
+        });
+
+        if (insertedDashboard) {
+          if (window.App && App.Automation && typeof App.Automation.init === 'function') {
+            try { App.Automation.init(); } catch (e) { /* yoksay */ }
+          }
+          if (window.App && App.Speech && typeof App.Speech.init === 'function') {
+            try { App.Speech.init(); } catch (e) { /* yoksay */ }
+          }
         }
       }
 

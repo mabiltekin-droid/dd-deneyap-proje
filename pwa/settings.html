@@ -47,22 +47,6 @@
       </div>
     </div>
 
-    <!-- Seçenekler / Kategori Sekmeleri (Sensörlerdeki gibi üst çubukta) -->
-    <nav class="header-nav settings-header-nav" aria-label="Ayar kategorileri">
-      <div class="nav-liquid-bubble" aria-hidden="true"></div>
-      <a href="#accountCard" class="nav-item active">Hesap &amp; Roller</a>
-      <a href="#profileCard" class="nav-item" id="navProfile" hidden>Profilim</a>
-      <a href="#inviteCard" class="nav-item" id="navInvites" hidden>Davetler</a>
-      <a href="#devicesSection" class="nav-item">Cihazlarım</a>
-      <a href="#connSection" class="nav-item">Cihaz &amp; Ağ</a>
-      <a href="#thresholdSection" class="nav-item">Eşikler</a>
-      <a href="#automationSection" class="nav-item">Modlar</a>
-      <a href="#telegramSection" class="nav-item">Telegram</a>
-      <a href="#notifySection" class="nav-item">Bildirimler</a>
-      <a href="#themeSection" class="nav-item">Görünüm</a>
-      <a href="#backupSection" class="nav-item">Bakım</a>
-    </nav>
-
     <div class="header-actions">
       <!-- Sensörler Ekranına Hızlı Dönüş -->
       <a href="./index.html" class="nav-back-pill" title="Sensörler ve Görev Kontrol Merkezine Dön">
@@ -118,11 +102,29 @@
       <div class="hero-badge">
         <span class="badge-pulse"></span>
         <span class="badge-text">DENEYAP KART // MERKEZİ YAPILANDIRMA STÜDYOSU</span>
-        <span class="badge-version" id="studioVersion">v2.19.0</span>
+        <span class="badge-version" id="studioVersion">v2.20.0</span>
       </div>
       <p class="studio-intro-sub">
         NVS flash kayıtları, MQTT bulut köprüsü, telemetri eşikleri ve alarm kuralları.
       </p>
+    </div>
+
+    <!-- Aktif bölüm çubuğu (hamburger menü ile birlikte çalışır) -->
+    <div class="studio-toolbar" id="studioToolbar">
+      <div class="stb-crumbs">
+        <span class="stb-kicker">YAPILANDIRMA BÖLÜMÜ</span>
+        <h2 class="stb-title" id="studioCurrent" tabindex="-1">Hesap &amp; Roller</h2>
+      </div>
+      <div class="stb-meta">
+        <span class="stb-count" id="studioStep">01 / 11</span>
+        <button type="button" class="stb-arrow" id="studioPrev" aria-label="Önceki bölüm" title="Önceki bölüm">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <button type="button" class="stb-arrow" id="studioNext" aria-label="Sonraki bölüm" title="Sonraki bölüm">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+      <div class="stb-progress" aria-hidden="true"><span id="studioProgress"></span></div>
     </div>
 
     <!-- ==================== GRUP: HESAP & GÜVENLİK ==================== -->
@@ -134,7 +136,7 @@
       </h2>
 
     <!-- ==================== HESAP & ROLLER ==================== -->
-    <section class="config-panel" aria-labelledby="h-acc" id="accountCard">
+    <section class="config-panel is-tab-active" aria-labelledby="h-acc" id="accountCard">
       <div class="panel-header">
         <span class="panel-tag">[CONFIG 01 // KİMLİK &amp; ERİŞİM KONTROLÜ]</span>
         <div class="panel-title-row">
@@ -1725,6 +1727,7 @@
   <script src="./js/history.js"></script>
   <script src="./js/app.js"></script>
   <script src="./js/settings.js"></script>
+  <script src="./js/studio-nav.js"></script>
   <script src="./js/account.js"></script>
   <script src="./js/profile-ui.js"></script>
   <script src="./js/admin-invite-ui.js"></script>
