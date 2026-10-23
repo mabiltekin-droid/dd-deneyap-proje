@@ -297,7 +297,6 @@
     items = {};
 
     var groups = root.querySelectorAll('.settings-group');
-    var counter = 0;
 
     Array.prototype.forEach.call(groups, function (group) {
       var groupPanels = group.querySelectorAll('.config-panel');
@@ -315,7 +314,6 @@
       wrap.appendChild(heading);
 
       Array.prototype.forEach.call(groupPanels, function (panel) {
-        counter += 1;
         var id = panel.id;
         if (!id) return;
 
@@ -329,7 +327,7 @@
             '<span class="smi-title"></span>' +
             '<span class="smi-sub"></span>' +
           '</span>' +
-          '<span class="smi-num">' + pad(counter) + '</span>';
+          '<span class="smi-num"></span>';
 
         btn.querySelector('.smi-title').textContent = panelLabel(panel);
         btn.querySelector('.smi-sub').textContent = panelSub(panel);
@@ -373,6 +371,38 @@
         group.hidden = !visible;
       });
     }
+
+    renumber();
+  }
+
+  /* Görünür bölümleri 1'den başlayarak yeniden numaralandırır. Böylece
+     yetkiyle gizlenen Profilim/Davetler numarada boşluk bırakmaz; menü,
+     üst çubuk sayacı ve panel etiketleri aynı sırayı gösterir. */
+  function renumber() {
+    var visible = allPanels().filter(function (panel) { return !panel.hidden; });
+
+    allPanels().forEach(function (panel) {
+      var tag = panel.querySelector('.panel-tag');
+      if (!tag) return;
+
+      if (typeof tag._originalText !== 'string') tag._originalText = tag.textContent;
+      var m = tag._originalText.match(/^(\[\s*CONFIG\s+)(\d+)([\s\S]*)$/);
+      if (!m) return;
+
+      var idx = visible.indexOf(panel);
+      tag.textContent = idx === -1
+        ? tag._originalText
+        : (m[1] + pad(idx + 1) + m[3]);
+    });
+
+    if (!navEl) return;
+    var menuNo = 0;
+    Array.prototype.forEach.call(navEl.querySelectorAll('.studio-menu-item'), function (btn) {
+      if (btn.hidden) return;
+      menuNo += 1;
+      var num = btn.querySelector('.smi-num');
+      if (num) num.textContent = pad(menuNo);
+    });
   }
 
   function updateActiveStyles() {
@@ -387,22 +417,22 @@
 
   function updateToolbar() {
     if (!toolbar) return;
-    var list = allPanels();
-    var available = list.filter(function (p) { return !p.hidden; });
+    var available = allPanels().filter(function (p) { return !p.hidden; });
     var panel = panelById(currentId);
-    var idx = list.indexOf(panel);
     var availIdx = available.indexOf(panel);
 
     if (titleEl) titleEl.textContent = panel ? panelLabel(panel) : 'Bölüm seçin';
 
     if (stepEl) {
-      stepEl.textContent = panel
-        ? (pad(idx + 1) + ' / ' + pad(list.length))
-        : ('-- / ' + pad(list.length));
+      stepEl.textContent = (panel && availIdx !== -1)
+        ? (pad(availIdx + 1) + ' / ' + pad(available.length))
+        : ('-- / ' + pad(available.length));
     }
 
     if (progressEl) {
-      var pct = (panel && list.length) ? ((idx + 1) / list.length) * 100 : 0;
+      var pct = (panel && availIdx !== -1 && available.length)
+        ? ((availIdx + 1) / available.length) * 100
+        : 0;
       progressEl.style.width = pct.toFixed(1) + '%';
     }
 

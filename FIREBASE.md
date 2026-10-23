@@ -427,7 +427,7 @@ Komut önce derler, sonra ESP32 çekirdeğindeki `espota.exe` ile kablosuz yükl
   taşındı; geliştirme sunucusu (`npm run dev`) aynı başlıkları uygular, böylece
   CSP yayına çıkmadan test edilir.
 
-## 12) Ayarlar stüdyosu menüsü (2.20.0)
+## 12) Ayarlar stüdyosu menüsü (2.20.0 → 2.20.1)
 
 - **Hamburger menü + sekmeli paneller** — Ayarlar sayfasındaki 11 yapılandırma
   paneli artık tek seferde alt alta gösterilmez. Üst çubuktaki **☰** düğmesi
@@ -440,9 +440,13 @@ Komut önce derler, sonra ESP32 çekirdeğindeki `espota.exe` ile kablosuz yükl
 - **Rol bazlı görünürlük** — Profilim ve Davetler panelleri `hidden` olduğunda
   menüde de görünmez; panel görünürlüğü değişince menü `MutationObserver` ile
   kendini günceller. Aktif panel gizlenirse ilk erişilebilir bölüme geçilir.
+- **Sürekli numaralandırma** — Menü, `01 / N` sayacı ve `CONFIG xx` panel
+  etiketleri yalnızca **görünür** bölümleri sayar. Yetkiyle gizlenen Profilim
+  ve Davetler numarada boşluk bırakmaz; tekrar görünür olduklarında sıra
+  kendiliğinden yeniden hesaplanır (ör. çıkışta `01…09`, girişte `01…11`).
 - **Erişilebilirlik** — Çekmece `role="dialog"`, `aria-modal`, `inert`; Esc ile
   kapanır, Tab odağı çekmece içinde döner, kapanınca odak menü düğmesine döner.
-  Aktif bölüm çubuğu önceki/sonraki oklarını ve `01 / 11` sayacını gösterir.
+  Aktif bölüm çubuğu önceki/sonraki oklarını ve görünür bölüm sayacını gösterir.
 - **SPA geçişleri** — `parallax.js` anlık sayfa değiştiricisi artık marka
   başlığını/ikonunu da eşitler ve dashboard'a özel üst çubuk kontrollerini
   (mod seçici, sesli komut, hesap) ayarlar sayfasında gizler; geri dönünce
@@ -451,4 +455,4 @@ Komut önce derler, sonra ESP32 çekirdeğindeki `espota.exe` ile kablosuz yükl
   geçişte yeniden kurulur.
 - **Doğrulama** — `npm run check` (6/6), `npm run verify` (20 + 14 + 15 + 17
   test) ve `npm run build`. Service worker `PRECACHE` listesine
-  `./js/studio-nav.js` eklendi; sürüm 6 noktada `2.20.0`.
+  `./js/studio-nav.js` eklendi; sürüm 6 noktada `2.20.1`.
