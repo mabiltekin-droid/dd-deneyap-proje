@@ -9,7 +9,7 @@
 
   const App = (window.App = window.App || {});
 
-  App.VERSION = '2.20.1';
+  App.VERSION = '2.21.0';
   App.STORAGE_KEY = 'deneyap.settings.v2';
 
   /* Evrensel Ortam Tespiti: Standalone PWA / Normal Web ayrımı */

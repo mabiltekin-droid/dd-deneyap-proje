@@ -1,0 +1,70 @@
+plugins {
+    id 'com.android.application'
+}
+
+def twaUrl = project.findProperty('twaUrl') ?: 'https://ddproje.vercel.app/'
+def twaHost = project.findProperty('twaHost') ?: 'ddproje.vercel.app'
+def appId = project.findProperty('twaPackage') ?: 'com.mabiltekin.deneyapevkoruma'
+def appVersionName = project.findProperty('appVersionName') ?: '2.20.1'
+def appVersionCode = (project.findProperty('appVersionCode') ?: '1').toString().toInteger()
+
+def keystorePropertiesFile = rootProject.file('keystore.properties')
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
+android {
+    namespace appId
+    compileSdk 36
+
+    defaultConfig {
+        applicationId appId
+        minSdk 24
+        targetSdk 36
+        versionCode appVersionCode
+        versionName appVersionName
+
+        resValue "string", "twa_url", twaUrl
+        manifestPlaceholders = [twaHost: twaHost]
+    }
+
+    signingConfigs {
+        release {
+            if (keystorePropertiesFile.exists()) {
+                storeFile file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            shrinkResources false
+            signingConfig signingConfigs.release
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            applicationIdSuffix ".debug"
+            versionNameSuffix "-debug"
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
+    }
+}
+
+dependencies {
+    implementation 'androidx.core:core:1.15.0'
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.7.4'
+}

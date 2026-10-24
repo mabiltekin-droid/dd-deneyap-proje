@@ -17,7 +17,7 @@
      • Yeni sürüm sayfayı zorla değiştirmez; panel "Yenile" bildirimi gösterir.
    ========================================================================== */
 
-const VERSION = '2.20.1';
+const VERSION = '2.21.0';
 const CACHE = 'deneyap-pwa-v' + VERSION;
 const SHELL = './index.html';
 const NETWORK_TIMEOUT = 4000;   // cihaz yanıt vermezse cache'e düş (ms)
@@ -26,6 +26,7 @@ const PRECACHE = [
   './',
   SHELL,
   './settings.html',
+  './privacy.html',
   './css/style.css',
   './js/config.js',
   './js/theme-boot.js',

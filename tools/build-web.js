@@ -39,7 +39,7 @@ function walk(dir, out) {
   items.forEach(function (it) {
     const full = path.join(dir, it.name);
     if (it.isDirectory()) {
-      if (it.name !== '.git' && it.name !== '.oxt' && it.name !== 'node_modules') {
+      if (it.name !== '.git' && it.name !== '.oxt' && it.name !== 'node_modules' && !it.name.startsWith('.')) {
         walk(full, out);
       }
     } else {

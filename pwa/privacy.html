@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0A0D14">
+  <title>Gizlilik ve Veri Politikası — Deneyap Ev Koruma</title>
+  <meta name="description" content="Deneyap Ev Koruma PWA ve Android uygulaması gizlilik, veri işleme ve hesap silme politikası.">
+  <link rel="icon" href="./icons/favicon.svg" type="image/svg+xml">
+  <style>
+    :root {
+      --bg: #0a0d14;
+      --panel: #111827;
+      --panel-2: #0f172a;
+      --border: rgba(148, 163, 184, .18);
+      --text: #e5eefb;
+      --muted: #94a3b8;
+      --accent: #10b981;
+      --accent-2: #4c8df6;
+      --warn: #f5b82e;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 50% -10%, rgba(76, 141, 246, .18), transparent 42rem),
+        var(--bg);
+      color: var(--text);
+      font: 16px/1.65 "Segoe UI", system-ui, -apple-system, sans-serif;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .wrap { width: min(920px, calc(100% - 2rem)); margin: 0 auto; }
+    header { padding: 2.25rem 0 1.5rem; }
+    .brand { display: flex; align-items: center; gap: .8rem; }
+    .brand img { width: 44px; height: 44px; border-radius: 12px; }
+    .brand strong { letter-spacing: .08em; font-size: .95rem; }
+    .brand span { color: var(--muted); font-size: .8rem; display: block; letter-spacing: .04em; }
+    .back { display: inline-flex; align-items: center; gap: .4rem; margin-top: 1.2rem; font-size: .9rem; }
+    main { padding-bottom: 2rem; }
+    .card {
+      background: linear-gradient(180deg, rgba(17, 24, 39, .92), rgba(15, 23, 42, .86));
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: clamp(1.2rem, 3vw, 2.2rem);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, .28);
+    }
+    h1 { font-size: clamp(1.45rem, 4vw, 2.2rem); line-height: 1.2; margin: 0 0 .4rem; }
+    .updated { color: var(--muted); font-size: .85rem; margin: 0 0 1.6rem; }
+    h2 { font-size: 1.08rem; margin: 1.8rem 0 .55rem; color: #fff; }
+    p, li { color: #cbd5e1; }
+    ul { padding-left: 1.25rem; }
+    li { margin: .25rem 0; }
+    .note {
+      border-left: 3px solid var(--warn);
+      background: rgba(245, 184, 46, .08);
+      padding: .8rem 1rem;
+      border-radius: 0 .6rem .6rem 0;
+      color: #fde68a;
+      margin: 1rem 0;
+      font-size: .94rem;
+    }
+    .grid { display: grid; gap: .7rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin: .8rem 0; }
+    .mini { border: 1px solid var(--border); background: rgba(2, 6, 23, .35); border-radius: 12px; padding: .8rem .9rem; }
+    .mini strong { color: #fff; display: block; margin-bottom: .15rem; font-size: .92rem; }
+    .mini span { color: var(--muted); font-size: .85rem; }
+    .toc { display: flex; flex-wrap: wrap; gap: .45rem; margin: 1rem 0 0; }
+    .toc a { border: 1px solid var(--border); border-radius: 999px; padding: .3rem .7rem; font-size: .8rem; color: #cbd5e1; }
+    .toc a:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
+    .cta {
+      display: inline-block;
+      margin-top: .8rem;
+      background: var(--accent);
+      color: #04130c;
+      font-weight: 700;
+      border-radius: 10px;
+      padding: .65rem 1rem;
+    }
+    .cta:hover { text-decoration: none; filter: brightness(1.05); }
+    footer { border-top: 1px solid var(--border); margin-top: 2rem; padding: 1.4rem 0 2.5rem; color: var(--muted); font-size: .82rem; text-align: center; }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="brand">
+        <img src="./icons/icon-192.png" alt="">
+        <div>
+          <strong>DENEYAP EV KORUMA</strong>
+          <span>Gizlilik ve Veri Politikası</span>
+        </div>
+      </div>
+      <a class="back" href="./index.html">← Kontrol paneline dön</a>
+    </header>
+
+    <main>
+      <article class="card">
+        <h1>Gizlilik ve Kişisel Veriler Politikası</h1>
+        <p class="updated">Son güncelleme: 23 Ekim 2026 · Geçerli olduğu yerler: <strong>ddproje.vercel.app</strong> ve Android uygulaması</p>
+
+        <p>
+          Bu politika, Deneyap Ev Koruma kontrol panelinin (PWA) ve Android uygulamasının
+          hangi verileri işlediğini, neden işlediğini, kimlerle paylaştığını ve hesabınızı
+          nasıl silebileceğinizi açıklar. Uygulama bir ev güvenliği ve IoT kontrol panelidir;
+          hesap açmadan önce bu metni okumanız önerilir.
+        </p>
+
+        <div class="note">
+          Bu proje bir hobi/atölye projesidir. Üretim ortamında kullanılan Firebase, Vercel ve
+          tarayıcı bildirim altyapıları üçüncü taraf hizmetlerdir. Hesap silme talepleri için
+          aşağıdaki <a href="#hesap-silme">Hesap Silme</a> bölümünü kullanın.
+        </div>
+
+        <nav class="toc" aria-label="İçindekiler">
+          <a href="#veriler">Veriler</a>
+          <a href="#amac">Amaçlar</a>
+          <a href="#paylasim">Paylaşım</a>
+          <a href="#saklama">Saklama</a>
+          <a href="#guvenlik">Güvenlik</a>
+          <a href="#haklar">Haklarınız</a>
+          <a href="#hesap-silme">Hesap Silme</a>
+          <a href="#cocuklar">Çocuklar</a>
+          <a href="#iletisim">İletişim</a>
+        </nav>
+
+        <h2 id="veriler">1. İşlenen veriler</h2>
+        <div class="grid">
+          <div class="mini"><strong>Hesap bilgileri</strong><span>E-posta, görünen ad, rol, davet kodu, oturum açma sağlayıcısı ve son giriş bilgisi.</span></div>
+          <div class="mini"><strong>Cihaz bilgileri</strong><span>Cihaz kimliği, cihaz adı, sahiplik, bağlantı durumu, aktivasyon kodu ve yazılım sürümü.</span></div>
+          <div class="mini"><strong>Telemetri ve olaylar</strong><span>Sensör ölçümleri, sıcaklık/nem/gaz/hareket verileri, komutlar, modlar, ayarlar ve olay günlükleri.</span></div>
+          <div class="mini"><strong>Güvenlik kayıtları</strong><span>Giriş/denetim kayıtları, kullanıcı aracısı, hata ve kötüye kullanım önleme kayıtları.</span></div>
+          <div class="mini"><strong>Bildirimler</strong><span>Web push aboneliği (uç nokta ve anahtarlar) ile bildirim tercihleri.</span></div>
+          <div class="mini"><strong>Yerel veriler</strong><span>Tarayıcıda/cihazda tutulan oturum, tema, son sekme ve çevrimdışı önbellek. Gün doğumu/batımı için girilen konum yalnızca cihazda saklanır, sunucuya gönderilmez.</span></div>
+        </div>
+
+        <h2 id="amac">2. İşleme amaçları ve hukuki dayanak</h2>
+        <ul>
+          <li>Hesabınızı oluşturmak, oturum açmanızı sağlamak ve hesabınızı güvenli tutmak.</li>
+          <li>Cihaz sahipliğini doğrulamak, cihazları hesabınıza bağlamak ve yetkisiz erişimi engellemek.</li>
+          <li>Telemetriyi göstermek, komutları iletmek, modları/zamanlamaları ve bildirimleri çalıştırmak.</li>
+          <li>Hataları ayıklamak, kötüye kullanımı tespit etmek ve hizmet güvenliğini sağlamak.</li>
+          <li>Yasal yükümlülükleri yerine getirmek ve taleplerinizi yanıtlamak.</li>
+        </ul>
+        <p>
+          KVKK kapsamında bu işlemler; sözleşmenin ifası, meşru menfaat (güvenlik ve hata ayıklama),
+          açık rıza (isteğe bağlı bildirimler) ve yasal yükümlülük dayanaklarına göre yapılır.
+          Bildirim iznini istediğiniz zaman cihaz/tarayıcı ayarlarından kapatabilirsiniz.
+        </p>
+
+        <h2 id="paylasim">3. Paylaşım ve üçüncü taraflar</h2>
+        <p>Verileriniz satılmaz. Hizmeti çalıştırmak için şu altyapılar kullanılır:</p>
+        <ul>
+          <li><strong>Google Firebase / Google Cloud</strong> — kimlik doğrulama, Firestore veritabanı ve barındırma altyapısı.</li>
+          <li><strong>Vercel</strong> — web barındırma ve sunucusuz görevler (ör. haftalık özet).</li>
+          <li><strong>Tarayıcı üreticisinin push servisi</strong> — yalnızca bildirim göndermek için; abonelik uç noktası ilgili tarayıcıya aittir.</li>
+        </ul>
+        <p>
+          Bu hizmetler verileri kendi altyapılarında ve yurt dışında işleyebilir. Ayrıntılar için
+          ilgili sağlayıcının gizlilik politikasına bakabilirsiniz. Yasal bir talep olması hâlinde
+          yetkili kurumlarla paylaşım yapılabilir.
+        </p>
+
+        <h2 id="saklama">4. Saklama süresi</h2>
+        <p>
+          Hesap ve profil verileri hesabınız aktif olduğu sürece; cihaz bağlantıları ve telemetri,
+          hizmetin doğası gereği makul süre boyunca saklanır. Güvenlik/denetim kayıtları ve yedekler,
+          kötüye kullanımı önlemek ve yasal yükümlülükler için sınırlı süre daha tutulabilir.
+          Hesap silme talebiniz işleme alındığında profil, kimlik doğrulama hesabı, cihaz bağlantıları
+          ve push aboneliği silinir veya anonimleştirilir; yedeklerden silinmesi ek süre alabilir.
+        </p>
+
+        <h2 id="guvenlik">5. Güvenlik</h2>
+        <p>
+          Veriler HTTPS üzerinden taşınır. Firebase Authentication, Firestore güvenlik kuralları,
+          rol tabanlı yetkilendirme, cihaz sahipliği ve kritik işlemlerde yeniden doğrulama gibi
+          önlemler kullanılır. Hiçbir sistem %100 güvenli değildir; hesap bilgilerinizi ve cihaz
+          aktivasyon kodlarınızı kimseyle paylaşmayın. Şüpheli bir durumda yöneticiyle iletişime geçin.
+        </p>
+
+        <h2 id="haklar">6. Haklarınız</h2>
+        <p>KVKK ve uygulanabilir mevzuat kapsamında şu haklara sahipsiniz:</p>
+        <ul>
+          <li>Kişisel verilerinizin işlenip işlenmediğini öğrenme ve bilgi talep etme.</li>
+          <li>Eksik/yanlış verilerin düzeltilmesini isteme.</li>
+          <li>Koşulları oluştuğunda silinmesini veya anonimleştirilmesini isteme.</li>
+          <li>İşlemeye itiraz etme ve zararın giderilmesini talep etme.</li>
+        </ul>
+        <p>Başvurularınızı <a href="#iletisim">İletişim</a> bölümündeki kanaldan iletebilirsiniz.</p>
+
+        <h2 id="hesap-silme">7. Hesap silme</h2>
+        <p>
+          Hesabınızı ve ilişkili verilerinizi silmek için uygulamada
+          <strong>Ayarlar → Hesap ve Roller → Hesap Silme Talebi</strong> bağlantısını kullanın
+          veya aşağıdaki formu açın. Talebin doğrulanabilmesi için hesabınızın e-posta adresini
+          belirtin; şifrenizi, cihaz kodunuzu veya oturum anahtarınızı <strong>paylaşmayın</strong>.
+        </p>
+        <a class="cta" href="https://github.com/mabiltekin-droid/dd-deneyap-proje/issues/new?title=Hesap%20Silme%20Talebi&body=Merhaba%2C%20Deneyap%20Ev%20Koruma%20hesab%C4%B1m%C4%B1n%20ve%20ili%C5%9Fkili%20verilerimin%20silinmesini%20talep%20ediyorum.%0A%0AHesap%20e-postas%C4%B1%3A%20%0A%0ANot%3A%20%C5%9Eifre%2C%20cihaz%20kodu%20veya%20oturum%20anahtar%C4%B1%20payla%C5%9Fmay%C4%B1n." target="_blank" rel="noopener">Hesap Silme Talebi Aç</a>
+        <p class="updated" style="margin-top:.8rem">Talepler en geç 30 gün içinde işleme alınır. Cihaz güvenliğiyle ilgili zorunlu kayıtlar yasal olarak saklanabiliyorsa, bunlar anonimleştirilerek tutulur.</p>
+
+        <h2 id="cocuklar">8. Çocuklar</h2>
+        <p>
+          Uygulama 18 yaş altındaki kişilere yönelik değildir. Bir çocuğun verisinin işlendiğini
+          düşünüyorsanız, veli/vasi olarak iletişime geçin; veriyi silmek için gerekli adımları atarız.
+        </p>
+
+        <h2 id="cerezler">9. Çerezler ve yerel depolama</h2>
+        <p>
+          Reklam veya profilleme çerezi kullanılmaz. Oturumun sürdürülmesi, temanın hatırlanması ve
+          çevrimdışı çalışma için tarayıcı yerel depolaması/önbelleği kullanılır. Bu verileri
+          tarayıcı ayarlarından temizleyebilirsiniz; oturumunuz kapanabilir.
+        </p>
+
+        <h2>10. Değişiklikler</h2>
+        <p>
+          Bu politika güncellenebilir. Önemli değişikliklerde sayfanın üstündeki tarih güncellenir
+          ve uygulama içinde duyuru yapılabilir. Güncel sürüm her zaman bu sayfada yayımlanır.
+        </p>
+
+        <h2 id="iletisim">11. İletişim</h2>
+        <p>
+          Gizlilik, veri işleme ve hesap silme talepleri için:
+          <a href="https://github.com/mabiltekin-droid/dd-deneyap-proje/issues" target="_blank" rel="noopener">github.com/mabiltekin-droid/dd-deneyap-proje/issues</a>.
+          Lütfen herkese açık bir konu açmadan önce hassas bilgileri (şifre, cihaz kodu, erişim anahtarı)
+          paylaşmayın. Gerekirse sizi doğruladıktan sonra özel bir kanal açılır.
+        </p>
+      </article>
+    </main>
+
+    <footer>
+      <div>Deneyap Ev Koruma · <a href="./index.html">Kontrol Paneli</a> · <a href="./settings.html">Ayarlar</a></div>
+      <div style="margin-top:.35rem">Bu metin bir şablon niteliğindedir; yayından önce kendi iletişim ve veri sorumlusu bilgilerinizle gözden geçirin.</div>
+    </footer>
+  </div>
+</body>
+</html>

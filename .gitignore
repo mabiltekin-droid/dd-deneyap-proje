@@ -36,6 +36,18 @@ __pycache__/
 # Paket yöneticisi (bağımlılık yok ama yine de)
 node_modules/
 
+# ---------------------------------------------------------------- Android
+# İmza anahtarı ve parolası ASLA depoya girmez.
+android/keystore.properties
+android/*.jks
+android/*.keystore
+android/keystore-info.txt
+android/local.properties
+android/.gradle/
+android/dist/
+*.apk
+*.aab
+
 # ---------------------------------------------------------------- işletim sistemi
 .DS_Store
 Thumbs.db

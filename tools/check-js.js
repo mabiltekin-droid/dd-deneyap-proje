@@ -40,8 +40,11 @@ function walk(dir, out) {
   }
   items.forEach(function (it) {
     const full = path.join(dir, it.name);
-    if (it.isDirectory()) walk(full, out);
-    else out.push(full);
+    if (it.isDirectory()) {
+      if (!it.name.startsWith('.') && it.name !== 'node_modules') walk(full, out);
+    } else if (!it.name.startsWith('.')) {
+      out.push(full);
+    }
   });
   return out;
 }

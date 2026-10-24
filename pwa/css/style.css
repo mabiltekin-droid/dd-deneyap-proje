@@ -4133,6 +4133,24 @@ main {
   font-family: var(--font-mono);
 }
 
+.studio-footer a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.studio-footer a:hover {
+  text-decoration: underline;
+}
+
+.studio-footer-links {
+  margin-top: 0.35rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
 /* ==========================================================================
    WEBGL SHADERS, RADYAL AKTÜATÖR HALKALARI, DSP SNR & KARA KUTU
    ========================================================================== */
