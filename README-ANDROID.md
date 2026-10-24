@@ -129,9 +129,11 @@ npm run build
 
 **Play App Signing:** Play, AAB'yi kendi anahtarıyla yeniden imzalar. İlk AAB yüklemesinden
 sonra Play Console → **Setup → App signing** bölümündeki **App signing key certificate**
-SHA-256 değerini de `assetlinks.json` ve `android/app/src/main/res/values/strings.xml`
-içindeki listeye ekleyin; sonra web'i yeniden yayınlayın. Aksi hâlde Play'den kurulan
-uygulamada adres çubuğu görünür.
+SHA-256 değerini `pwa/.well-known/assetlinks.json` içindeki listeye ekleyin; sonra web'i
+yeniden yayınlayın. TWA doğrulaması için **sunucudaki bu dosya yeterlidir**. İsterseniz
+`android/app/src/main/res/values/strings.xml` içindeki kopyayı da güncelleyebilirsiniz;
+ancak bu, yeni bir AAB (artırılmış `versionCode`) gerektirir ve Play doğrulaması için
+zorunlu değildir. Aksi hâlde Play'den kurulan uygulamada adres çubuğu görünür.
 
 Doğrulama:
 

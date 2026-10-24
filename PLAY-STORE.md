@@ -206,7 +206,8 @@ istenirse, ileride Firestore `deletion_requests` + Cloud Function akışı eklen
 
 - [ ] Play Console'da uygulama oluşturuldu; paket adı doğru.
 - [ ] `DeneyapEvKoruma-2.21.0-release.aab` internal testing'e yüklendi.
-- [ ] Play App Signing SHA-256 alındı ve `assetlinks.json` + `strings.xml`'e eklendi.
+- [ ] Play App Signing SHA-256 alındı ve `assetlinks.json`'a eklendi (sunucu dosyası TWA
+      doğrulaması için yeterli; `strings.xml` kopyası opsiyonel ve yeni AAB gerektirir).
 - [ ] `npm run build` + commit + push; `assetlinks.json` canlıda 200.
 - [ ] Telefonda internal testing kurulumu; adres çubuğu yok.
 - [ ] Giriş, cihaz, telemetri, komut, bildirim, çevrimdışı testleri geçti.
