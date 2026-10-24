@@ -80,12 +80,12 @@ Canlı telemetri, cihaz kontrolü, otomasyon ve bildirimler tek uygulamada.
 |---|---|---|---|
 | Uygulama ikonu | `android/play/icon-512.png` | 512×512 | Hazır |
 | Feature graphic | `android/play/feature-graphic-1024x500.png` | 1024×500 | Hazır |
-| Telefon ekran görüntüsü 1 | `android/play/screenshots/phone-01.png` | 1440×2560 (9:16) | Taslak |
-| Telefon ekran görüntüsü 2 | `android/play/screenshots/phone-02-settings.png` | 1440×2560 (9:16) | Taslak |
+| Telefon ekran görüntüsü 1 | `android/play/screenshots/phone-01.png` | 1440×2560 (9:16) | Hazır |
+| Telefon ekran görüntüsü 2 | `android/play/screenshots/phone-02-settings.png` | 1440×2560 (9:16) | Hazır |
 
-Play Store en az **2 telefon ekran görüntüsü** ister. Bu taslaklar canlı site henüz
-v2.20.1 iken alındı; yayından önce v2.21.0 yayınına geçtikten sonra yeniden alın.
-Tablet desteği için 7"/10" ekran görüntüleri de eklenebilir (zorunlu değil).
+Play Store en az **2 telefon ekran görüntüsü** ister. Bu görüntüler v2.21.0 yayınından
+alındı; yayın öncesi son kontrolü yapın. Tablet desteği için 7"/10" ekran görüntüleri de
+eklenebilir (zorunlu değil).
 
 Ekran görüntülerini yenilemek için Chrome ile:
 

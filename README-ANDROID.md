@@ -24,7 +24,7 @@ Derleme sonrası:
 | `android/dist/DeneyapEvKoruma-2.21.0-release.aab` | **Google Play'e yükleme** |
 | `android/play/icon-512.png` | Play Store uygulama ikonu |
 | `android/play/feature-graphic-1024x500.png` | Play Store öne çıkan görsel |
-| `android/play/screenshots/` | Telefon ekran görüntüleri (taslak) |
+| `android/play/screenshots/` | Telefon ekran görüntüleri (v2.21.0) |
 
 Bu derlemenin SHA-256 özetleri:
 
