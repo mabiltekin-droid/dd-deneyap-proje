@@ -1,8 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Deneyap Ev Koruma</string>
-
-    <!-- TWA doğrulaması: paket adı ve imza parmak izi sunucudaki
-         /.well-known/assetlinks.json ile aynı olmalıdır. -->
-    <string name="asset_statements" translatable="false">[{\"relation\":[\"delegate_permission/common.handle_all_urls\"],\"target\":{\"namespace\":\"android_app\",\"package_name\":\"com.mabiltekin.deneyapevkoruma\",\"sha256_cert_fingerprints\":[\"83:1C:1E:F6:B9:25:19:06:37:4D:CD:43:CF:EB:FC:E4:D2:53:3D:63:12:7A:17:FB:FB:61:35:AD:EF:A0:6F:92\"]}}]</string>
 </resources>

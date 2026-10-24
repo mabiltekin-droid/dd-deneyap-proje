@@ -1,18 +1,18 @@
 # Android Uygulaması (APK / AAB)
 
-Deneyap Ev Koruma'nın Android paketi. Uygulama, canlı PWA'yı **Trusted Web Activity (TWA)**
-ile tam ekran açar. Böylece web tarafında yapılan değişiklikler **yeni APK üretmeden**
-uygulamaya yansır; APK yalnızca Android tarafı (ikon, isim, paket, izinler, sürüm) değişince
-yeniden üretilir.
+Deneyap Ev Koruma'nın Android paketi. Uygulama, canlı PWA'yı **Chrome Custom Tabs**
+ile açar; Chrome yoksa, devre dışıysa veya Chrome hemen kapanırsa **dahili WebView**
+yedek görünümüne geçer. Böylece uygulama, Chrome bulunmayan/engelli telefonlarda da
+açılır. Web tarafında yapılan değişiklikler **yeni APK üretmeden** uygulamaya yansır;
+APK yalnızca Android tarafı (ikon, isim, paket, izinler, sürüm, başlangıç adresi)
+değişince yeniden üretilir.
 
 - **Paket adı:** `com.mabiltekin.deneyapevkoruma`
 - **Uygulama adı:** Deneyap Ev Koruma
 - **Web adresi:** https://ddproje.vercel.app/
-- **Sürüm:** 2.21.0 — `versionCode 1`
+- **Sürüm:** 2.21.0 — `versionCode 2`
 - **minSdk:** 24 (Android 7.0+) · **targetSdk / compileSdk:** 36 (Android 16)
 - **Mimari:** Tek, evrensel APK. Telefon/tablet için ayrı APK gerekmez; PWA responsive'dir.
-  İkinci bir marka/uygulama istenirse aynı proje farklı `twaPackage` ve uygulama adıyla
-  kopyalanabilir.
 
 ## Hazır çıktılar
 
@@ -29,19 +29,28 @@ Derleme sonrası:
 Bu derlemenin SHA-256 özetleri:
 
 ```
-APK: 031E265B04C6BF3CB90639A293CDBDCFDB4B0CB2BC7EEF319F87030AFDED0B97
-AAB: BB927ACAAE402B7A713859A2321AFB54592BE8E21565FE2BD6C8F4EE9138BF05
+APK: F9640B6F2A6FBBA956E130B44E476ECB18D6F2C064CD9A93FFB84F458F2E7107
+AAB: 86E7E766C24BA6A1BE9D3DF030D29EFFCD8C7E4537B3394FAD0E0F806C79F582
 ```
 
 > Yeniden derlemede bu özetler değişir. Play Store'a her yüklemede `appVersionCode`
 > değerini artırın.
 
-## Neden TWA?
+## Nasıl açılıyor?
 
-- Web güncellemeleri anında gelir; her özellik için Play'e yeni sürüm göndermek gerekmez.
-- Chrome'un güvenli tarayıcı motorunu kullanır; WebView'e göre daha güncel ve güvenlidir.
-- Adres çubuğu, `assetlinks.json` doğrulaması yapıldığında görünmez.
-- Chrome yoksa veya TWA açılamazsa WebView yedeğine düşer (URL çubuğu görünebilir).
+1. Uygulama açılır, Chrome (veya Custom Tabs destekli başka bir tarayıcı) aranır.
+2. Chrome varsa site Chrome'un **Custom Tabs** görünümünde açılır. Bu yolda Google ile
+   giriş, web push bildirimleri ve Chrome oturumu normal çalışır. Üstte **adres çubuğu
+   görünebilir**; bu, Custom Tabs'in normal davranışıdır.
+3. Chrome yoksa, devre dışıysa veya Chrome açıldıktan hemen sonra kapanırsa uygulama
+   otomatik olarak **dahili WebView** görünümüne geçer. Bu görünümde site yine açılır;
+   ancak Google ile giriş ve web push bazı cihazlarda çalışmayabilir. E-posta/şifre
+   girişi ve panel işlevleri kullanılabilir.
+
+Bu mimari, daha önceki **Trusted Web Activity (TWA)** sürümünün Chrome bulunmayan veya
+Chrome'u kısıtlayan telefonlarda açılıp hemen kapanması nedeniyle seçildi. TWA'nın
+tam ekran (adres çubuksuz) görünümü ileride tekrar değerlendirilebilir; ancak mevcut
+öncelik uygulamanın her cihazda açılmasıdır.
 
 ## Gereksinimler
 
@@ -111,44 +120,6 @@ Upload anahtarı SHA-256:
 83:1C:1E:F6:B9:25:19:06:37:4D:CD:43:CF:EB:FC:E4:D2:53:3D:63:12:7A:17:FB:FB:61:35:AD:EF:A0:6F:92
 ```
 
-## TWA doğrulaması / assetlinks
-
-Sunucuda şu dosya olmalı:
-
-```
-https://ddproje.vercel.app/.well-known/assetlinks.json
-```
-
-Depodaki kaynak: `pwa/.well-known/assetlinks.json`. İçinde yukarıdaki upload anahtarı
-parmak izi vardır. Web'e yayınlamak için:
-
-```powershell
-npm run build
-# public/.well-known/assetlinks.json oluşur; commit + push → Vercel yayını
-```
-
-**Play App Signing:** Play, AAB'yi kendi anahtarıyla yeniden imzalar. İlk AAB yüklemesinden
-sonra Play Console → **Setup → App signing** bölümündeki **App signing key certificate**
-SHA-256 değerini `pwa/.well-known/assetlinks.json` içindeki listeye ekleyin; sonra web'i
-yeniden yayınlayın. TWA doğrulaması için **sunucudaki bu dosya yeterlidir**. İsterseniz
-`android/app/src/main/res/values/strings.xml` içindeki kopyayı da güncelleyebilirsiniz;
-ancak bu, yeni bir AAB (artırılmış `versionCode`) gerektirir ve Play doğrulaması için
-zorunlu değildir. Aksi hâlde Play'den kurulan uygulamada adres çubuğu görünür.
-
-Doğrulama:
-
-```powershell
-# Sunucu tarafı
-curl.exe https://ddproje.vercel.app/.well-known/assetlinks.json
-
-# Cihaz tarafı (bağlı cihaz varsa)
-adb shell pm get-app-links com.mabiltekin.deneyapevkoruma
-adb shell pm verify-app-links --re-verify com.mabiltekin.deneyapevkoruma
-```
-
-Doğrulama tamamlanana kadar uygulama çalışır; yalnızca üstte URL çubuğu görünür.
-Birkaç saat/gün sürebilir; Chrome'u güncelleyin, uygulamayı yeniden kurun.
-
 ## Play Store'a yükleme akışı
 
 1. Play Console'da **Create app**:
@@ -157,22 +128,26 @@ Birkaç saat/gün sürebilir; Chrome'u güncelleyin, uygulamayı yeniden kurun.
    - App or game: App
    - Free
 2. **Package name** mutlaka `com.mabiltekin.deneyapevkoruma` olmalı. İlk yüklemeden sonra
-   değiştirilemez. Farklı bir paket kullanacaksanız **önce** `android/gradle.properties`
-   içindeki `twaPackage` değerini, `strings.xml` asset statements'i ve `assetlinks.json`'u
-   güncelleyip yeniden derleyin.
+   değiştirilemez. Paket adı değişecekse `android/gradle.properties` → `twaPackage` ve
+   Java kaynaklarındaki `package` satırları birlikte güncellenmelidir; aksi hâlde uygulama
+   açılmaz. Mevcut paket adını korumanız önerilir.
 3. **Internal testing** track'ine `DeneyapEvKoruma-2.21.0-release.aab` yükleyin.
-4. Play App Signing'i etkinleştirin; App signing SHA-256'yı alın.
-5. Bu parmak izini `assetlinks.json` + `strings.xml`'e ekleyin, `npm run build` + push.
-6. Internal testing bağlantısıyla telefona kurun; aşağıdakileri test edin:
-   - Uygulama açılıyor, adres çubuğu yok (doğrulama sonrası).
+4. Play App Signing'i etkinleştirin. **Mevcut Custom Tabs + WebView mimarisi için Play
+   App Signing SHA-256'sını `assetlinks.json`'a eklemek gerekmez.** Bu dosya yalnızca
+   ileride TWA'ya dönülürse gerekir.
+5. Internal testing bağlantısıyla telefona kurun; aşağıdakileri test edin:
+   - Uygulama açılıyor; Chrome'da veya dahili görünümde site yükleniyor.
    - Giriş / kayıt / e-posta doğrulama.
    - Cihaz listesi, telemetri, komut gönderme.
-   - Bildirim izni ve bildirim alma.
+   - Bildirim izni ve bildirim alma (Chrome yolunda).
    - Çevrimdışıyken son önbellek açılıyor.
    - Geri tuşu, döndürme, klavye, dosya seçme.
-7. Store listing, privacy policy, data safety, content rating, app access bölümlerini
+6. Store listing, privacy policy, data safety, content rating, app access bölümlerini
    doldurun. Ayrıntılı kontrol listesi: `PLAY-STORE.md`.
-8. Production'a kademeli rollout (ör. %20 → %50 → %100).
+7. Production'a kademeli rollout (ör. %20 → %50 → %100).
+
+> Yandan yüklenen APK ile Play'den kurulan sürümün imzaları farklıdır. Play sürümünü
+> kurmadan önce yandan yüklenen uygulamayı kaldırın.
 
 ## Sürüm yönetimi
 
@@ -182,11 +157,11 @@ Web ve Android sürümleri ayrıdır:
   ve HTML başlıkları birlikte artırılır (`npm run check` doğrular).
 - **Android `versionName`:** `android/gradle.properties` → `appVersionName`.
 - **Android `versionCode`:** `android/gradle.properties` → `appVersionCode`. Play'e her
-  yüklemede **mutlaka** artırın (1, 2, 3…). Aynı kodla ikinci yükleme reddedilir.
+  yüklemede **mutlaka** artırın (2, 3, 4…). Aynı kodla ikinci yükleme reddedilir.
 
-Web'de yeni özellik çıkınca Android `versionCode` artırmak **gerekmez**; TWA canlı siteyi
-açar. Yalnızca Android tarafı değişince (ikon, isim, paket, izin, TWA kütüphanesi) yeni
-AAB gerekir.
+Web'de yeni özellik çıkınca Android `versionCode` artırmak **gerekmez**; uygulama canlı
+siteyi açar. Yalnızca Android tarafı değişince (ikon, isim, paket, izin, başlangıç adresi,
+tarayıcı/WebView kodu) yeni AAB gerekir.
 
 ## Yapı
 
@@ -200,16 +175,16 @@ android/
   app/
     build.gradle
     src/main/AndroidManifest.xml
-    src/main/res/values/strings.xml       # uygulama adı + asset statements
+    src/main/java/com/mabiltekin/deneyapevkoruma/
+      MainActivity.java      # Chrome Custom Tabs + WebView yedeği
+      WebViewActivity.java   # Dahili görünüm, dosya seçme, indirme
+    src/main/res/values/strings.xml       # uygulama adı
     src/main/res/values/colors.xml
     src/main/res/values/styles.xml
-    src/main/res/values-v31/styles.xml    # Android 12 splash
-    src/main/res/drawable/splash*.xml
     src/main/res/mipmap-*/                # ikonlar
-    src/main/res/xml/file_paths.xml
   play/                      # Play görselleri
   dist/                      # APK/AAB çıktıları (git dışı)
-pwa/.well-known/assetlinks.json
+pwa/.well-known/assetlinks.json   # yalnızca ileride TWA için; mevcut uygulama kullanmaz
 tools/build-android.ps1
 tools/android-icons.ps1
 tools/android-keystore.ps1
@@ -219,26 +194,38 @@ tools/android-keystore.ps1
 
 | Değişiklik | Yer |
 |---|---|
-| Site adresi | `android/gradle.properties` → `twaUrl`, `twaHost` |
-| Paket adı | `android/gradle.properties` → `twaPackage` + `strings.xml` + `assetlinks.json` |
+| Site adresi | `android/gradle.properties` → `twaUrl` |
+| Paket adı | `android/gradle.properties` → `twaPackage` + Java `package` satırları |
 | Uygulama adı | `android/app/src/main/res/values/strings.xml` → `app_name` |
 | Sürüm | `android/gradle.properties` → `appVersionCode`, `appVersionName` |
 | İkonlar | `pwa/icons/` + `npm run android:icons` |
 | Başlangıç rengi | `res/values/colors.xml`, `styles.xml` |
 | İmza | `android/keystore.properties` (git dışı) |
 
-Paket adı değişince `asset_statements` içindeki `package_name` de değişmeli; yoksa TWA
-doğrulaması başarısız olur.
+`gradle.properties` içindeki `twaUrl` ve `twaPackage` isimleri eski TWA
+yapılandırmasından kalmıştır; mevcut uygulamada sırasıyla **başlangıç adresi** ve
+**uygulama paketi** olarak kullanılır.
 
 ## Sorun giderme
 
-**Üstte adres çubuğu görünüyor**
-- `https://ddproje.vercel.app/.well-known/assetlinks.json` gerçekten 200 mü?
-- Paket adı ve parmak izi birebir aynı mı? (Play'den kurulan sürümde Play App Signing
-  parmak izi gerekir.)
-- Uygulama Play'den mi, yoksa yerel APK'dan mı kurulu? İkisinin imzası farklıdır.
-- Chrome'u güncelleyin, uygulamayı kaldırıp yeniden kurun; birkaç saat bekleyin.
-- `adb shell pm verify-app-links --re-verify com.mabiltekin.deneyapevkoruma`
+**Uygulama Chrome'da ve üstte adres çubuğuyla açılıyor**
+- Beklenen davranış. Mevcut sürüm Chrome Custom Tabs kullanır; adres çubuğu görünür.
+- Adres çubuksuz tam ekran isteniyorsa TWA'ya dönmek gerekir; ancak TWA bazı
+  telefonlarda (Chrome yok/engelli) açılmıyordu. Önce mevcut sürümün açılmasını
+  doğrulayın.
+
+**Uygulama dahili görünümde açılıyor**
+- Telefonda Chrome yok, devre dışı veya Chrome hemen kapanıyor. Uygulama bu yüzden
+  WebView yedeğine geçti.
+- Chrome'u kurun/güncelleyin ve uygulamayı yeniden açın. Bu yol Google ile giriş ve web
+  push bildirimleri için daha iyidir.
+- Dahili görünümde Google ile giriş çalışmazsa e-posta/şifre ile giriş yapın veya
+  Chrome'u kurun.
+
+**Uygulama hâlâ açılıp hemen kapanıyor**
+- Önce eski sürümü kaldırıp yeni APK'yı temiz kurun.
+- Cihaz modeli, Android sürümü ve tam belirtiyi bildirin.
+- Mümkünse `adb logcat` çıktısını alın; hata varsa buradan görülür.
 
 **Derleme Java 8'i kullanıyor**
 - `JAVA_HOME` JDK 17'yi göstermeli. Script JBR 17'yi otomatik bulur; PATH'teki `java`
@@ -259,22 +246,25 @@ doğrulaması başarısız olur.
 
 **Uygulama açılıyor ama site yüklenmiyor**
 - İnternet ve `https://ddproje.vercel.app/` erişimini kontrol edin.
-- Chrome yoksa WebView yedeği devreye girer; bazı PWA özellikleri (push, TWA tam ekran)
+- Dahili görünümde "Tekrar dene" düğmesi vardır.
+- Chrome yoksa WebView yedeği devreye girer; bazı PWA özellikleri (push, Google girişi)
   çalışmayabilir.
 
 **Bildirimler gelmiyor**
 - Android 13+ için bildirim izni verilmeli.
 - PWA'da bildirim aboneliği ve VAPID anahtarı ayarlı olmalı (`npm run vapid`).
 - Chrome arka planda kısıtlanmış olabilir; pil optimizasyonunu kontrol edin.
+- Dahili WebView görünümü web push bildirimlerini desteklemez; Chrome yolunu kullanın.
 
 ## Test durumu
 
-Bu paket bu makinede **derlendi ve imzası doğrulandı**; ancak bağlı bir Android cihaz
-veya emülatör olmadığı için **kurulum/açılış testi yapılmadı**. Yayın öncesi en az bir
-gerçek telefonda internal testing ile test edin.
+Bu paket bu makinede **derlendi ve imzası doğrulandı**. WebView tanılama APK'sı gerçek
+bir telefonda açıldı; ancak bu Custom Tabs + WebView sürümü için bağlı cihaz/emülatör
+olmadığından kurulum/açılış testi bu makinede yapılamadı. Yayın öncesi en az bir gerçek
+telefonda internal testing ile test edin.
 
 ## İlgili dosyalar
 
 - `PLAY-STORE.md` — mağaza metinleri, data safety, inceleme hesabı ve yayın kontrol listesi
 - `pwa/privacy.html` — gizlilik ve hesap silme politikası
-- `pwa/.well-known/assetlinks.json` — TWA doğrulama dosyası
+- `pwa/.well-known/assetlinks.json` — yalnızca ileride TWA kullanılırsa gerekli doğrulama dosyası

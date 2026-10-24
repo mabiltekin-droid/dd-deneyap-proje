@@ -2,31 +2,30 @@ plugins {
     id 'com.android.application'
 }
 
-def twaUrl = project.findProperty('twaUrl') ?: 'https://ddproje.vercel.app/'
-def twaHost = project.findProperty('twaHost') ?: 'ddproje.vercel.app'
-def appId = project.findProperty('twaPackage') ?: 'com.mabiltekin.deneyapevkoruma'
-def appVersionName = project.findProperty('appVersionName') ?: '2.20.1'
-def appVersionCode = (project.findProperty('appVersionCode') ?: '1').toString().toInteger()
-
 def keystorePropertiesFile = rootProject.file('keystore.properties')
 def keystoreProperties = new Properties()
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 }
 
+// Bu değerler android/gradle.properties dosyasından gelir; web adresi, paket adı
+// ve sürüm değişince yalnızca orayı düzenlemek yeterlidir.
+def appStartUrl = project.findProperty('twaUrl') ?: 'https://ddproje.vercel.app/'
+def appPackage = project.findProperty('twaPackage') ?: 'com.mabiltekin.deneyapevkoruma'
+def appVersionName = project.findProperty('appVersionName') ?: '2.21.0'
+def appVersionCode = (project.findProperty('appVersionCode') ?: '2').toString().toInteger()
+
 android {
-    namespace appId
+    namespace appPackage
     compileSdk 36
 
     defaultConfig {
-        applicationId appId
+        applicationId appPackage
         minSdk 24
         targetSdk 36
         versionCode appVersionCode
         versionName appVersionName
-
-        resValue "string", "twa_url", twaUrl
-        manifestPlaceholders = [twaHost: twaHost]
+        resValue "string", "start_url", appStartUrl
     }
 
     signingConfigs {
@@ -65,6 +64,6 @@ android {
 }
 
 dependencies {
-    implementation 'androidx.core:core:1.15.0'
-    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.7.4'
+    // Custom Tabs (Chrome'da açma) ve WebView yedeği.
+    implementation 'androidx.browser:browser:1.8.0'
 }

@@ -12,7 +12,7 @@ metinleri, veri güvenliği cevaplarını ve yayın öncesi kontrolleri toplar.
 |---|---|
 | Uygulama adı | Deneyap Ev Koruma |
 | Paket adı | `com.mabiltekin.deneyapevkoruma` |
-| Sürüm | 2.21.0 (`versionCode 1`) |
+| Sürüm | 2.21.0 (`versionCode 2`) |
 | Kategori | House & Home (yoksa Tools) |
 | Etiketler | Akıllı ev, güvenlik, IoT |
 | Ücret | Ücretsiz |
@@ -60,7 +60,8 @@ Güvenlik:
 Bildirimler ve çevrimdışı kullanım:
 • Hareket, gaz, sıcaklık ve bağlantı kopması bildirimleri.
 • PWA desteği sayesinde son veriler çevrimdışıyken de görüntülenebilir.
-• Android uygulaması, canlı paneli tam ekran açar; web güncellemeleri anında gelir.
+• Android uygulaması, canlı paneli Chrome'da veya dahili görünümde açar; web
+  güncellemeleri anında gelir.
 
 Not: Uygulama, Deneyap Kart tabanlı bir donanım ve Firebase/MQTT altyapısıyla birlikte
 çalışır. Cihaz bağlanmadan da hesap ve panel ekranları görüntülenebilir; sensör verileri
@@ -178,9 +179,10 @@ Ankette aşağıdaki cevaplar beklenir:
 - **Finansal özellik var mı?** Hayır.
 - **Sağlık özelliği var mı?** Hayır.
 - **COVID-19 uygulaması mı?** Hayır.
-- **WebView/TWA:** Uygulama bir Trusted Web Activity'dir; canlı PWA'yı Chrome
-  motoruyla açar. “Sadece web sitesi” değildir; çevrimdışı PWA, push, cihaz kontrolü ve
-  donanım entegrasyonu içerir. Mağaza metninde bu işlevleri vurgulayın.
+- **WebView / Custom Tabs:** Uygulama, canlı PWA'yı Chrome Custom Tabs ile açar;
+  Chrome yoksa veya hemen kapanırsa dahili WebView yedeğine geçer. “Sadece web sitesi”
+  değildir; çevrimdışı PWA, push, cihaz kontrolü ve donanım entegrasyonu içerir. Mağaza
+  metninde bu işlevleri vurgulayın.
 
 ## 8. Hesap silme politikası
 
@@ -206,10 +208,8 @@ istenirse, ileride Firestore `deletion_requests` + Cloud Function akışı eklen
 
 - [ ] Play Console'da uygulama oluşturuldu; paket adı doğru.
 - [ ] `DeneyapEvKoruma-2.21.0-release.aab` internal testing'e yüklendi.
-- [ ] Play App Signing SHA-256 alındı ve `assetlinks.json`'a eklendi (sunucu dosyası TWA
-      doğrulaması için yeterli; `strings.xml` kopyası opsiyonel ve yeni AAB gerektirir).
-- [ ] `npm run build` + commit + push; `assetlinks.json` canlıda 200.
-- [ ] Telefonda internal testing kurulumu; adres çubuğu yok.
+- [ ] Telefonda internal testing kurulumu; uygulama açılıyor (Chrome Custom Tabs veya
+      dahili WebView yedeği).
 - [ ] Giriş, cihaz, telemetri, komut, bildirim, çevrimdışı testleri geçti.
 - [ ] Gizlilik politikası URL'si canlı ve giriş gerektirmiyor.
 - [ ] Hesap silme bağlantısı canlı ve uygulama içinden erişilebilir.
@@ -230,11 +230,15 @@ istenirse, ileride Firestore `deletion_requests` + Cloud Function akışı eklen
 - **Cihaz testi yapılmadı:** Bu makinede bağlı telefon/emülatör yoktu. Yayın öncesi
   gerçek cihazda test zorunlu.
 - **Mobil görünüm:** PWA ağırlıklı olarak geniş ekran/SCADA düzeni kullanıyor. Telefonda
-  yatay taşma görülürse CSS mobil kırılımları iyileştirilmeli; TWA bunu düzeltmez.
+  yatay taşma görülürse CSS mobil kırılımları iyileştirilmeli; uygulama katmanı bunu
+  düzeltmez.
 - **Minimum işlevsellik:** İnceleme sırasında cihaz yoksa panel “bağlantı yok” gösterebilir.
   Demo cihaz/veri hazırlamak inceleme riskini azaltır.
-- **TWA doğrulaması:** Play App Signing parmak izi eklenmeden Play sürümünde adres çubuğu
-  görünür. İlk yüklemeden sonra hemen ekleyin.
+- **Custom Tabs:** Chrome yolunda üstte adres çubuğu görünebilir; bu beklenen davranıştır.
+  Chrome yoksa/hemen kapanırsa dahili WebView yedeği açılır; bu yolda Google ile giriş ve
+  web push çalışmayabilir.
+- **TWA'dan geçiş:** Önceki TWA sürümü bazı telefonlarda açılıp hemen kapanıyordu. Bu
+  sürüm, uygulamanın her cihazda açılması için Custom Tabs + WebView yedeğine geçti.
 - **Font/emoji:** Ekran görüntüleri Chrome'da alındı; farklı cihazlarda küçük farklar olur.
 - **Yasal:** Gizlilik politikası ve veri sorumlusu bilgileri taslaktır; kendi bilgilerinizle
   gözden geçirin.
