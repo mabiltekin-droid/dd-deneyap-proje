@@ -263,13 +263,15 @@
   function updateActiveNavLink(targetId) {
     if (!targetId) return;
     var id = targetId.replace(/^#/, '');
-    var navLinks = document.querySelectorAll('.header-nav .nav-item, .settings-header-nav .nav-item, .settings-nav-tabs .studio-tab');
+    var navLinks = document.querySelectorAll('.header-nav .nav-item, .settings-header-nav .nav-item, .settings-nav-tabs .studio-tab, .bottom-nav a[href^="#"]');
     navLinks.forEach(function (link) {
       var href = link.getAttribute('href') || '';
       if (href === '#' + id || (id === '' && (href === '#hero' || href === '#accountCard'))) {
         link.classList.add('active');
+        link.setAttribute('aria-current', 'page');
       } else {
         link.classList.remove('active');
+        link.removeAttribute('aria-current');
       }
     });
 
@@ -641,10 +643,14 @@
           start: 'top 40%',
           end: 'bottom 40%',
           onEnter: function () {
-            if (!isProgrammaticScroll) updateActiveNavLink('#' + secId);
+            if (!isProgrammaticScroll && (secId === 'hero' || window.scrollY > 24)) {
+              updateActiveNavLink('#' + secId);
+            }
           },
           onEnterBack: function () {
-            if (!isProgrammaticScroll) updateActiveNavLink('#' + secId);
+            if (!isProgrammaticScroll && (secId === 'hero' || window.scrollY > 24)) {
+              updateActiveNavLink('#' + secId);
+            }
           }
         });
         scrollTriggers.push(st);
@@ -755,6 +761,13 @@
       oldMain.className = newMain.className;
       oldMain.id = newMain.id;
       oldMain.innerHTML = newMain.innerHTML;
+
+      /* Mobil kabuk (canlı kokpit, alt sekme durumu) yeni DOM'a yeniden bağlansın. */
+      try {
+        document.dispatchEvent(new CustomEvent('deneyap:pagechange', {
+          detail: { target: targetFile }
+        }));
+      } catch (e) { /* eski tarayıcılarda yoksay */ }
 
       var newNav = doc.querySelector('.header-nav');
       var oldNav = document.querySelector('.header-nav');

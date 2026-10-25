@@ -12,7 +12,7 @@ metinleri, veri güvenliği cevaplarını ve yayın öncesi kontrolleri toplar.
 |---|---|
 | Uygulama adı | Deneyap Ev Koruma |
 | Paket adı | `com.mabiltekin.deneyapevkoruma` |
-| Sürüm | 2.21.0 (`versionCode 2`) |
+| Sürüm | 2.22.0 (`versionCode 3`) |
 | Kategori | House & Home (yoksa Tools) |
 | Etiketler | Akıllı ev, güvenlik, IoT |
 | Ücret | Ücretsiz |
@@ -60,8 +60,10 @@ Güvenlik:
 Bildirimler ve çevrimdışı kullanım:
 • Hareket, gaz, sıcaklık ve bağlantı kopması bildirimleri.
 • PWA desteği sayesinde son veriler çevrimdışıyken de görüntülenebilir.
-• Android uygulaması, canlı paneli Chrome'da veya dahili görünümde açar; web
-  güncellemeleri anında gelir.
+• Android uygulaması canlı paneli tam ekran, adres çubuksuz açar; web güncellemeleri
+  anında gelir.
+• Beş sekmeli mobil gezinme, hızlı mod şeridi, canlı kokpit, aşağı çekerek yenileme
+  ve ana ekran kısayolları.
 
 Not: Uygulama, Deneyap Kart tabanlı bir donanım ve Firebase/MQTT altyapısıyla birlikte
 çalışır. Cihaz bağlanmadan da hesap ve panel ekranları görüntülenebilir; sensör verileri
@@ -71,8 +73,11 @@ için donanım bağlantısı gerekir.
 ### Sürüm notu (ilk yayın)
 
 ```
-İlk Android sürümü: Deneyap Ev Koruma paneli artık Play Store'da.
-Canlı telemetri, cihaz kontrolü, otomasyon ve bildirimler tek uygulamada.
+Deneyap Ev Koruma 2.22.0:
+• Tam ekran, adres çubuksuz yeni Android uygulaması.
+• Beş sekmeli mobil gezinme ve hızlı mod şeridi.
+• Canlı kokpit, aşağı çekerek yenileme ve ana ekran kısayolları.
+• Canlı telemetri, cihaz kontrolü, otomasyon ve bildirimler tek uygulamada.
 ```
 
 ## 3. Görseller
@@ -81,23 +86,23 @@ Canlı telemetri, cihaz kontrolü, otomasyon ve bildirimler tek uygulamada.
 |---|---|---|---|
 | Uygulama ikonu | `android/play/icon-512.png` | 512×512 | Hazır |
 | Feature graphic | `android/play/feature-graphic-1024x500.png` | 1024×500 | Hazır |
-| Telefon ekran görüntüsü 1 | `android/play/screenshots/phone-01.png` | 1440×2560 (9:16) | Hazır |
-| Telefon ekran görüntüsü 2 | `android/play/screenshots/phone-02-settings.png` | 1440×2560 (9:16) | Hazır |
+| Telefon ekran görüntüsü 1 | `android/play/screenshots/phone-01.png` | 1080×1920 (9:16) | Hazır (2.22.0 kokpit) |
+| Telefon ekran görüntüsü 2 | `android/play/screenshots/phone-02-telemetry.png` | 1080×1920 (9:16) | Hazır (2.22.0 telemetri) |
+| Telefon ekran görüntüsü 3 | `android/play/screenshots/phone-03-settings.png` | 1080×1920 (9:16) | Hazır (2.22.0 ayarlar) |
 
-Play Store en az **2 telefon ekran görüntüsü** ister. Bu görüntüler v2.21.0 yayınından
-alındı; yayın öncesi son kontrolü yapın. Tablet desteği için 7"/10" ekran görüntüleri de
-eklenebilir (zorunlu değil).
+Play Store en az **2 telefon ekran görüntüsü** ister; üç yeni 9:16 görüntü hazırdır.
+Görüntüler 360×640 CSS görünümünün 3× ölçeğinde alındı; beş sekmeli alt gezinme, mod
+şeridi ve canlı kokpit görünür. Tablet için 7"/10" ekran görüntüleri de eklenebilir
+(zorunlu değil).
 
-Ekran görüntülerini yenilemek için Chrome ile:
+Ekran görüntülerini yenilemek için Chrome DevTools → **Device toolbar**:
 
-```powershell
-# Telefon (9:16, 1440×2560)
-chrome --headless=new --disable-gpu --hide-scrollbars `
-  --window-size=1440,2560 --force-device-scale-factor=1 `
-  --virtual-time-budget=12000 `
-  --screenshot="android\play\screenshots\phone-01.png" `
-  "https://ddproje.vercel.app/"
-```
+- Boyut: **360×640**, Device pixel ratio: **3** (çıktı 1080×1920, 9:16).
+- Sayfa: `https://ddproje.vercel.app/`; kokpit için en üst, telemetri için Telemetri
+  sekmesi, ayarlar için `/settings.html`.
+- Tarayıcı chrome'unu gizleyip yalnızca sayfa alanını yakalayın.
+- Android uygulamasındaki yerel ⋮ menüsünü göstermek için gerçek cihazdan ekran görüntüsü
+  almak en doğrusudur; web görüntüsünde menü görünmez.
 
 ## 4. App access (inceleme erişimi)
 
@@ -179,10 +184,10 @@ Ankette aşağıdaki cevaplar beklenir:
 - **Finansal özellik var mı?** Hayır.
 - **Sağlık özelliği var mı?** Hayır.
 - **COVID-19 uygulaması mı?** Hayır.
-- **WebView / Custom Tabs:** Uygulama, canlı PWA'yı Chrome Custom Tabs ile açar;
-  Chrome yoksa veya hemen kapanırsa dahili WebView yedeğine geçer. “Sadece web sitesi”
-  değildir; çevrimdışı PWA, push, cihaz kontrolü ve donanım entegrasyonu içerir. Mağaza
-  metninde bu işlevleri vurgulayın.
+- **WebView / yerel kabuk:** Uygulama, canlı PWA'yı tam ekran WebView içinde açar;
+  Chrome'a yalnızca kullanıcı isterse geçer. “Sadece web sitesi” değildir; yerel menü,
+  aşağı çekerek yenileme, ana ekran kısayolları, çevrimdışı PWA, cihaz kontrolü ve
+  donanım entegrasyonu içerir. Mağaza metninde bu işlevleri vurgulayın.
 
 ## 8. Hesap silme politikası
 
@@ -207,9 +212,9 @@ istenirse, ileride Firestore `deletion_requests` + Cloud Function akışı eklen
 ## 9. Yayın öncesi kontrol listesi
 
 - [ ] Play Console'da uygulama oluşturuldu; paket adı doğru.
-- [ ] `DeneyapEvKoruma-2.21.0-release.aab` internal testing'e yüklendi.
-- [ ] Telefonda internal testing kurulumu; uygulama açılıyor (Chrome Custom Tabs veya
-      dahili WebView yedeği).
+- [ ] `DeneyapEvKoruma-2.22.0-release.aab` internal testing'e yüklendi.
+- [ ] Telefonda internal testing kurulumu; uygulama tam ekran WebView'de açılıyor.
+- [ ] Yerel ⋮ menü, kısayollar, aşağı çekerek yenileme ve çift geri tuşu çalışıyor.
 - [ ] Giriş, cihaz, telemetri, komut, bildirim, çevrimdışı testleri geçti.
 - [ ] Gizlilik politikası URL'si canlı ve giriş gerektirmiyor.
 - [ ] Hesap silme bağlantısı canlı ve uygulama içinden erişilebilir.
@@ -229,16 +234,15 @@ istenirse, ileride Firestore `deletion_requests` + Cloud Function akışı eklen
 
 - **Cihaz testi yapılmadı:** Bu makinede bağlı telefon/emülatör yoktu. Yayın öncesi
   gerçek cihazda test zorunlu.
-- **Mobil görünüm:** PWA ağırlıklı olarak geniş ekran/SCADA düzeni kullanıyor. Telefonda
-  yatay taşma görülürse CSS mobil kırılımları iyileştirilmeli; uygulama katmanı bunu
-  düzeltmez.
+- **Mobil görünüm:** 2.22.0 ile beş sekmeli alt gezinme, mod şeridi, canlı kokpit ve
+  güvenli alan desteği eklendi; 390×844, 800×1000 ve 1440×900 boyutlarında doğrulandı.
+  Yine de gerçek telefonda klavye, çentik ve döndürme testi yapılmalı.
 - **Minimum işlevsellik:** İnceleme sırasında cihaz yoksa panel “bağlantı yok” gösterebilir.
   Demo cihaz/veri hazırlamak inceleme riskini azaltır.
-- **Custom Tabs:** Chrome yolunda üstte adres çubuğu görünebilir; bu beklenen davranıştır.
-  Chrome yoksa/hemen kapanırsa dahili WebView yedeği açılır; bu yolda Google ile giriş ve
-  web push çalışmayabilir.
+- **Chrome yolu:** Google ile giriş veya web push gerekirse ⋮ menüsünden “Chrome'da aç”
+  kullanılabilir; bu yolda adres çubuğu görünür.
 - **TWA'dan geçiş:** Önceki TWA sürümü bazı telefonlarda açılıp hemen kapanıyordu. Bu
-  sürüm, uygulamanın her cihazda açılması için Custom Tabs + WebView yedeğine geçti.
+  sürüm, uygulamanın her cihazda açılması için tam ekran WebView kabuğuna geçti.
 - **Font/emoji:** Ekran görüntüleri Chrome'da alındı; farklı cihazlarda küçük farklar olur.
 - **Yasal:** Gizlilik politikası ve veri sorumlusu bilgileri taslaktır; kendi bilgilerinizle
   gözden geçirin.

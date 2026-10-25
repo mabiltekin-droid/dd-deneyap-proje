@@ -1,6 +1,7 @@
 package com.mabiltekin.deneyapevkoruma;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.DownloadManager;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
@@ -10,10 +11,13 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.view.Gravity;
+import android.view.HapticFeedbackConstants;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.webkit.CookieManager;
+import android.webkit.GeolocationPermissions;
+import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
 import android.webkit.URLUtil;
 import android.webkit.ValueCallback;
@@ -30,17 +34,35 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+
+/**
+ * Yerel uygulama kabuğu.
+ *
+ * <p>Canlı PWA'yı adres çubuğu olmadan WebView içinde açar. Uygulamaya özel
+ * yerel menü, aşağı çekerek yenileme, çift geri tuşu ve Android kısayolları
+ * bu sınıfta yönetilir.</p>
+ */
 public class WebViewActivity extends Activity {
 
     public static final String EXTRA_URL = "url";
+    public static final String EXTRA_FROM_SHORTCUT = "from_shortcut";
+
     private static final int FILE_CHOOSER_REQUEST = 1001;
+    private static final String BRIDGE_NAME = "AndroidApp";
 
     private WebView webView;
+    private SwipeRefreshLayout swipeRefresh;
     private ProgressBar progressBar;
     private LinearLayout errorView;
     private TextView errorText;
     private ValueCallback<Uri[]> filePathCallback;
     private String startUrl;
+    private long lastBackPress = 0L;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,13 +76,35 @@ public class WebViewActivity extends Activity {
         Window window = getWindow();
         window.setStatusBarColor(Color.parseColor("#0A0D14"));
         window.setNavigationBarColor(Color.parseColor("#0A0D14"));
+        WindowCompat.setDecorFitsSystemWindows(window, false);
 
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(Color.parseColor("#0A0D14"));
         setContentView(root);
 
+        ViewCompat.setOnApplyWindowInsetsListener(root, (view, insets) -> {
+            Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            Insets ime = insets.getInsets(WindowInsetsCompat.Type.ime());
+            view.setPadding(0, bars.top, 0, Math.max(bars.bottom, ime.bottom));
+            return insets;
+        });
+
+        swipeRefresh = new SwipeRefreshLayout(this);
+        swipeRefresh.setBackgroundColor(Color.parseColor("#0A0D14"));
+        swipeRefresh.setColorSchemeColors(
+                Color.parseColor("#38BDF8"),
+                Color.parseColor("#10B981"),
+                Color.parseColor("#F59E0B"));
+        swipeRefresh.setProgressBackgroundColorSchemeColor(Color.parseColor("#111827"));
+        swipeRefresh.setDistanceToTriggerSync(dp(72));
+        root.addView(swipeRefresh, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT));
+
         webView = new WebView(this);
-        root.addView(webView, new FrameLayout.LayoutParams(
+        webView.setBackgroundColor(Color.parseColor("#0A0D14"));
+        webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        swipeRefresh.addView(webView, new SwipeRefreshLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
 
@@ -77,12 +121,25 @@ public class WebViewActivity extends Activity {
         settings.setJavaScriptCanOpenWindowsAutomatically(true);
         settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(true);
-        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        settings.setAllowFileAccessFromFileURLs(false);
+        settings.setAllowUniversalAccessFromFileURLs(false);
+        settings.setGeolocationEnabled(true);
+        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
-        settings.setUserAgentString(settings.getUserAgentString() + " DeneyapEvKoruma/2.21.0");
+        settings.setUserAgentString(settings.getUserAgentString()
+                + " DeneyapEvKoruma/" + appVersion());
 
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
+
+        swipeRefresh.setOnRefreshListener(() -> {
+            if (webView != null) {
+                showWebContent();
+                webView.reload();
+            }
+        });
+        swipeRefresh.setOnChildScrollUpCallback((parent, child) ->
+                webView != null && webView.getScrollY() > 0);
 
         progressBar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
         progressBar.setMax(100);
@@ -92,38 +149,7 @@ public class WebViewActivity extends Activity {
         progressParams.gravity = Gravity.TOP;
         root.addView(progressBar, progressParams);
 
-        errorView = new LinearLayout(this);
-        errorView.setOrientation(LinearLayout.VERTICAL);
-        errorView.setGravity(Gravity.CENTER);
-        errorView.setPadding(dp(24), dp(24), dp(24), dp(24));
-        errorView.setBackgroundColor(Color.parseColor("#0A0D14"));
-        errorView.setVisibility(View.GONE);
-
-        errorText = new TextView(this);
-        errorText.setTextColor(Color.WHITE);
-        errorText.setTextSize(15);
-        errorText.setGravity(Gravity.CENTER);
-        errorView.addView(errorText, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT));
-
-        Button retry = new Button(this);
-        retry.setText("Tekrar dene");
-        retry.setOnClickListener(v -> {
-            errorView.setVisibility(View.GONE);
-            webView.setVisibility(View.VISIBLE);
-            progressBar.setVisibility(View.VISIBLE);
-            webView.loadUrl(startUrl);
-        });
-        LinearLayout.LayoutParams retryParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT);
-        retryParams.topMargin = dp(16);
-        errorView.addView(retry, retryParams);
-
-        root.addView(errorView, new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT));
+        buildErrorView(root);
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
@@ -132,15 +158,30 @@ public class WebViewActivity extends Activity {
             }
 
             @Override
+            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                return handleUri(Uri.parse(url));
+            }
+
+            @Override
+            public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
+                progressBar.setVisibility(View.VISIBLE);
+                if (errorView.getVisibility() != View.VISIBLE) {
+                    showWebContent();
+                }
+            }
+
+            @Override
             public void onPageFinished(WebView view, String url) {
                 progressBar.setVisibility(View.GONE);
+                swipeRefresh.setRefreshing(false);
                 if (errorView.getVisibility() != View.VISIBLE) {
                     webView.setVisibility(View.VISIBLE);
                 }
             }
 
             @Override
-            public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+            public void onReceivedError(WebView view, WebResourceRequest request,
+                                        WebResourceError error) {
                 if (request.isForMainFrame()) {
                     showError("Sayfa yüklenemedi.\n\n"
                             + error.getDescription()
@@ -154,7 +195,12 @@ public class WebViewActivity extends Activity {
             @Override
             public void onProgressChanged(WebView view, int newProgress) {
                 progressBar.setProgress(newProgress);
-                progressBar.setVisibility(newProgress >= 100 ? View.GONE : View.VISIBLE);
+                if (newProgress >= 100) {
+                    progressBar.setVisibility(View.GONE);
+                    swipeRefresh.setRefreshing(false);
+                } else {
+                    progressBar.setVisibility(View.VISIBLE);
+                }
             }
 
             @Override
@@ -180,6 +226,12 @@ public class WebViewActivity extends Activity {
             public void onPermissionRequest(final PermissionRequest request) {
                 runOnUiThread(() -> request.grant(request.getResources()));
             }
+
+            @Override
+            public void onGeolocationPermissionsShowPrompt(String origin,
+                                                           GeolocationPermissions.Callback callback) {
+                callback.invoke(origin, true, false);
+            }
         });
 
         webView.setDownloadListener((url, userAgent, contentDisposition, mimetype, contentLength) -> {
@@ -203,13 +255,164 @@ public class WebViewActivity extends Activity {
             }
         });
 
+        webView.addJavascriptInterface(new AndroidBridge(), BRIDGE_NAME);
         webView.loadUrl(startUrl);
     }
 
-    private boolean handleUri(Uri uri) {
-        if (uri == null) {
-            return false;
+    private void buildErrorView(FrameLayout root) {
+        errorView = new LinearLayout(this);
+        errorView.setOrientation(LinearLayout.VERTICAL);
+        errorView.setGravity(Gravity.CENTER);
+        errorView.setPadding(dp(24), dp(24), dp(24), dp(24));
+        errorView.setBackgroundColor(Color.parseColor("#0A0D14"));
+        errorView.setVisibility(View.GONE);
+
+        TextView title = new TextView(this);
+        title.setText("Bağlantı kurulamadı");
+        title.setTextColor(Color.WHITE);
+        title.setTextSize(20);
+        title.setGravity(Gravity.CENTER);
+        errorView.addView(title, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        errorText = new TextView(this);
+        errorText.setTextColor(Color.parseColor("#94A3B8"));
+        errorText.setTextSize(14);
+        errorText.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams errorParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        errorParams.topMargin = dp(12);
+        errorView.addView(errorText, errorParams);
+
+        LinearLayout buttons = new LinearLayout(this);
+        buttons.setOrientation(LinearLayout.HORIZONTAL);
+        buttons.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams buttonRowParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        buttonRowParams.topMargin = dp(20);
+        errorView.addView(buttons, buttonRowParams);
+
+        Button retry = new Button(this);
+        retry.setText("Tekrar dene");
+        retry.setAllCaps(false);
+        retry.setTextColor(Color.WHITE);
+        retry.setOnClickListener(v -> {
+            showWebContent();
+            webView.loadUrl(startUrl);
+        });
+        LinearLayout.LayoutParams retryParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        retryParams.rightMargin = dp(10);
+        buttons.addView(retry, retryParams);
+
+        Button chrome = new Button(this);
+        chrome.setText("Chrome'da aç");
+        chrome.setAllCaps(false);
+        chrome.setTextColor(Color.WHITE);
+        chrome.setOnClickListener(v ->
+                MainActivity.openInChrome(this, currentUrl()));
+        buttons.addView(chrome, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        root.addView(errorView, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT));
+    }
+
+    private void showWebContent() {
+        if (errorView != null) errorView.setVisibility(View.GONE);
+        if (swipeRefresh != null) {
+            swipeRefresh.setVisibility(View.VISIBLE);
+            swipeRefresh.setEnabled(true);
         }
+        if (webView != null) webView.setVisibility(View.VISIBLE);
+        if (progressBar != null) {
+            progressBar.setVisibility(View.VISIBLE);
+            progressBar.setProgress(0);
+        }
+    }
+
+    private void showError(String message) {
+        progressBar.setVisibility(View.GONE);
+        swipeRefresh.setRefreshing(false);
+        swipeRefresh.setEnabled(false);
+        swipeRefresh.setVisibility(View.GONE);
+        webView.setVisibility(View.GONE);
+        errorView.setVisibility(View.VISIBLE);
+        errorText.setText(message);
+    }
+
+    private void showAppMenu() {
+        final String[] items = {
+                "Yenile",
+                "Chrome'da aç",
+                "Bağlantıyı paylaş",
+                "Uygulama hakkında"
+        };
+        new AlertDialog.Builder(this)
+                .setTitle("Uygulama")
+                .setItems(items, (dialog, which) -> {
+                    switch (which) {
+                        case 0:
+                            showWebContent();
+                            if (webView != null) webView.reload();
+                            break;
+                        case 1:
+                            MainActivity.openInChrome(this, currentUrl());
+                            break;
+                        case 2:
+                            shareCurrentPage();
+                            break;
+                        case 3:
+                            showAboutDialog();
+                            break;
+                    }
+                })
+                .show();
+    }
+
+    private void showAboutDialog() {
+        new AlertDialog.Builder(this)
+                .setTitle("Deneyap Ev Koruma")
+                .setMessage("Sürüm " + appVersion()
+                        + "\n\nCanlı panel: " + startUrl
+                        + "\n\nYerel uygulama; veriler hesabınızda ve Deneyap Kart cihazınızda kalır.")
+                .setPositiveButton("Tamam", null)
+                .show();
+    }
+
+    private void shareCurrentPage() {
+        try {
+            Intent send = new Intent(Intent.ACTION_SEND);
+            send.setType("text/plain");
+            send.putExtra(Intent.EXTRA_TEXT, currentUrl());
+            startActivity(Intent.createChooser(send, "Bağlantıyı paylaş"));
+        } catch (Throwable t) {
+            Toast.makeText(this, "Paylaşım açılamadı", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private String currentUrl() {
+        String url = webView != null ? webView.getUrl() : null;
+        if (url == null || url.startsWith("about:")) return startUrl;
+        return url;
+    }
+
+    private String appVersion() {
+        try {
+            return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+        } catch (Throwable t) {
+            return "2.22.0";
+        }
+    }
+
+    private boolean handleUri(Uri uri) {
+        if (uri == null) return false;
         String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase();
         String host = uri.getHost() == null ? "" : uri.getHost();
 
@@ -219,6 +422,7 @@ public class WebViewActivity extends Activity {
                     || host.equals("accounts.google.com")
                     || host.endsWith(".google.com")
                     || host.endsWith(".googleapis.com")
+                    || host.endsWith(".googleusercontent.com")
                     || host.endsWith(".firebaseapp.com")
                     || host.endsWith(".firebase.com")
                     || host.endsWith(".github.com")
@@ -241,15 +445,68 @@ public class WebViewActivity extends Activity {
         return true;
     }
 
-    private void showError(String message) {
-        progressBar.setVisibility(View.GONE);
-        webView.setVisibility(View.GONE);
-        errorView.setVisibility(View.VISIBLE);
-        errorText.setText(message);
-    }
-
     private int dp(int value) {
         return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
+    private class AndroidBridge {
+        @JavascriptInterface
+        public String platform() {
+            return "android";
+        }
+
+        @JavascriptInterface
+        public String version() {
+            return appVersion();
+        }
+
+        @JavascriptInterface
+        public void haptic() {
+            runOnUiThread(() -> {
+                if (webView != null) {
+                    webView.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void openMenu() {
+            runOnUiThread(WebViewActivity.this::showAppMenu);
+        }
+
+        @JavascriptInterface
+        public void openInChrome() {
+            runOnUiThread(() ->
+                    MainActivity.openInChrome(WebViewActivity.this, currentUrl()));
+        }
+
+        @JavascriptInterface
+        public void reloadPage() {
+            runOnUiThread(() -> {
+                if (webView != null) {
+                    showWebContent();
+                    webView.reload();
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void sharePage() {
+            runOnUiThread(WebViewActivity.this::shareCurrentPage);
+        }
+    }
+
+    @Override
+    public void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        String url = intent.getStringExtra(EXTRA_URL);
+        boolean fromShortcut = intent.getBooleanExtra(EXTRA_FROM_SHORTCUT, false);
+        if (fromShortcut && url != null && !url.trim().isEmpty() && webView != null) {
+            startUrl = url;
+            showWebContent();
+            webView.loadUrl(url);
+        }
     }
 
     @Override
@@ -272,8 +529,14 @@ public class WebViewActivity extends Activity {
     public void onBackPressed() {
         if (webView != null && webView.canGoBack()) {
             webView.goBack();
-        } else {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        if (now - lastBackPress <= 2200) {
             super.onBackPressed();
+        } else {
+            lastBackPress = now;
+            Toast.makeText(this, "Çıkmak için tekrar geri basın", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -282,6 +545,7 @@ public class WebViewActivity extends Activity {
         if (webView != null) {
             webView.onPause();
         }
+        CookieManager.getInstance().flush();
         super.onPause();
     }
 
@@ -296,6 +560,7 @@ public class WebViewActivity extends Activity {
     @Override
     protected void onDestroy() {
         if (webView != null) {
+            webView.removeJavascriptInterface(BRIDGE_NAME);
             webView.loadUrl("about:blank");
             webView.stopLoading();
             webView.destroy();

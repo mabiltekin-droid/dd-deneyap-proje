@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <shortcut
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutId="overview"
+        android:shortcutLongLabel="@string/shortcut_overview_long"
+        android:shortcutShortLabel="@string/shortcut_overview_short">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="com.mabiltekin.deneyapevkoruma.MainActivity"
+            android:targetPackage="com.mabiltekin.deneyapevkoruma">
+            <extra
+                android:name="shortcut"
+                android:value="overview" />
+        </intent>
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+
+    <shortcut
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutId="telemetry"
+        android:shortcutLongLabel="@string/shortcut_telemetry_long"
+        android:shortcutShortLabel="@string/shortcut_telemetry_short">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="com.mabiltekin.deneyapevkoruma.MainActivity"
+            android:targetPackage="com.mabiltekin.deneyapevkoruma">
+            <extra
+                android:name="shortcut"
+                android:value="telemetry" />
+        </intent>
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+
+    <shortcut
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutId="defense"
+        android:shortcutLongLabel="@string/shortcut_defense_long"
+        android:shortcutShortLabel="@string/shortcut_defense_short">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="com.mabiltekin.deneyapevkoruma.MainActivity"
+            android:targetPackage="com.mabiltekin.deneyapevkoruma">
+            <extra
+                android:name="shortcut"
+                android:value="defense" />
+        </intent>
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+
+    <shortcut
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutId="settings"
+        android:shortcutLongLabel="@string/shortcut_settings_long"
+        android:shortcutShortLabel="@string/shortcut_settings_short">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="com.mabiltekin.deneyapevkoruma.MainActivity"
+            android:targetPackage="com.mabiltekin.deneyapevkoruma">
+            <extra
+                android:name="shortcut"
+                android:value="settings" />
+        </intent>
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+
+    <shortcut
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutId="chrome"
+        android:shortcutLongLabel="@string/shortcut_chrome_long"
+        android:shortcutShortLabel="@string/shortcut_chrome_short">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="com.mabiltekin.deneyapevkoruma.MainActivity"
+            android:targetPackage="com.mabiltekin.deneyapevkoruma">
+            <extra
+                android:name="shortcut"
+                android:value="chrome" />
+        </intent>
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+
+</shortcuts>

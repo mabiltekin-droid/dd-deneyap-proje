@@ -14,6 +14,7 @@
   <link rel="prefetch" href="./index.html">
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="stylesheet" href="./css/style.css">
+  <link rel="stylesheet" href="./css/mobile-app.css">
   <script src="./js/theme-boot.js"></script>
 </head>
 <body class="mission-control-body settings-studio-body">
@@ -102,7 +103,7 @@
       <div class="hero-badge">
         <span class="badge-pulse"></span>
         <span class="badge-text">DENEYAP KART // MERKEZİ YAPILANDIRMA STÜDYOSU</span>
-        <span class="badge-version" id="studioVersion">v2.21.0</span>
+        <span class="badge-version" id="studioVersion">v2.22.0</span>
       </div>
       <p class="studio-intro-sub">
         NVS flash kayıtları, MQTT bulut köprüsü, telemetri eşikleri ve alarm kuralları.
@@ -1691,14 +1692,33 @@
 
   <!-- Mobil Alt Navigasyon -->
   <nav class="bottom-nav" aria-label="Ana gezinme">
-    <a href="./index.html">
+    <a href="./index.html#hero">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <rect x="3" y="3" width="7" height="9" rx="1.5"/>
-        <rect x="14" y="3" width="7" height="5" rx="1.5"/>
-        <rect x="14" y="12" width="7" height="9" rx="1.5"/>
-        <rect x="3" y="16" width="7" height="5" rx="1.5"/>
+        <path d="M3 10.5 12 3l9 7.5"/>
+        <path d="M5 9.5V21h14V9.5"/>
+        <path d="M9.5 21v-6h5v6"/>
       </svg>
-      <span>Sensörler</span>
+      <span>Panel</span>
+    </a>
+    <a href="./index.html#telemetry">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M3 12h4l2-7 4 14 2-7h6"/>
+      </svg>
+      <span>Telemetri</span>
+    </a>
+    <a href="./index.html#command-center">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        <path d="M9 12l2 2 4-4"/>
+      </svg>
+      <span>Savunma</span>
+    </a>
+    <a href="./index.html#analytics">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M3 3v18h18"/>
+        <path d="M7 15l4-4 3 3 5-6"/>
+      </svg>
+      <span>Analitik</span>
     </a>
     <a href="./settings.html" class="active" aria-current="page">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -1745,5 +1765,6 @@
   <script src="./js/account.js"></script>
   <script src="./js/profile-ui.js"></script>
   <script src="./js/admin-invite-ui.js"></script>
+  <script src="./js/mobile-app.js"></script>
 </body>
 </html>

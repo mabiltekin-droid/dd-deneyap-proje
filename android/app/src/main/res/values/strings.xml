@@ -1,4 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Deneyap Ev Koruma</string>
+
+    <!-- Ana ekran kısayolları -->
+    <string name="shortcut_overview_short">Panel</string>
+    <string name="shortcut_overview_long">Canlı panele git</string>
+    <string name="shortcut_telemetry_short">Telemetri</string>
+    <string name="shortcut_telemetry_long">Sensör telemetrisini aç</string>
+    <string name="shortcut_defense_short">Savunma</string>
+    <string name="shortcut_defense_long">Savunma komutlarını aç</string>
+    <string name="shortcut_settings_short">Ayarlar</string>
+    <string name="shortcut_settings_long">Sistem ayarlarını aç</string>
+    <string name="shortcut_chrome_short">Chrome\'da aç</string>
+    <string name="shortcut_chrome_long">Google girişi için Chrome\'da aç</string>
 </resources>

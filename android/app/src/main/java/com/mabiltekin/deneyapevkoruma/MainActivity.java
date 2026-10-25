@@ -1,144 +1,122 @@
 package com.mabiltekin.deneyapevkoruma;
 
 import android.app.Activity;
+import android.content.ActivityNotFoundException;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
-import android.view.View;
 import android.widget.Toast;
 
 import androidx.browser.customtabs.CustomTabsClient;
 import androidx.browser.customtabs.CustomTabsIntent;
 
 /**
- * Chrome Custom Tabs ile siteyi açar. Chrome yoksa, engelliyse veya Chrome hemen
- * kapanırsa WebViewActivity'ye düşer. Böylece uygulama her durumda açılır.
+ * Uygulamanın tek giriş noktası.
+ *
+ * <p>Uygulama artık doğrudan yerel WebView kabuğunu açar; Chrome yalnızca
+ * "Chrome'da aç" (Google girişi / web bildirimleri) istendiğinde kullanılır.
+ * Böylece ilk açılışta adres çubuğu görünmez ve uygulama gibi çalışır.</p>
  */
 public class MainActivity extends Activity {
 
-    private static final long RETURN_GRACE_MS = 3000L;
-
-    private final Handler handler = new Handler(Looper.getMainLooper());
-    private String startUrl;
-    private boolean launched = false;
-    private boolean firstResume = true;
-    private boolean paused = false;
-    private long launchedAt = 0L;
-    private Runnable watchdog;
+    public static final String EXTRA_SHORTCUT = "shortcut";
+    public static final String SHORTCUT_CHROME = "chrome";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        startUrl = getString(R.string.start_url);
+        String shortcut = getIntent().getStringExtra(EXTRA_SHORTCUT);
 
-        getWindow().setStatusBarColor(Color.parseColor("#0A0D14"));
-        getWindow().setNavigationBarColor(Color.parseColor("#0A0D14"));
-
-        View background = new View(this);
-        background.setBackgroundColor(Color.parseColor("#0A0D14"));
-        setContentView(background);
-
-        launchChromeOrWebView();
-    }
-
-    private void launchChromeOrWebView() {
-        String browser = findBrowser();
-        if (browser == null) {
-            openWebView();
+        if (SHORTCUT_CHROME.equals(shortcut)) {
+            openInChrome(this, getString(R.string.start_url));
+            finish();
             return;
         }
 
+        Intent intent = new Intent(this, WebViewActivity.class);
+        intent.putExtra(WebViewActivity.EXTRA_URL, buildUrl(shortcut));
+        intent.putExtra(WebViewActivity.EXTRA_FROM_SHORTCUT, shortcut != null);
+        startActivity(intent);
+        finish();
+    }
+
+    private String buildUrl(String shortcut) {
+        String base = getString(R.string.start_url);
+        if (shortcut == null) return base;
+
+        switch (shortcut) {
+            case "telemetry":
+                return withFragment(base, "telemetry");
+            case "defense":
+                return withFragment(base, "command-center");
+            case "analytics":
+                return withFragment(base, "analytics");
+            case "settings":
+                return settingsUrl(base);
+            case "overview":
+            default:
+                return base;
+        }
+    }
+
+    private static String withFragment(String base, String fragment) {
+        return Uri.parse(base).buildUpon().fragment(fragment).build().toString();
+    }
+
+    private static String settingsUrl(String base) {
+        Uri uri = Uri.parse(base);
+        String path = uri.getPath();
+        if (path == null || path.isEmpty()) path = "/";
+        if (!path.endsWith("/")) path = path + "/";
+        path = path + "settings.html";
+        return uri.buildUpon().path(path).fragment(null).build().toString();
+    }
+
+    /**
+     * Canlı siteyi Chrome Custom Tabs içinde açar. Google ile giriş ve web push
+     * bu yolda çalışır; yerel WebView oturumundan ayrı bir oturumdur.
+     */
+    public static void openInChrome(Activity activity, String url) {
+        if (url == null || url.trim().isEmpty()) {
+            url = activity.getString(R.string.start_url);
+        }
+
         try {
+            String browser = findBrowser(activity);
             CustomTabsIntent.Builder builder = new CustomTabsIntent.Builder();
             builder.setShowTitle(true);
             builder.setUrlBarHidingEnabled(true);
             builder.setToolbarColor(Color.parseColor("#0A0D14"));
             builder.setNavigationBarColor(Color.parseColor("#0A0D14"));
             CustomTabsIntent intent = builder.build();
-            intent.intent.setPackage(browser);
-
-            launched = true;
-            launchedAt = System.currentTimeMillis();
-            intent.launchUrl(this, Uri.parse(startUrl));
-
-            watchdog = () -> {
-                if (launched && !paused && hasWindowFocus() && !isFinishing()) {
-                    launched = false;
-                    openWebView();
-                }
-            };
-            handler.postDelayed(watchdog, 3000L);
-        } catch (Throwable t) {
-            launched = false;
-            Toast.makeText(this,
-                    "Chrome açılamadı, yerleşik görünüm kullanılacak.",
-                    Toast.LENGTH_SHORT).show();
-            openWebView();
-        }
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        paused = false;
-
-        if (firstResume) {
-            firstResume = false;
-            return;
-        }
-
-        if (launched) {
-            long elapsed = System.currentTimeMillis() - launchedAt;
-            launched = false;
-            if (elapsed < RETURN_GRACE_MS) {
-                openWebView();
-            } else {
-                finish();
+            if (browser != null) {
+                intent.intent.setPackage(browser);
+            }
+            intent.launchUrl(activity, Uri.parse(url));
+        } catch (Throwable first) {
+            try {
+                activity.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+            } catch (ActivityNotFoundException second) {
+                Toast.makeText(activity,
+                        "Açılacak tarayıcı bulunamadı.", Toast.LENGTH_LONG).show();
             }
         }
     }
 
-    @Override
-    protected void onPause() {
-        paused = true;
-        super.onPause();
-    }
-
-    private String findBrowser() {
+    private static String findBrowser(Context context) {
         try {
-            getPackageManager().getPackageInfo("com.android.chrome", 0);
+            context.getPackageManager().getPackageInfo("com.android.chrome", 0);
             return "com.android.chrome";
         } catch (Throwable ignored) {
-            // Chrome yok, görünmüyor veya sorgulanamıyor; başka bir tarayıcı ara.
+            // Chrome yok veya sorgulanamıyor; Custom Tabs destekli başka tarayıcı ara.
         }
         try {
-            return CustomTabsClient.getPackageName(this, null);
+            return CustomTabsClient.getPackageName(context, null);
         } catch (Throwable ignored) {
             return null;
         }
-    }
-
-    private void openWebView() {
-        if (watchdog != null) {
-            handler.removeCallbacks(watchdog);
-            watchdog = null;
-        }
-        Intent intent = new Intent(this, WebViewActivity.class);
-        intent.putExtra(WebViewActivity.EXTRA_URL, startUrl);
-        startActivity(intent);
-        finish();
-    }
-
-    @Override
-    protected void onDestroy() {
-        if (watchdog != null) {
-            handler.removeCallbacks(watchdog);
-            watchdog = null;
-        }
-        super.onDestroy();
     }
 }

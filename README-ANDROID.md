@@ -1,16 +1,19 @@
 # Android Uygulaması (APK / AAB)
 
-Deneyap Ev Koruma'nın Android paketi. Uygulama, canlı PWA'yı **Chrome Custom Tabs**
-ile açar; Chrome yoksa, devre dışıysa veya Chrome hemen kapanırsa **dahili WebView**
-yedek görünümüne geçer. Böylece uygulama, Chrome bulunmayan/engelli telefonlarda da
-açılır. Web tarafında yapılan değişiklikler **yeni APK üretmeden** uygulamaya yansır;
-APK yalnızca Android tarafı (ikon, isim, paket, izinler, sürüm, başlangıç adresi)
+Deneyap Ev Koruma'nın Android paketi. Uygulama, canlı PWA'yı **tam ekran WebView**
+içinde açar; adres çubuğu, tarayıcı düğmeleri veya Chrome bağımlılığı yoktur. Chrome
+yalnızca kullanıcı isterse **“Chrome'da aç”** menüsünden devreye girer (Google ile giriş
+ve web push için yedek yol). Böylece uygulama, Chrome bulunmayan veya Chrome'u kısıtlayan
+telefonlarda da güvenilir biçimde açılır.
+
+Web tarafında yapılan değişiklikler **yeni APK üretmeden** uygulamaya yansır; APK yalnızca
+Android tarafı (ikon, isim, paket, izinler, sürüm, başlangıç adresi, yerel kabuk kodu)
 değişince yeniden üretilir.
 
 - **Paket adı:** `com.mabiltekin.deneyapevkoruma`
 - **Uygulama adı:** Deneyap Ev Koruma
 - **Web adresi:** https://ddproje.vercel.app/
-- **Sürüm:** 2.21.0 — `versionCode 2`
+- **Sürüm:** 2.22.0 — `versionCode 3`
 - **minSdk:** 24 (Android 7.0+) · **targetSdk / compileSdk:** 36 (Android 16)
 - **Mimari:** Tek, evrensel APK. Telefon/tablet için ayrı APK gerekmez; PWA responsive'dir.
 
@@ -20,17 +23,17 @@ Derleme sonrası:
 
 | Dosya | Kullanım |
 |---|---|
-| `android/dist/DeneyapEvKoruma-2.21.0-release.apk` | Telefona doğrudan kurulum / test |
-| `android/dist/DeneyapEvKoruma-2.21.0-release.aab` | **Google Play'e yükleme** |
+| `android/dist/DeneyapEvKoruma-2.22.0-release.apk` | Telefona doğrudan kurulum / test |
+| `android/dist/DeneyapEvKoruma-2.22.0-release.aab` | **Google Play'e yükleme** |
 | `android/play/icon-512.png` | Play Store uygulama ikonu |
 | `android/play/feature-graphic-1024x500.png` | Play Store öne çıkan görsel |
-| `android/play/screenshots/` | Telefon ekran görüntüleri (v2.21.0) |
+| `android/play/screenshots/` | 2.22.0 mobil kabuk telefon ekran görüntüleri (1080×1920) |
 
 Bu derlemenin SHA-256 özetleri:
 
 ```
-APK: F9640B6F2A6FBBA956E130B44E476ECB18D6F2C064CD9A93FFB84F458F2E7107
-AAB: 86E7E766C24BA6A1BE9D3DF030D29EFFCD8C7E4537B3394FAD0E0F806C79F582
+APK: A6A205A9350E898E4115B77D8B2F6B81E5067E75996BE7D403D39D5F0C0EC71D
+AAB: EE7BA2162108008C85C2AB21DC6D48591B45B80D7E226F6A61A12497D26ABBA7
 ```
 
 > Yeniden derlemede bu özetler değişir. Play Store'a her yüklemede `appVersionCode`
@@ -38,19 +41,35 @@ AAB: 86E7E766C24BA6A1BE9D3DF030D29EFFCD8C7E4537B3394FAD0E0F806C79F582
 
 ## Nasıl açılıyor?
 
-1. Uygulama açılır, Chrome (veya Custom Tabs destekli başka bir tarayıcı) aranır.
-2. Chrome varsa site Chrome'un **Custom Tabs** görünümünde açılır. Bu yolda Google ile
-   giriş, web push bildirimleri ve Chrome oturumu normal çalışır. Üstte **adres çubuğu
-   görünebilir**; bu, Custom Tabs'in normal davranışıdır.
-3. Chrome yoksa, devre dışıysa veya Chrome açıldıktan hemen sonra kapanırsa uygulama
-   otomatik olarak **dahili WebView** görünümüne geçer. Bu görünümde site yine açılır;
-   ancak Google ile giriş ve web push bazı cihazlarda çalışmayabilir. E-posta/şifre
-   girişi ve panel işlevleri kullanılabilir.
+1. Uygulama açılır ve siteyi doğrudan **dahili WebView** içinde yükler. Adres çubuğu,
+   Chrome sekmesi veya tarayıcı arayüzü yoktur.
+2. Sağ üstteki **⋮ yerel menü** ile sayfa yenilenir, Chrome'da açılır, bağlantı paylaşılır
+   veya uygulama bilgisi görüntülenir. Android ana ekranındaki beş kısayol da aynı kabuğu
+   doğrudan hedef sayfada açar.
+3. Chrome'a yalnızca **kullanıcı isterse** geçilir. Google ile giriş veya web push
+   sorun yaşarsa “Chrome'da aç” kullanılabilir; normal panel, e-posta/şifre girişi,
+   telemetri ve komutlar WebView içinde çalışır.
+4. İnternet yoksa veya sayfa yüklenemezse yerel “Bağlantı kurulamadı” ekranı, “Tekrar
+   dene” ve “Chrome'da aç” düğmeleri gösterilir.
 
 Bu mimari, daha önceki **Trusted Web Activity (TWA)** sürümünün Chrome bulunmayan veya
-Chrome'u kısıtlayan telefonlarda açılıp hemen kapanması nedeniyle seçildi. TWA'nın
-tam ekran (adres çubuksuz) görünümü ileride tekrar değerlendirilebilir; ancak mevcut
-öncelik uygulamanın her cihazda açılmasıdır.
+Chrome'u kısıtlayan telefonlarda açılıp hemen kapanması nedeniyle seçildi. TWA çıktıları
+referans için `android/dist/*-twa*` altında tutulur; yeni yayın WebView sürümüdür.
+
+## Mobil uygulama deneyimi
+
+Web arayüzü telefonda site gibi değil, uygulama gibi davranır:
+
+- **5 sekmeli alt gezinme:** Panel, Telemetri, Savunma, Analitik, Ayarlar.
+- **Başparmak dostu mod şeridi:** İzleme / Evde / Gece / Tatil modları üstte.
+- **Canlı kokpit:** Telefonda tanıtım afişi yerine anlık durum, mod ve hızlı eylemler.
+- **Yerel kabuk:** Aşağı çekerek yenileme, çift geri tuşuyla çıkış, yerel ⋮ menü,
+  Android 12 açılış ekranı, durum çubuğu/klavye güvenli alanları.
+- **Ana ekran kısayolları:** Panel, Telemetri, Savunma, Analitik, Ayarlar.
+- **Dokunsal geri bildirim:** Destekleyen Android cihazlarda sekme/mod dokunuşlarında.
+
+Mobil kabuk dosyaları: `pwa/css/mobile-app.css`, `pwa/js/mobile-app.js`. Masaüstünde
+alt gezinme gizlenir; üst gezinme kullanılır.
 
 ## Gereksinimler
 
@@ -131,17 +150,20 @@ Upload anahtarı SHA-256:
    değiştirilemez. Paket adı değişecekse `android/gradle.properties` → `twaPackage` ve
    Java kaynaklarındaki `package` satırları birlikte güncellenmelidir; aksi hâlde uygulama
    açılmaz. Mevcut paket adını korumanız önerilir.
-3. **Internal testing** track'ine `DeneyapEvKoruma-2.21.0-release.aab` yükleyin.
-4. Play App Signing'i etkinleştirin. **Mevcut Custom Tabs + WebView mimarisi için Play
-   App Signing SHA-256'sını `assetlinks.json`'a eklemek gerekmez.** Bu dosya yalnızca
-   ileride TWA'ya dönülürse gerekir.
+3. **Internal testing** track'ine `DeneyapEvKoruma-2.22.0-release.aab` yükleyin.
+4. Play App Signing'i etkinleştirin. **Mevcut WebView mimarisi için Play App Signing
+   SHA-256'sını `assetlinks.json`'a eklemek gerekmez.** Bu dosya yalnızca ileride TWA'ya
+   dönülürse gerekir.
 5. Internal testing bağlantısıyla telefona kurun; aşağıdakileri test edin:
-   - Uygulama açılıyor; Chrome'da veya dahili görünümde site yükleniyor.
-   - Giriş / kayıt / e-posta doğrulama.
+   - Uygulama doğrudan tam ekran WebView'de açılıyor; adres çubuğu görünmüyor.
+   - Yerel ⋮ menü: Yenile, Chrome'da aç, bağlantı paylaş, hakkında.
+   - Ana ekran kısayolları doğru sayfayı açıyor.
+   - Beş sekmeli alt gezinme, mod şeridi ve canlı kokpit.
+   - Giriş / kayıt / e-posta doğrulama; gerekirse Chrome'da aç.
    - Cihaz listesi, telemetri, komut gönderme.
-   - Bildirim izni ve bildirim alma (Chrome yolunda).
-   - Çevrimdışıyken son önbellek açılıyor.
-   - Geri tuşu, döndürme, klavye, dosya seçme.
+   - Bildirim izni ve bildirim alma (destekleniyorsa Chrome yolunda).
+   - Çevrimdışıyken son önbellek açılıyor; hata ekranı düzgün görünüyor.
+   - Aşağı çekerek yenileme, geri tuşu, döndürme, klavye, dosya seçme.
 6. Store listing, privacy policy, data safety, content rating, app access bölümlerini
    doldurun. Ayrıntılı kontrol listesi: `PLAY-STORE.md`.
 7. Production'a kademeli rollout (ör. %20 → %50 → %100).
@@ -176,12 +198,13 @@ android/
     build.gradle
     src/main/AndroidManifest.xml
     src/main/java/com/mabiltekin/deneyapevkoruma/
-      MainActivity.java      # Chrome Custom Tabs + WebView yedeği
-      WebViewActivity.java   # Dahili görünüm, dosya seçme, indirme
-    src/main/res/values/strings.xml       # uygulama adı
+      MainActivity.java      # başlatıcı; kısayol yönlendirme + Chrome yedeği
+      WebViewActivity.java   # tam ekran WebView, yerel menü, yenileme, geri
+    src/main/res/xml/shortcuts.xml         # Android ana ekran kısayolları
+    src/main/res/values/strings.xml        # uygulama adı + kısayol etiketleri
     src/main/res/values/colors.xml
-    src/main/res/values/styles.xml
-    src/main/res/mipmap-*/                # ikonlar
+    src/main/res/values/styles.xml         # Android 12 açılış teması
+    src/main/res/mipmap-*/                 # ikonlar
   play/                      # Play görselleri
   dist/                      # APK/AAB çıktıları (git dışı)
 pwa/.well-known/assetlinks.json   # yalnızca ileride TWA için; mevcut uygulama kullanmaz
@@ -209,18 +232,15 @@ yapılandırmasından kalmıştır; mevcut uygulamada sırasıyla **başlangıç
 ## Sorun giderme
 
 **Uygulama Chrome'da ve üstte adres çubuğuyla açılıyor**
-- Beklenen davranış. Mevcut sürüm Chrome Custom Tabs kullanır; adres çubuğu görünür.
-- Adres çubuksuz tam ekran isteniyorsa TWA'ya dönmek gerekir; ancak TWA bazı
-  telefonlarda (Chrome yok/engelli) açılmıyordu. Önce mevcut sürümün açılmasını
-  doğrulayın.
+- Normalde beklenen davranış değildir. Yalnızca yerel ⋮ menüden veya “Chrome'da aç”
+  kısayolundan Chrome'a geçilirse adres çubuğu görünür.
+- Sürekli Chrome açılıyorsa eski (2.21.x veya TWA) sürüm kurulu olabilir. Eski uygulamayı
+  kaldırıp `DeneyapEvKoruma-2.22.0-release.apk` dosyasını temiz kurun.
 
-**Uygulama dahili görünümde açılıyor**
-- Telefonda Chrome yok, devre dışı veya Chrome hemen kapanıyor. Uygulama bu yüzden
-  WebView yedeğine geçti.
-- Chrome'u kurun/güncelleyin ve uygulamayı yeniden açın. Bu yol Google ile giriş ve web
-  push bildirimleri için daha iyidir.
-- Dahili görünümde Google ile giriş çalışmazsa e-posta/şifre ile giriş yapın veya
-  Chrome'u kurun.
+**Uygulama tam ekran WebView'de açılıyor**
+- Beklenen davranış budur. Adres çubuğu yoktur; site yerel uygulama gibi çalışır.
+- Google ile giriş veya web push sorun yaşarsa ⋮ menüsünden **Chrome'da aç** seçin.
+- WebView'de web push desteklenmez; bildirimler için Chrome yolunu kullanın.
 
 **Uygulama hâlâ açılıp hemen kapanıyor**
 - Önce eski sürümü kaldırıp yeni APK'yı temiz kurun.
@@ -246,9 +266,9 @@ yapılandırmasından kalmıştır; mevcut uygulamada sırasıyla **başlangıç
 
 **Uygulama açılıyor ama site yüklenmiyor**
 - İnternet ve `https://ddproje.vercel.app/` erişimini kontrol edin.
-- Dahili görünümde "Tekrar dene" düğmesi vardır.
-- Chrome yoksa WebView yedeği devreye girer; bazı PWA özellikleri (push, Google girişi)
-  çalışmayabilir.
+- Yerel hata ekranındaki **Tekrar dene** düğmesini kullanın.
+- WebView bazı PWA özelliklerini (web push, bazı Google giriş akışları) desteklemeyebilir;
+  ⋮ menüsünden Chrome'da açın.
 
 **Bildirimler gelmiyor**
 - Android 13+ için bildirim izni verilmeli.
@@ -258,10 +278,12 @@ yapılandırmasından kalmıştır; mevcut uygulamada sırasıyla **başlangıç
 
 ## Test durumu
 
-Bu paket bu makinede **derlendi ve imzası doğrulandı**. WebView tanılama APK'sı gerçek
-bir telefonda açıldı; ancak bu Custom Tabs + WebView sürümü için bağlı cihaz/emülatör
-olmadığından kurulum/açılış testi bu makinede yapılamadı. Yayın öncesi en az bir gerçek
-telefonda internal testing ile test edin.
+Bu paket bu makinede **derlendi ve imzası doğrulandı**. Mobil arayüz Chrome DevTools
+protokolüyle 390×844 (telefon), 800×1000 (tablet) ve 1440×900 (masaüstü) boyutlarında
+doğrulandı; sahte Android köprüsüyle yerel menü ve canlı kokpit durumları test edildi.
+Bağlı gerçek Android cihaz/emülatör olmadığından kurulum, açılış, oturum, klavye ve
+bildirim testleri bu makinede yapılamadı. Yayın öncesi en az bir gerçek telefonda
+internal testing ile test edin.
 
 ## İlgili dosyalar
 

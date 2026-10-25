@@ -12,8 +12,8 @@ if (keystorePropertiesFile.exists()) {
 // ve sürüm değişince yalnızca orayı düzenlemek yeterlidir.
 def appStartUrl = project.findProperty('twaUrl') ?: 'https://ddproje.vercel.app/'
 def appPackage = project.findProperty('twaPackage') ?: 'com.mabiltekin.deneyapevkoruma'
-def appVersionName = project.findProperty('appVersionName') ?: '2.21.0'
-def appVersionCode = (project.findProperty('appVersionCode') ?: '2').toString().toInteger()
+def appVersionName = project.findProperty('appVersionName') ?: '2.22.0'
+def appVersionCode = (project.findProperty('appVersionCode') ?: '3').toString().toInteger()
 
 android {
     namespace appPackage
@@ -64,6 +64,10 @@ android {
 }
 
 dependencies {
-    // Custom Tabs (Chrome'da açma) ve WebView yedeği.
+    // Edge-to-edge güvenli alanları (durum çubuğu / klavye) için.
+    implementation 'androidx.core:core:1.13.1'
+    // "Chrome'da aç" için Custom Tabs.
     implementation 'androidx.browser:browser:1.8.0'
+    // Uygulama içi aşağı çekerek yenileme.
+    implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
 }

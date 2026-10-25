@@ -14,6 +14,7 @@
   <link rel="prefetch" href="./settings.html">
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="stylesheet" href="./css/style.css">
+  <link rel="stylesheet" href="./css/mobile-app.css">
   <script src="./js/theme-boot.js"></script>
 </head>
 <body class="mission-control-body">
@@ -125,6 +126,20 @@
     </div>
   </header>
 
+  <!-- Mobil uygulama: başparmakla erişilen çalışma modu şeridi -->
+  <div class="mobile-quickbar" aria-label="Hızlı çalışma modu">
+    <div class="mobile-quickbar-inner">
+      <div class="mode-switch" id="modeSwitcherMobile" data-mode-mount role="group" aria-label="Çalışma modu"></div>
+      <button id="mobileNativeMenu" class="mobile-native-menu" type="button" aria-label="Uygulama menüsü" title="Uygulama menüsü">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="5" cy="12" r="1.2" fill="currentColor" stroke="none"/>
+          <circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/>
+          <circle cx="19" cy="12" r="1.2" fill="currentColor" stroke="none"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
   <!-- ANA İÇERİK: GÖREV KONTROL MERKEZİ & SCROLLYTELLING BÖLÜMLERİ -->
   <main id="main" class="page-container mission-control-page">
     <!-- 1. SİNEMATİK HERO & PARALLAX BÖLÜMÜ -->
@@ -149,7 +164,7 @@
           <div class="hero-badge">
             <span class="badge-pulse"></span>
             <span class="badge-text">OTONOM SİBER TEHDİT &amp; ÇEVRE GÜVENLİK HATTI</span>
-            <span class="badge-version" id="heroVersion">SCADA v2.21.0</span>
+            <span class="badge-version" id="heroVersion">SCADA v2.22.0</span>
           </div>
 
           <h2 class="hero-title">
@@ -230,6 +245,13 @@
 
     <!-- Hero Tabanında Canlı Özet Telemetri HUD Şeridi (widget) -->
     <div class="hero-telemetry-hud">
+      <div class="mobile-cockpit-head">
+        <div class="mch-copy">
+          <span class="mch-kicker">CANLI SİSTEM</span>
+          <strong class="mch-title">Ev Güvenlik Kokpiti</strong>
+        </div>
+        <span class="mch-live" id="mobileCockpitLive" data-state="unknown"><span class="mch-live-dot" aria-hidden="true"></span> <span id="mobileCockpitLiveText">BEKLEMEDE</span></span>
+      </div>
       <section class="widget" id="homeWidget" aria-label="Canlı Sistem Özeti" data-state="unknown">
         <div class="w-head">
           <span class="w-dot" aria-hidden="true"></span>
@@ -994,7 +1016,7 @@
           <strong>DENEYAP EV KORUMA SİSTEMİ</strong>
         </div>
         <p class="f-desc">Otonom Siber Tehdit Algılama, Çevre Güvenliği ve IoT Görev Kontrol Konsolu.</p>
-        <span class="f-meta">Sürüm v2.21.0 // Platform: Deneyap Kart + MQTT-WSS + Firebase</span>
+        <span class="f-meta">Sürüm v2.22.0 // Platform: Deneyap Kart + MQTT-WSS + Firebase</span>
       </div>
 
       <div class="footer-col links-col">
@@ -1027,14 +1049,33 @@
 
   <!-- Mobil Hızlı Alt Navigasyon Barı -->
   <nav class="bottom-nav" aria-label="Ana gezinme">
-    <a href="./index.html" class="active" aria-current="page">
+    <a href="#hero" class="active" data-nav="hero" aria-current="page">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <rect x="3" y="3" width="7" height="9" rx="1.5"/>
-        <rect x="14" y="3" width="7" height="5" rx="1.5"/>
-        <rect x="14" y="12" width="7" height="9" rx="1.5"/>
-        <rect x="3" y="16" width="7" height="5" rx="1.5"/>
+        <path d="M3 10.5 12 3l9 7.5"/>
+        <path d="M5 9.5V21h14V9.5"/>
+        <path d="M9.5 21v-6h5v6"/>
       </svg>
-      <span>Sensörler</span>
+      <span>Panel</span>
+    </a>
+    <a href="#telemetry" data-nav="telemetry">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M3 12h4l2-7 4 14 2-7h6"/>
+      </svg>
+      <span>Telemetri</span>
+    </a>
+    <a href="#command-center" data-nav="command-center">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        <path d="M9 12l2 2 4-4"/>
+      </svg>
+      <span>Savunma</span>
+    </a>
+    <a href="#analytics" data-nav="analytics">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M3 3v18h18"/>
+        <path d="M7 15l4-4 3 3 5-6"/>
+      </svg>
+      <span>Analitik</span>
     </a>
     <a href="./settings.html">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -1080,5 +1121,6 @@
   <script src="./js/settings.js"></script>
   <script src="./js/studio-nav.js"></script>
   <script src="./js/account.js"></script>
+  <script src="./js/mobile-app.js"></script>
 </body>
 </html>
