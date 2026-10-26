@@ -164,6 +164,13 @@
   async function enable() {
     if (!supported()) return { ok: false, reason: 'web' };
 
+    if (permission() === 'denied') {
+      /* İzin kalıcı olarak reddedilmiş veya sistemde kapatılmış: yalnızca
+         sistem ayarlarından açılabilir. Kullanıcıyı doğrudan oraya götür. */
+      try { bridge().openNotificationSettings(); } catch (e) { /* yoksay */ }
+      return { ok: false, reason: 'permission' };
+    }
+
     if (permission() !== 'granted') {
       try { bridge().requestNotifications(); } catch (e) { /* yoksay */ }
       var state = await waitPermission();

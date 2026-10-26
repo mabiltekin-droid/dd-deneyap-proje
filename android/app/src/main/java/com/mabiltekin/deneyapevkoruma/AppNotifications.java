@@ -42,6 +42,7 @@ public final class AppNotifications {
     public static final String KEY_STATUS_ENABLED = "status_notification_enabled";
     public static final String KEY_FCM_TOKEN = "fcm_token";
     public static final String KEY_LAST_URL = "last_url";
+    public static final String KEY_NOTIF_ASKED = "notification_permission_asked";
 
     private AppNotifications() {
     }
@@ -90,7 +91,8 @@ public final class AppNotifications {
     public static boolean hasPermission(Context c) {
         if (Build.VERSION.SDK_INT >= 33) {
             return c.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
-                    == PackageManager.PERMISSION_GRANTED;
+                    == PackageManager.PERMISSION_GRANTED
+                    && NotificationManagerCompat.from(c).areNotificationsEnabled();
         }
         return NotificationManagerCompat.from(c).areNotificationsEnabled();
     }
@@ -98,6 +100,7 @@ public final class AppNotifications {
     /** Android 13+ için izin ister; zaten verilmişse true döner. */
     public static boolean requestPermission(Activity activity, int requestCode) {
         if (hasPermission(activity)) return true;
+        prefs(activity).edit().putBoolean(KEY_NOTIF_ASKED, true).apply();
         if (Build.VERSION.SDK_INT >= 33) {
             try {
                 activity.requestPermissions(

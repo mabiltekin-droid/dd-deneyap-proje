@@ -465,7 +465,14 @@ public class WebViewActivity extends Activity {
 
     private String permissionState() {
         if (AppNotifications.hasPermission(this)) return "granted";
-        if (Build.VERSION.SDK_INT >= 33) return "default";
+        if (Build.VERSION.SDK_INT >= 33) {
+            boolean asked = AppNotifications.prefs(this)
+                    .getBoolean(AppNotifications.KEY_NOTIF_ASKED, false);
+            boolean rationale = shouldShowRequestPermissionRationale(
+                    Manifest.permission.POST_NOTIFICATIONS);
+            if (asked && !rationale) return "denied";
+            return "default";
+        }
         return "denied";
     }
 
