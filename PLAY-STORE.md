@@ -234,6 +234,8 @@ istenirse, ileride Firestore `deletion_requests` + Cloud Function akışı eklen
 - [ ] Giriş, cihaz, telemetri, komut, çevrimdışı testleri geçti.
 - [ ] Android 13+ bildirim izni, bildirimler açılırken istendi; test bildirimi geldi.
 - [ ] Uygulama kapalıyken alarm bildirimi geldi (force-stop değil).
+- [ ] Firmware `PUSH_URL` + `PUSH_SECRET` ile derlendi; gerçek alarmda FCM bildirimi geldi.
+- [ ] `GET /api/push` yanıtında `configured.fcm` ve `configured.vapid` true.
 - [ ] Canlı durum bildirimi ve ana ekran widget'ı güncelleniyor.
 - [ ] PDF ve CSV dışa aktarma Android paylaşım sayfasını açıyor.
 - [ ] Gizlilik politikası URL'si canlı ve giriş gerektirmiyor.

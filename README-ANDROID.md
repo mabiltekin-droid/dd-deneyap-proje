@@ -89,7 +89,23 @@ FCM için Firebase projesinde Android uygulaması tanımlıdır:
 - Yapılandırma: `android/app/google-services.json` (depoda, gizli anahtar içermez)
 
 Gönderim `api/push.js` ve test uç noktası `api/notify.js` üzerinden Firebase Admin ile
-yapılır. Sunucuda `FIREBASE_SERVICE_ACCOUNT` ortam değişkeni zaten Web Push için tanımlıdır.
+yapılır. Vercel **Production** ortamında şu değişkenler tanımlıdır (değerler depoda
+tutulmaz):
+
+| Değişken | Görev |
+|---|---|
+| `FIREBASE_SERVICE_ACCOUNT` | Firestore + FCM servis hesabı JSON'u |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Tarayıcı/PWA Web Push |
+| `PUSH_TRIGGER_SECRET` | Firmware'in `/api/push` çağrısını doğrular |
+
+Sağlık kontrolü: `GET https://ddproje.vercel.app/api/push` yanıtında
+`configured.fcm: true` ve `configured.vapid: true` görünmelidir.
+
+> **Gerçek alarmlar için firmware ayarı:** FCM yalnızca sunucuya bildirim isteği
+> geldiğinde gönderilir. `firmware-mqtt/DeneyapEvKoruma/config.h` içinde `PUSH_URL`
+> (`https://ddproje.vercel.app/api/push`) ve `PUSH_SECRET` (Vercel'deki
+> `PUSH_TRIGGER_SECRET` ile aynı) tanımlanmalı ve karta yüklenmelidir. Bu alanlar boşsa
+> yalnızca paneldeki **Test bildirimi** çalışır; gerçek alarmda bildirim gitmez.
 
 Token'lar `push_tokens` koleksiyonunda `platform: "android"` alanıyla saklanır. FCM
 mesajları **data-only** gönderilir; bildirimi uygulama kendisi çizer. Böylece uygulama
