@@ -1,13 +1,16 @@
 package com.mabiltekin.deneyapevkoruma;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.DownloadManager;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.view.Gravity;
@@ -40,6 +43,12 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.google.firebase.messaging.FirebaseMessaging;
+
+import org.json.JSONObject;
+
+import java.lang.ref.WeakReference;
+
 /**
  * Yerel uygulama kabuğu.
  *
@@ -51,9 +60,14 @@ public class WebViewActivity extends Activity {
 
     public static final String EXTRA_URL = "url";
     public static final String EXTRA_FROM_SHORTCUT = "from_shortcut";
+    public static final String EXTRA_FROM_NOTIFICATION = "from_notification";
 
     private static final int FILE_CHOOSER_REQUEST = 1001;
+    private static final int NOTIFICATION_PERMISSION_REQUEST = 1002;
     private static final String BRIDGE_NAME = "AndroidApp";
+
+    /** FCM token'ı sayfaya iletmek için açık WebView'a zayıf referans. */
+    private static WeakReference<WebViewActivity> INSTANCE = new WeakReference<>(null);
 
     private WebView webView;
     private SwipeRefreshLayout swipeRefresh;
@@ -72,6 +86,10 @@ public class WebViewActivity extends Activity {
         if (startUrl == null || startUrl.trim().isEmpty()) {
             startUrl = getString(R.string.start_url);
         }
+
+        INSTANCE = new WeakReference<>(this);
+        AppNotifications.ensureChannels(this);
+        ensureFcmToken();
 
         Window window = getWindow();
         window.setStatusBarColor(Color.parseColor("#0A0D14"));
@@ -407,8 +425,48 @@ public class WebViewActivity extends Activity {
         try {
             return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
         } catch (Throwable t) {
-            return "2.22.0";
+            return "2.23.0";
         }
+    }
+
+    /** FCM token'ını alır; hazır olunca sayfaya iletir. */
+    private void ensureFcmToken() {
+        try {
+            FirebaseMessaging.getInstance().getToken().addOnCompleteListener(task -> {
+                if (!task.isSuccessful() || task.getResult() == null) return;
+                String token = task.getResult();
+                AppNotifications.prefs(this).edit()
+                        .putString(AppNotifications.KEY_FCM_TOKEN, token)
+                        .apply();
+                notifyFcmToken(token);
+            });
+        } catch (Throwable ignored) {
+            // Google Play Hizmetleri yoksa uygulama web bildirimleriyle devam eder.
+        }
+    }
+
+    /** FCM servisi token yenilediğinde açık sayfayı bilgilendirir. */
+    static void notifyFcmToken(final String token) {
+        final WebViewActivity activity = INSTANCE.get();
+        if (activity == null || token == null) return;
+        activity.runOnUiThread(() -> activity.evaluateJs(
+                "window.DeneyapNative&&window.DeneyapNative.onFcmToken&&"
+                        + "window.DeneyapNative.onFcmToken(" + JSONObject.quote(token) + ");"));
+    }
+
+    private void evaluateJs(String js) {
+        if (webView == null) return;
+        try {
+            webView.evaluateJavascript(js, null);
+        } catch (Throwable ignored) {
+            // Sayfa henüz hazır değilse sonraki çağrıda denenir.
+        }
+    }
+
+    private String permissionState() {
+        if (AppNotifications.hasPermission(this)) return "granted";
+        if (Build.VERSION.SDK_INT >= 33) return "default";
+        return "denied";
     }
 
     private boolean handleUri(Uri uri) {
@@ -494,6 +552,90 @@ public class WebViewActivity extends Activity {
         public void sharePage() {
             runOnUiThread(WebViewActivity.this::shareCurrentPage);
         }
+
+        /* ------------------------------------------------ FCM / bildirimler */
+
+        @JavascriptInterface
+        public String fcmToken() {
+            String token = AppNotifications.prefs(WebViewActivity.this)
+                    .getString(AppNotifications.KEY_FCM_TOKEN, "");
+            if (token == null || token.trim().isEmpty()) {
+                ensureFcmToken();
+            }
+            return token == null ? "" : token;
+        }
+
+        @JavascriptInterface
+        public String notificationPermission() {
+            return permissionState();
+        }
+
+        @JavascriptInterface
+        public boolean requestNotifications() {
+            if (AppNotifications.hasPermission(WebViewActivity.this)) return true;
+            runOnUiThread(() -> AppNotifications.requestPermission(
+                    WebViewActivity.this, NOTIFICATION_PERMISSION_REQUEST));
+            return false;
+        }
+
+        @JavascriptInterface
+        public boolean statusNotificationEnabled() {
+            return AppNotifications.statusEnabled(WebViewActivity.this);
+        }
+
+        /**
+         * Sürekli durum bildirimini açar/günceller.
+         * { enabled, title, body, big, url }
+         */
+        @JavascriptInterface
+        public void setStatusNotification(String json) {
+            final String raw = json == null ? "{}" : json;
+            runOnUiThread(() -> {
+                try {
+                    JSONObject o = new JSONObject(raw);
+                    boolean enabled = o.optBoolean("enabled", true);
+                    AppNotifications.setStatusEnabled(WebViewActivity.this, enabled);
+                    if (enabled) {
+                        AppNotifications.showStatus(WebViewActivity.this,
+                                o.optString("title", "Sistem durumu"),
+                                o.optString("body", "Son durum"),
+                                o.optString("big", ""),
+                                o.optString("url", getString(R.string.start_url)));
+                    }
+                } catch (Throwable ignored) {
+                    // Geçersiz JSON: bildirim değiştirilmez.
+                }
+            });
+        }
+
+        /** Ana ekran widget'ına son durumu yazar. */
+        @JavascriptInterface
+        public void setWidgetStatus(String json) {
+            final String raw = json == null ? "{}" : json;
+            runOnUiThread(() -> {
+                try {
+                    JSONObject o = new JSONObject(raw);
+                    StatusWidgetProvider.saveStatus(WebViewActivity.this,
+                            o.optString("status", ""),
+                            o.optString("detail", ""),
+                            o.optBoolean("ok", false));
+                } catch (Throwable ignored) {
+                    // yoksay
+                }
+            });
+        }
+
+        /** Olay raporunu PDF olarak üretip paylaşım sayfasını açar. */
+        @JavascriptInterface
+        public void exportPdf(String json) {
+            final String raw = json == null ? "{}" : json;
+            runOnUiThread(() -> ReportPdf.share(WebViewActivity.this, raw));
+        }
+
+        @JavascriptInterface
+        public void openNotificationSettings() {
+            runOnUiThread(() -> AppNotifications.openChannelSettings(WebViewActivity.this));
+        }
     }
 
     @Override
@@ -502,7 +644,9 @@ public class WebViewActivity extends Activity {
         setIntent(intent);
         String url = intent.getStringExtra(EXTRA_URL);
         boolean fromShortcut = intent.getBooleanExtra(EXTRA_FROM_SHORTCUT, false);
-        if (fromShortcut && url != null && !url.trim().isEmpty() && webView != null) {
+        boolean fromNotification = intent.getBooleanExtra(EXTRA_FROM_NOTIFICATION, false);
+        if ((fromShortcut || fromNotification)
+                && url != null && !url.trim().isEmpty() && webView != null) {
             startUrl = url;
             showWebContent();
             webView.loadUrl(url);
@@ -523,6 +667,17 @@ public class WebViewActivity extends Activity {
             return;
         }
         super.onActivityResult(requestCode, resultCode, data);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                                           int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == NOTIFICATION_PERMISSION_REQUEST) {
+            evaluateJs("window.DeneyapNative&&window.DeneyapNative.onPermission&&"
+                    + "window.DeneyapNative.onPermission("
+                    + JSONObject.quote(permissionState()) + ");");
+        }
     }
 
     @Override
@@ -559,6 +714,7 @@ public class WebViewActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        INSTANCE = new WeakReference<>(null);
         if (webView != null) {
             webView.removeJavascriptInterface(BRIDGE_NAME);
             webView.loadUrl("about:blank");

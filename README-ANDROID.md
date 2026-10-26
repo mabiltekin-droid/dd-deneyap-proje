@@ -3,7 +3,7 @@
 Deneyap Ev Koruma'nın Android paketi. Uygulama, canlı PWA'yı **tam ekran WebView**
 içinde açar; adres çubuğu, tarayıcı düğmeleri veya Chrome bağımlılığı yoktur. Chrome
 yalnızca kullanıcı isterse **“Chrome'da aç”** menüsünden devreye girer (Google ile giriş
-ve web push için yedek yol). Böylece uygulama, Chrome bulunmayan veya Chrome'u kısıtlayan
+için yedek yol). Böylece uygulama, Chrome bulunmayan veya Chrome'u kısıtlayan
 telefonlarda da güvenilir biçimde açılır.
 
 Web tarafında yapılan değişiklikler **yeni APK üretmeden** uygulamaya yansır; APK yalnızca
@@ -13,7 +13,7 @@ değişince yeniden üretilir.
 - **Paket adı:** `com.mabiltekin.deneyapevkoruma`
 - **Uygulama adı:** Deneyap Ev Koruma
 - **Web adresi:** https://ddproje.vercel.app/
-- **Sürüm:** 2.22.0 — `versionCode 3`
+- **Sürüm:** 2.23.0 — `versionCode 4`
 - **minSdk:** 24 (Android 7.0+) · **targetSdk / compileSdk:** 36 (Android 16)
 - **Mimari:** Tek, evrensel APK. Telefon/tablet için ayrı APK gerekmez; PWA responsive'dir.
 
@@ -23,8 +23,8 @@ Derleme sonrası:
 
 | Dosya | Kullanım |
 |---|---|
-| `android/dist/DeneyapEvKoruma-2.22.0-release.apk` | Telefona doğrudan kurulum / test |
-| `android/dist/DeneyapEvKoruma-2.22.0-release.aab` | **Google Play'e yükleme** |
+| `android/dist/DeneyapEvKoruma-2.23.0-release.apk` | Telefona doğrudan kurulum / test |
+| `android/dist/DeneyapEvKoruma-2.23.0-release.aab` | **Google Play'e yükleme** |
 | `android/play/icon-512.png` | Play Store uygulama ikonu |
 | `android/play/feature-graphic-1024x500.png` | Play Store öne çıkan görsel |
 | `android/play/screenshots/` | 2.22.0 mobil kabuk telefon ekran görüntüleri (1080×1920) |
@@ -32,8 +32,8 @@ Derleme sonrası:
 Bu derlemenin SHA-256 özetleri:
 
 ```
-APK: A6A205A9350E898E4115B77D8B2F6B81E5067E75996BE7D403D39D5F0C0EC71D
-AAB: EE7BA2162108008C85C2AB21DC6D48591B45B80D7E226F6A61A12497D26ABBA7
+APK: E99D9CD4188D9B006297D52F1EF03EEABB31FFDE01900A71DD0E76FB89EC34E9
+AAB: EEE13756D00E25F1E563BB827658F434045146BC47B459EA19CF3DA0B585B18F
 ```
 
 > Yeniden derlemede bu özetler değişir. Play Store'a her yüklemede `appVersionCode`
@@ -46,7 +46,7 @@ AAB: EE7BA2162108008C85C2AB21DC6D48591B45B80D7E226F6A61A12497D26ABBA7
 2. Sağ üstteki **⋮ yerel menü** ile sayfa yenilenir, Chrome'da açılır, bağlantı paylaşılır
    veya uygulama bilgisi görüntülenir. Android ana ekranındaki beş kısayol da aynı kabuğu
    doğrudan hedef sayfada açar.
-3. Chrome'a yalnızca **kullanıcı isterse** geçilir. Google ile giriş veya web push
+3. Chrome'a yalnızca **kullanıcı isterse** geçilir. Google ile giriş
    sorun yaşarsa “Chrome'da aç” kullanılabilir; normal panel, e-posta/şifre girişi,
    telemetri ve komutlar WebView içinde çalışır.
 4. İnternet yoksa veya sayfa yüklenemezse yerel “Bağlantı kurulamadı” ekranı, “Tekrar
@@ -67,9 +67,39 @@ Web arayüzü telefonda site gibi değil, uygulama gibi davranır:
   Android 12 açılış ekranı, durum çubuğu/klavye güvenli alanları.
 - **Ana ekran kısayolları:** Panel, Telemetri, Savunma, Analitik, Ayarlar.
 - **Dokunsal geri bildirim:** Destekleyen Android cihazlarda sekme/mod dokunuşlarında.
+- **Gerçek telefon bildirimleri (FCM):** Uygulama kapalıyken bile gaz/alev/su/sarsıntı
+  alarmı bildirilir. WebView'de çalışmayan Web Push'un yerini alır.
+- **Canlı durum satırı:** Bildirim panelinde sessiz "son durum" satırı (gaz, mod, saat).
+- **Ana ekran widget'ı:** Son bilinen durum + tek dokunuşla panel/Savunma.
+- **Çevrimdışı dayanıklılık:** Son telemetri önbelleğe alınır; ağ yokken gösterilir,
+  altta "Bağlantı yok · son veri 14:32" şeridi ve "Yeniden dene" düğmesi çıkar.
+- **PDF olay raporu:** Olay günlüğü A4 PDF olarak üretilip Android paylaşım sayfasıyla
+  gönderilir (CSV da mevcut).
 
-Mobil kabuk dosyaları: `pwa/css/mobile-app.css`, `pwa/js/mobile-app.js`. Masaüstünde
-alt gezinme gizlenir; üst gezinme kullanılır.
+Mobil kabuk dosyaları: `pwa/css/mobile-app.css`, `pwa/js/mobile-app.js`,
+`pwa/js/offline.js`, `pwa/js/native-push.js`. Masaüstünde alt gezinme gizlenir;
+üst gezinme kullanılır.
+
+## Firebase / FCM kurulumu
+
+FCM için Firebase projesinde Android uygulaması tanımlıdır:
+
+- Proje: `ddproje-9f594`
+- Android uygulaması: `com.mabiltekin.deneyapevkoruma`
+- Yapılandırma: `android/app/google-services.json` (depoda, gizli anahtar içermez)
+
+Gönderim `api/push.js` ve test uç noktası `api/notify.js` üzerinden Firebase Admin ile
+yapılır. Sunucuda `FIREBASE_SERVICE_ACCOUNT` ortam değişkeni zaten Web Push için tanımlıdır.
+
+Token'lar `push_tokens` koleksiyonunda `platform: "android"` alanıyla saklanır. FCM
+mesajları **data-only** gönderilir; bildirimi uygulama kendisi çizer. Böylece uygulama
+kapalıyken de kanal, ses, titreşim ve alarm davranışı tutarlı olur.
+
+Test bildirimi: web panelinde **Ayarlar → Android bildirimleri → Test bildirimi gönder**
+veya oturum açmış istemciden `POST /api/notify`.
+
+> **Force-stop notu:** Android, kullanıcı uygulamayı "Durdur" ile zorla kapatırsa
+> bildirimler yeniden açılana kadar gelmez. Bu Android'in kendi kısıtıdır.
 
 ## Gereksinimler
 
@@ -150,7 +180,7 @@ Upload anahtarı SHA-256:
    değiştirilemez. Paket adı değişecekse `android/gradle.properties` → `twaPackage` ve
    Java kaynaklarındaki `package` satırları birlikte güncellenmelidir; aksi hâlde uygulama
    açılmaz. Mevcut paket adını korumanız önerilir.
-3. **Internal testing** track'ine `DeneyapEvKoruma-2.22.0-release.aab` yükleyin.
+3. **Internal testing** track'ine `DeneyapEvKoruma-2.23.0-release.aab` yükleyin.
 4. Play App Signing'i etkinleştirin. **Mevcut WebView mimarisi için Play App Signing
    SHA-256'sını `assetlinks.json`'a eklemek gerekmez.** Bu dosya yalnızca ileride TWA'ya
    dönülürse gerekir.
@@ -198,9 +228,16 @@ android/
     build.gradle
     src/main/AndroidManifest.xml
     src/main/java/com/mabiltekin/deneyapevkoruma/
-      MainActivity.java      # başlatıcı; kısayol yönlendirme + Chrome yedeği
-      WebViewActivity.java   # tam ekran WebView, yerel menü, yenileme, geri
+      MainActivity.java              # başlatıcı; kısayol yönlendirme + Chrome yedeği
+      WebViewActivity.java           # tam ekran WebView, yerel menü, JS köprüsü
+      AppNotifications.java          # kanallar, izin, canlı durum bildirimi
+      DeneyapMessagingService.java   # FCM alımı + token yenileme
+      StatusWidgetProvider.java      # ana ekran widget'ı
+      ReportPdf.java                 # A4 PDF raporu + paylaşım
+    src/main/res/layout/widget_status.xml  # widget düzeni
     src/main/res/xml/shortcuts.xml         # Android ana ekran kısayolları
+    src/main/res/xml/widget_status_info.xml
+    src/main/res/xml/file_paths.xml        # PDF paylaşımı için FileProvider
     src/main/res/values/strings.xml        # uygulama adı + kısayol etiketleri
     src/main/res/values/colors.xml
     src/main/res/values/styles.xml         # Android 12 açılış teması
@@ -235,12 +272,14 @@ yapılandırmasından kalmıştır; mevcut uygulamada sırasıyla **başlangıç
 - Normalde beklenen davranış değildir. Yalnızca yerel ⋮ menüden veya “Chrome'da aç”
   kısayolundan Chrome'a geçilirse adres çubuğu görünür.
 - Sürekli Chrome açılıyorsa eski (2.21.x veya TWA) sürüm kurulu olabilir. Eski uygulamayı
-  kaldırıp `DeneyapEvKoruma-2.22.0-release.apk` dosyasını temiz kurun.
+  kaldırıp `DeneyapEvKoruma-2.23.0-release.apk` dosyasını temiz kurun.
 
 **Uygulama tam ekran WebView'de açılıyor**
 - Beklenen davranış budur. Adres çubuğu yoktur; site yerel uygulama gibi çalışır.
-- Google ile giriş veya web push sorun yaşarsa ⋮ menüsünden **Chrome'da aç** seçin.
-- WebView'de web push desteklenmez; bildirimler için Chrome yolunu kullanın.
+- Google ile giriş sorun yaşarsa ⋮ menüsünden **Chrome'da aç** seçin.
+- Push bildirimleri WebView'de değil, yerel FCM servisiyle çalışır; Chrome gerekmez.
+- Android 13+ için izin, Ayarlar → Android bildirimleri bölümünde bildirimler
+  açılırken istenir. İzin verilmezse sistem ayarlarından da açılabilir.
 
 **Uygulama hâlâ açılıp hemen kapanıyor**
 - Önce eski sürümü kaldırıp yeni APK'yı temiz kurun.
@@ -267,23 +306,31 @@ yapılandırmasından kalmıştır; mevcut uygulamada sırasıyla **başlangıç
 **Uygulama açılıyor ama site yüklenmiyor**
 - İnternet ve `https://ddproje.vercel.app/` erişimini kontrol edin.
 - Yerel hata ekranındaki **Tekrar dene** düğmesini kullanın.
-- WebView bazı PWA özelliklerini (web push, bazı Google giriş akışları) desteklemeyebilir;
+- WebView bazı PWA özelliklerini (bazı Google giriş akışları) desteklemeyebilir;
   ⋮ menüsünden Chrome'da açın.
 
 **Bildirimler gelmiyor**
-- Android 13+ için bildirim izni verilmeli.
-- PWA'da bildirim aboneliği ve VAPID anahtarı ayarlı olmalı (`npm run vapid`).
-- Chrome arka planda kısıtlanmış olabilir; pil optimizasyonunu kontrol edin.
-- Dahili WebView görünümü web push bildirimlerini desteklemez; Chrome yolunu kullanın.
+- Android 13+ için bildirim izni verilmeli (Ayarlar → Android bildirimleri).
+- Pil optimizasyonu uygulamayı kısıtlıyorsa bildirimler gecikebilir; uygulamayı
+  "Kısıtlanmamış" listesine ekleyin.
+- Uygulama "Durdur" ile zorla kapatıldıysa Android yeniden açılana kadar FCM teslim
+  etmez. Uygulamayı açıp tekrar deneyin.
+- Web panelinde **Ayarlar → Android bildirimleri → Test bildirimi gönder** ile sunucu
+  tarafını doğrulayın. `GET /api/push` yanıtında `fcm: true` görünmelidir.
+- FCM token'ı hesaba bağlıdır; farklı hesapla giriş yapıldıysa bildirim o hesaba gelir.
 
 ## Test durumu
 
 Bu paket bu makinede **derlendi ve imzası doğrulandı**. Mobil arayüz Chrome DevTools
 protokolüyle 390×844 (telefon), 800×1000 (tablet) ve 1440×900 (masaüstü) boyutlarında
-doğrulandı; sahte Android köprüsüyle yerel menü ve canlı kokpit durumları test edildi.
-Bağlı gerçek Android cihaz/emülatör olmadığından kurulum, açılış, oturum, klavye ve
-bildirim testleri bu makinede yapılamadı. Yayın öncesi en az bir gerçek telefonda
-internal testing ile test edin.
+doğrulandı; sahte Android köprüsüyle yerel menü, canlı kokpit, Android bildirim ayarları,
+PDF rapor modeli ve çevrimdışı şerit test edildi. `npm run check`, `npm run verify` ve
+`npm run build` geçti.
+
+Bağlı gerçek Android cihaz/emülatör olmadığından şunlar bu makinede **doğrulanamadı**:
+FCM bildirim teslimi, Android 13+ izin akışı, canlı durum bildirimi, ana ekran widget'ı,
+PDF paylaşım sayfası, önbellekli soğuk açılış, klavye ve döndürme. Yayın öncesi en az bir
+gerçek telefonda internal testing ile bu liste test edilmelidir.
 
 ## İlgili dosyalar
 

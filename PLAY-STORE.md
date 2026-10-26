@@ -12,7 +12,7 @@ metinleri, veri güvenliği cevaplarını ve yayın öncesi kontrolleri toplar.
 |---|---|
 | Uygulama adı | Deneyap Ev Koruma |
 | Paket adı | `com.mabiltekin.deneyapevkoruma` |
-| Sürüm | 2.22.0 (`versionCode 3`) |
+| Sürüm | 2.23.0 (`versionCode 4`) |
 | Kategori | House & Home (yoksa Tools) |
 | Etiketler | Akıllı ev, güvenlik, IoT |
 | Ücret | Ücretsiz |
@@ -58,8 +58,15 @@ Güvenlik:
 • Kritik işlemlerde yeniden doğrulama ve denetim kayıtları.
 
 Bildirimler ve çevrimdışı kullanım:
-• Hareket, gaz, sıcaklık ve bağlantı kopması bildirimleri.
-• PWA desteği sayesinde son veriler çevrimdışıyken de görüntülenebilir.
+• Gaz, alev, su, sarsıntı ve bağlantı kopması alarmları; uygulama kapalıyken bile
+  Android bildirimi olarak gelir.
+• Bildirim panelinde sessiz "son durum" satırı: gaz durumu, aktif mod ve son güncelleme.
+• Ana ekran widget'ı son bilinen durumu gösterir; tek dokunuşla panele veya Savunma
+  sekmesine gider.
+• Son telemetri önbelleğe alınır; internet yokken görüntülenebilir ve "Yeniden dene"
+  ile bağlantı kurulabilir.
+• Olay günlüğünü A4 PDF veya CSV olarak dışa aktarın; Android paylaşım sayfasıyla
+  e-posta, mesaj veya bulut uygulamasına gönderin.
 • Android uygulaması canlı paneli tam ekran, adres çubuksuz açar; web güncellemeleri
   anında gelir.
 • Beş sekmeli mobil gezinme, hızlı mod şeridi, canlı kokpit, aşağı çekerek yenileme
@@ -73,11 +80,13 @@ için donanım bağlantısı gerekir.
 ### Sürüm notu (ilk yayın)
 
 ```
-Deneyap Ev Koruma 2.22.0:
-• Tam ekran, adres çubuksuz yeni Android uygulaması.
-• Beş sekmeli mobil gezinme ve hızlı mod şeridi.
-• Canlı kokpit, aşağı çekerek yenileme ve ana ekran kısayolları.
-• Canlı telemetri, cihaz kontrolü, otomasyon ve bildirimler tek uygulamada.
+Deneyap Ev Koruma 2.23.0:
+• Gaz, alev, su ve sarsıntı alarmları artık uygulama kapalıyken de Android bildirimi
+  olarak gelir.
+• Bildirim panelinde sessiz canlı durum satırı ve ana ekran durum widget'ı.
+• İnternet yokken son telemetri önbellekten görüntülenir; "Yeniden dene" ile bağlanır.
+• Olay günlüğünü A4 PDF veya CSV olarak dışa aktarma ve Android paylaşımı.
+• Beş sekmeli mobil gezinme, canlı kokpit, hızlı mod şeridi ve ana ekran kısayolları.
 ```
 
 ## 3. Görseller
@@ -141,7 +150,7 @@ Play Console formunda aşağıdaki tabloyu kendi akışınıza göre doğrulayı
 |---|---|---|---|---|
 | E-posta adresi | Evet | Hizmet sağlayıcı (Firebase) | Evet | Hesap, kimlik doğrulama, güvenlik |
 | Ad (görünen ad) | Evet | Hizmet sağlayıcı | Hayır | Profil, cihaz sahipliği |
-| Cihaz veya diğer kimlikler | Evet | Hizmet sağlayıcı | Evet | Cihaz eşleştirme, push aboneliği, güvenlik |
+| Cihaz veya diğer kimlikler | Evet | Hizmet sağlayıcı | Evet | Cihaz eşleştirme, FCM/push token'ı, güvenlik |
 | Uygulama etkinliği | Evet | Hizmet sağlayıcı | Evet | Telemetri, komutlar, olay günlükleri, otomasyon |
 | Uygulama bilgileri ve performans | Evet | Hizmet sağlayıcı | Hayır | Hata ayıklama, kötüye kullanım tespiti |
 | Yaklaşık konum | Hayır* | Hayır | Hayır | Gün doğumu/batımı yalnızca cihazda; sunucuya gönderilmez |
@@ -158,8 +167,14 @@ Cevaplar:
 - **Hesap oluşturma:** Evet, e-posta ile.
 - **Veri toplama isteğe bağlı mı?** Hesap ve cihaz verileri hizmet için zorunlu;
   görünen ad ve bildirimler isteğe bağlı.
-- **Veri işleyen hizmet sağlayıcılar:** Google Firebase/Cloud, Vercel, tarayıcı push
-  servisi. Play formunda “shared” tanımına göre işaretleyin; reklam ortağı değildir.
+- **Veri işleyen hizmet sağlayıcılar:** Google Firebase/Cloud (kimlik doğrulama,
+  Firestore, FCM bildirimleri), Vercel (web/API barındırma), tarayıcı push servisi.
+  Play formunda “shared” tanımına göre işaretleyin; reklam ortağı değildir.
+- **Bildirimler:** Android'de FCM token'ı hesaba bağlı olarak `push_tokens` koleksiyonunda
+  saklanır. Bildirim izni isteğe bağlıdır; verilmezse uygulamanın diğer işlevleri çalışır.
+  Kullanıcı bildirimleri Ayarlar → Android bildirimleri bölümünden kapatabilir.
+- **PDF/CSV dışa aktarma:** Rapor yalnızca cihazda üretilir; kullanıcı paylaşmadıkça
+  hiçbir sunucuya yüklenmez.
 
 ## 6. Content rating (İçerik derecelendirmesi)
 
@@ -186,7 +201,8 @@ Ankette aşağıdaki cevaplar beklenir:
 - **COVID-19 uygulaması mı?** Hayır.
 - **WebView / yerel kabuk:** Uygulama, canlı PWA'yı tam ekran WebView içinde açar;
   Chrome'a yalnızca kullanıcı isterse geçer. “Sadece web sitesi” değildir; yerel menü,
-  aşağı çekerek yenileme, ana ekran kısayolları, çevrimdışı PWA, cihaz kontrolü ve
+  aşağı çekerek yenileme, ana ekran kısayolları, yerel FCM bildirimleri, canlı durum
+  bildirimi, ana ekran widget'ı, PDF/CSV dışa aktarma, çevrimdışı PWA, cihaz kontrolü ve
   donanım entegrasyonu içerir. Mağaza metninde bu işlevleri vurgulayın.
 
 ## 8. Hesap silme politikası
@@ -212,10 +228,14 @@ istenirse, ileride Firestore `deletion_requests` + Cloud Function akışı eklen
 ## 9. Yayın öncesi kontrol listesi
 
 - [ ] Play Console'da uygulama oluşturuldu; paket adı doğru.
-- [ ] `DeneyapEvKoruma-2.22.0-release.aab` internal testing'e yüklendi.
+- [ ] `DeneyapEvKoruma-2.23.0-release.aab` internal testing'e yüklendi.
 - [ ] Telefonda internal testing kurulumu; uygulama tam ekran WebView'de açılıyor.
 - [ ] Yerel ⋮ menü, kısayollar, aşağı çekerek yenileme ve çift geri tuşu çalışıyor.
-- [ ] Giriş, cihaz, telemetri, komut, bildirim, çevrimdışı testleri geçti.
+- [ ] Giriş, cihaz, telemetri, komut, çevrimdışı testleri geçti.
+- [ ] Android 13+ bildirim izni, bildirimler açılırken istendi; test bildirimi geldi.
+- [ ] Uygulama kapalıyken alarm bildirimi geldi (force-stop değil).
+- [ ] Canlı durum bildirimi ve ana ekran widget'ı güncelleniyor.
+- [ ] PDF ve CSV dışa aktarma Android paylaşım sayfasını açıyor.
 - [ ] Gizlilik politikası URL'si canlı ve giriş gerektirmiyor.
 - [ ] Hesap silme bağlantısı canlı ve uygulama içinden erişilebilir.
 - [ ] Data safety formu dolduruldu.
@@ -233,14 +253,21 @@ istenirse, ileride Firestore `deletion_requests` + Cloud Function akışı eklen
 ## 10. Bilinen riskler / notlar
 
 - **Cihaz testi yapılmadı:** Bu makinede bağlı telefon/emülatör yoktu. Yayın öncesi
-  gerçek cihazda test zorunlu.
+  gerçek cihazda test zorunlu. Özellikle FCM teslimi, bildirim izni, widget, PDF paylaşımı,
+  önbellekli soğuk açılış, klavye ve döndürme denenmeli.
 - **Mobil görünüm:** 2.22.0 ile beş sekmeli alt gezinme, mod şeridi, canlı kokpit ve
   güvenli alan desteği eklendi; 390×844, 800×1000 ve 1440×900 boyutlarında doğrulandı.
-  Yine de gerçek telefonda klavye, çentik ve döndürme testi yapılmalı.
+  2.23.0 ile Android bildirim ayarları, çevrimdışı şerit ve PDF düğmesi eklendi.
+  Gerçek telefonda klavye, çentik ve döndürme testi yapılmalı.
+- **Bildirim gecikmesi:** Android'in pil optimizasyonu veya kullanıcı “Durdur” işlemi
+  FCM teslimini geciktirebilir/engelleyebilir. Bu Android platform kısıtıdır; uygulama
+  içinde ve mağaza metninde abartılı “anında/her zaman” vaadi vermeyin.
 - **Minimum işlevsellik:** İnceleme sırasında cihaz yoksa panel “bağlantı yok” gösterebilir.
-  Demo cihaz/veri hazırlamak inceleme riskini azaltır.
-- **Chrome yolu:** Google ile giriş veya web push gerekirse ⋮ menüsünden “Chrome'da aç”
-  kullanılabilir; bu yolda adres çubuğu görünür.
+  Demo cihaz/veri hazırlamak inceleme riskini azaltır. WebView ağırlıklı uygulamalarda
+  Play incelemesi “minimum işlevsellik” gerekçesiyle reddedebilir; yerel bildirim,
+  widget, PDF ve çevrimdışı özelliklerini inceleme notunda açıkça belirtin.
+- **Chrome yolu:** Google ile giriş gerekirse ⋮ menüsünden “Chrome'da aç”
+  kullanılabilir; bu yolda adres çubuğu görünür. Push bildirimleri için Chrome gerekmez.
 - **TWA'dan geçiş:** Önceki TWA sürümü bazı telefonlarda açılıp hemen kapanıyordu. Bu
   sürüm, uygulamanın her cihazda açılması için tam ekran WebView kabuğuna geçti.
 - **Font/emoji:** Ekran görüntüleri Chrome'da alındı; farklı cihazlarda küçük farklar olur.

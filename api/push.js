@@ -1,12 +1,14 @@
 /* ==========================================================================
-   api/push.js — Vercel Serverless Function: Web Push gönderici
+   api/push.js — Vercel Serverless Function: Web Push + FCM gönderici
    --------------------------------------------------------------------------
-   Panel KAPALIYKEN bildirim göndermek için kullanılır. Panel abonelikleri
-   Firestore'da `push_subs` koleksiyonunda tutulur (bkz. pwa/js/notify.js).
+   Panel/uygulama KAPALIYKEN bildirim göndermek için kullanılır.
+
+   İki hedef birlikte desteklenir:
+     • Web Push  → push_subs    (tarayıcı / PWA)
+     • FCM       → push_tokens  (Android uygulaması)
 
    Tetikleyici: cihazın kendisi (MQTT firmware) alarm anında bu adrese kısa
-   bir HTTPS isteği atar. Böylece panel kapalı olsa da bildirim gider.
-   Alternatif olarak curl ile elle de tetiklenebilir.
+   bir HTTPS isteği atar. Alternatif olarak curl ile elle de tetiklenebilir.
 
    İstek:
      POST /api/push
@@ -15,18 +17,17 @@
        - uid verilmezse TÜM abonelere gönderilir (alarm = herkes),
        - test için: { "kind": "test", "uid": "<kendi-uid>" }
 
-   Yanıt: { ok, kind, targeted, sent, removed, failed }
+   Yanıt: { ok, kind, targeted, sent, removed, failed, web, fcm }
 
    Gerekli ortam değişkenleri (Vercel > Settings > Environment Variables):
-     FIREBASE_SERVICE_ACCOUNT : servis hesabı JSON'u (tek satır; admin SDK kuralları atlar)
-     VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY / VAPID_SUBJECT : node tools/gen-vapid.js
+     FIREBASE_SERVICE_ACCOUNT : servis hesabı JSON'u (FCM + Firestore)
+     VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY / VAPID_SUBJECT : web push (opsiyonel)
      PUSH_TRIGGER_SECRET      : cihazın gönderdiği x-dd-secret ile AYNI
    ========================================================================== */
 
 'use strict';
 
-const admin = require('firebase-admin');
-const webpush = require('web-push');
+const lib = require('./_lib');
 
 /* Tür -> varsayılan bildirim metni. Cihaz yalnızca `kind` gönderir. */
 const KIND = {
@@ -62,36 +63,6 @@ const KIND = {
   }
 };
 
-function initAdmin() {
-  if (admin.apps.length) return true;
-  const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
-  if (!raw) return false;
-  let cred;
-  try {
-    cred = JSON.parse(raw);
-  } catch (e) {
-    throw new Error('FIREBASE_SERVICE_ACCOUNT geçerli JSON değil: ' + e.message);
-  }
-  /* Vercel'e tek satır olarak girildiyse yeni satırlar "\\n" olarak gelir. */
-  if (cred.private_key && cred.private_key.indexOf('\\n') !== -1) {
-    cred.private_key = cred.private_key.replace(/\\n/g, '\n');
-  }
-  admin.initializeApp({
-    credential: admin.credential.cert(cred),
-    projectId: cred.project_id
-  });
-  return true;
-}
-
-function initVapid() {
-  const pub = process.env.VAPID_PUBLIC_KEY;
-  const priv = process.env.VAPID_PRIVATE_KEY;
-  const subject = process.env.VAPID_SUBJECT || 'mailto:admin@example.com';
-  if (!pub || !priv) return false;
-  webpush.setVapidDetails(subject, pub, priv);
-  return true;
-}
-
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', 'content-type,x-dd-secret');
@@ -104,10 +75,11 @@ module.exports = async function handler(req, res) {
 
   /* --- sağlık / yapılandırma sorgusu ------------------------------------- */
   if (req.method === 'GET') {
-    const out = { ok: true, configured: { vapid: false, firestore: false } };
-    try { out.configured.vapid = initVapid(); } catch (e) { /* yoksay */ }
-    try { out.configured.firestore = initAdmin(); } catch (e) { out.error = e.message; }
-    out.ready = out.configured.vapid && out.configured.firestore;
+    const out = { ok: true, configured: { vapid: false, firestore: false, fcm: false } };
+    try { out.configured.vapid = lib.initVapid(); } catch (e) { /* yoksay */ }
+    try { out.configured.firestore = lib.initAdmin(); } catch (e) { out.error = e.message; }
+    out.configured.fcm = out.configured.firestore;
+    out.ready = out.configured.firestore;
     res.status(200).json(out);
     return;
   }
@@ -126,20 +98,16 @@ module.exports = async function handler(req, res) {
   }
 
   /* --- yapılandırma ------------------------------------------------------ */
-  if (!initVapid()) {
+  if (!lib.initAdmin()) {
     res.status(503).json({
       ok: false,
-      error: 'VAPID anahtarları tanımlı değil (VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY)'
+      error: 'FIREBASE_SERVICE_ACCOUNT tanımlı değil (abonelikler/tokenlar okunamıyor)'
     });
     return;
   }
-  if (!initAdmin()) {
-    res.status(503).json({
-      ok: false,
-      error: 'FIREBASE_SERVICE_ACCOUNT tanımlı değil (abonelikler okunamıyor)'
-    });
-    return;
-  }
+  const vapidReady = (function () {
+    try { return lib.initVapid(); } catch (e) { return false; }
+  })();
 
   /* --- istek gövdesi ----------------------------------------------------- */
   let body = req.body;
@@ -151,57 +119,58 @@ module.exports = async function handler(req, res) {
   const kindName = KIND[body.kind] ? body.kind : 'test';
   const k = KIND[kindName];
   const device = String(body.device || '').slice(0, 64);
-  const payload = JSON.stringify({
-    title: body.title || k.title,
-    body: body.body || (device ? k.body + ' (Cihaz: ' + device + ')' : k.body),
+  const title = body.title || k.title;
+  const text = body.body || (device ? k.body + ' (Cihaz: ' + device + ')' : k.body);
+
+  const webPayload = JSON.stringify({
+    title: title,
+    body: text,
     tag: k.tag,
     urgent: (body.urgent === undefined) ? k.urgent : !!body.urgent,
     kind: kindName,
     url: './'
   });
 
-  /* --- abonelikleri oku -------------------------------------------------- */
-  const db = admin.firestore();
-  let snap;
-  try {
-    const col = db.collection('push_subs');
-    snap = body.uid ? await col.where('uid', '==', String(body.uid)).get() : await col.get();
-  } catch (e) {
-    res.status(500).json({ ok: false, error: 'abonelikler okunamadı: ' + e.message });
-    return;
+  /* --- Web Push (tarayıcı / PWA) ---------------------------------------- */
+  let web = { targeted: 0, sent: 0, removed: 0, failed: 0, skipped: true };
+  if (vapidReady) {
+    try {
+      web = await lib.sendToSubs(webPayload, {
+        ttl: 3600,
+        urgent: k.urgent,
+        uid: body.uid
+      });
+      web.skipped = false;
+    } catch (e) {
+      web.error = e && e.message;
+    }
   }
 
-  /* --- gönder ------------------------------------------------------------ */
-  const results = await Promise.all(snap.docs.map(async function (doc) {
-    const s = doc.data() || {};
-    if (!s.endpoint || !s.keys) return { ok: false, dead: true };
-    try {
-      await webpush.sendNotification(
-        { endpoint: s.endpoint, keys: s.keys },
-        payload,
-        { TTL: 3600, urgency: k.urgent ? 'high' : 'normal' }
-      );
-      return { ok: true };
-    } catch (e) {
-      const code = (e && (e.statusCode || e.status)) || 0;
-      /* 404/410 = abonelik ölmüş → temizle */
-      if (code === 404 || code === 410) {
-        try { await doc.ref.delete(); } catch (e2) { /* yoksay */ }
-        return { ok: false, dead: true };
-      }
-      return { ok: false, code: code };
-    }
-  }));
-
-  const sent = results.filter(function (r) { return r.ok; }).length;
-  const removed = results.filter(function (r) { return r.dead; }).length;
+  /* --- FCM (Android uygulaması) ----------------------------------------- */
+  let fcm = { targeted: 0, sent: 0, removed: 0, failed: 0 };
+  try {
+    fcm = await lib.sendFcm({
+      kind: kindName,
+      title: title,
+      body: text,
+      url: body.url || './'
+    }, {
+      ttl: 3600,
+      urgent: k.urgent,
+      uid: body.uid
+    });
+  } catch (e) {
+    fcm.error = e && e.message;
+  }
 
   res.status(200).json({
     ok: true,
     kind: kindName,
-    targeted: snap.size,
-    sent: sent,
-    removed: removed,
-    failed: results.length - sent - removed
+    targeted: (web.targeted || 0) + (fcm.targeted || 0),
+    sent: (web.sent || 0) + (fcm.sent || 0),
+    removed: (web.removed || 0) + (fcm.removed || 0),
+    failed: (web.failed || 0) + (fcm.failed || 0),
+    web: web,
+    fcm: fcm
   });
 };

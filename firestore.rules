@@ -350,6 +350,24 @@ service cloud.firestore {
     }
 
     // ================================================================
+    // PUSH_TOKENS - Android FCM token'ları (uygulama kapalıyken alarm)
+    // Kullanıcı yalnızca kendi token'ını yazar/siler. Vercel fonksiyonu
+    // servis hesabıyla okur ve gönderir.
+    // Belge kimliği: <uid>__<token özeti>  (bkz. firebase.js pushDocId)
+    // ================================================================
+    match /push_tokens/{tokenId} {
+      allow read: if signedIn() && resource.data.uid == uid();
+      allow create: if signedIn()
+        && request.resource.data.uid == uid()
+        && request.resource.data.token is string
+        && request.resource.data.token.size() > 20;
+      allow update: if signedIn()
+        && resource.data.uid == uid()
+        && request.resource.data.uid == uid();
+      allow delete: if signedIn() && resource.data.uid == uid();
+    }
+
+    // ================================================================
     // Diger her sey varsayilan olarak kapali
     // ================================================================
     match /{document=**} {

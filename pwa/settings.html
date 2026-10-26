@@ -1539,6 +1539,62 @@
         </div>
       </section>
 
+      <!-- ============ ANDROID UYGULAMA BİLDİRİMLERİ (FCM) ============ -->
+      <section class="config-panel" aria-labelledby="h-native-notify" id="nativeNotifySection">
+        <div class="panel-header">
+          <span class="panel-tag">[CONFIG 09B // ANDROID UYGULAMASI]</span>
+          <div class="panel-title-row">
+            <div class="head-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="6" y="2" width="12" height="20" rx="3"/>
+                <path d="M10 18h4"/>
+              </svg>
+              <h3 id="h-native-notify">Uygulama Bildirimleri</h3>
+            </div>
+          </div>
+          <p class="panel-desc">Telefonda, uygulama kapalıyken de çalışan gerçek alarm bildirimleri.</p>
+        </div>
+
+        <div class="panel-content">
+          <p class="help">
+            <strong>Web Push yerine FCM:</strong> Android uygulaması canlı siteyi WebView içinde açar;
+            tarayıcı bildirimleri burada çalışmaz. Bu bölüm Firebase Cloud Messaging'i kullanır ve
+            yalnızca Android uygulamasında etkindir. Tarayıcıda yukarıdaki Web Push ayarı geçerlidir.
+          </p>
+
+          <label class="switch">
+            <input type="checkbox" id="nativePushEnabled">
+            <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+            <span class="switch-body">
+              <strong>Alarm Bildirimleri (Telefon)</strong>
+              <small>Gaz, alev, su baskını ve sarsıntı alarmlarını uygulama kapalıyken bildirir.</small>
+            </span>
+          </label>
+
+          <label class="switch">
+            <input type="checkbox" id="nativeStatusEnabled">
+            <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+            <span class="switch-body">
+              <strong>Canlı Durum Satırı</strong>
+              <small>Bildirim panelinde sessiz bir "son durum" satırı tutar (gaz, mod, saat).</small>
+            </span>
+          </label>
+
+          <p class="result" id="nativePushState" role="status" aria-live="polite"></p>
+
+          <div class="btn-row">
+            <button class="btn ghost" type="button" id="nativePushTest">Test Bildirimi Gönder</button>
+            <button class="btn ghost" type="button" id="nativePushSettings">Android Bildirim Ayarları</button>
+          </div>
+
+          <p class="result" id="nativePushResult" role="status" aria-live="polite"></p>
+          <p class="help" id="nativePushHelp">
+            Bildirim gelmiyorsa: Android Ayarlar → Uygulamalar → Deneyap Ev Koruma → Bildirimler
+            bölümünde izin verildiğinden ve pil tasarrufunun uygulamayı kısıtlamadığından emin olun.
+          </p>
+        </div>
+      </section>
+
       <!-- ==================== GÖRÜNÜM & TEMA ==================== -->
       <section class="config-panel" aria-labelledby="h-theme" id="themeSection">
         <div class="panel-header">
@@ -1760,6 +1816,7 @@
   <script src="./js/voice.js"></script>
   <script src="./js/history.js"></script>
   <script src="./js/app.js"></script>
+  <script src="./js/native-push.js"></script>
   <script src="./js/settings.js"></script>
   <script src="./js/studio-nav.js"></script>
   <script src="./js/account.js"></script>

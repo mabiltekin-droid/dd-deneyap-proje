@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "849622636824",
+    "firebase_url": "https://ddproje-9f594-default-rtdb.europe-west1.firebasedatabase.app",
+    "project_id": "ddproje-9f594",
+    "storage_bucket": "ddproje-9f594.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:849622636824:android:254f050cc3f82df86e266d",
+        "android_client_info": {
+          "package_name": "com.mabiltekin.deneyapevkoruma"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "849622636824-upf0a7p1kjkks3a5lgbp0lr52uj1jv1b.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA2BFyuNDrcUhuhSXba_Q1U0-9LsBMmB0g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "849622636824-upf0a7p1kjkks3a5lgbp0lr52uj1jv1b.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

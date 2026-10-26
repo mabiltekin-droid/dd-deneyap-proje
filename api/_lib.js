@@ -83,6 +83,79 @@ async function sendToSubs(payload, opts) {
   };
 }
 
+/* Android uygulamasının FCM token'larına bildirim gönderir.
+   `push_tokens` koleksiyonu: { uid, token, platform, updated_at }.
+   Data-only mesaj kullanılır; bildirimi uygulama kendisi çizer. */
+async function sendFcm(payload, opts) {
+  opts = opts || {};
+  const db = admin.firestore();
+  const col = db.collection('push_tokens');
+
+  let snap;
+  try {
+    snap = opts.uid
+      ? await col.where('uid', '==', String(opts.uid)).get()
+      : await col.get();
+  } catch (e) {
+    return { targeted: 0, sent: 0, failed: 0, removed: 0, error: e && e.message };
+  }
+
+  /* Aynı token birden fazla kayıtta olabilir; tekilleştir. */
+  const owners = new Map();
+  snap.docs.forEach(function (doc) {
+    const v = doc.data() || {};
+    if (!v.token || owners.has(v.token)) return;
+    owners.set(v.token, doc);
+  });
+
+  const data = {};
+  Object.keys(payload || {}).forEach(function (k) {
+    if (payload[k] !== undefined && payload[k] !== null) data[k] = String(payload[k]);
+  });
+  if (!data.kind) data.kind = 'test';
+  if (!data.url) data.url = './';
+
+  const tokens = Array.from(owners.keys());
+  let sent = 0;
+  let failed = 0;
+  let removed = 0;
+
+  for (let i = 0; i < tokens.length; i += 500) {
+    const chunk = tokens.slice(i, i + 500);
+    let res;
+    try {
+      res = await admin.messaging().sendEachForMulticast({
+        tokens: chunk,
+        data: data,
+        android: {
+          priority: opts.urgent ? 'high' : 'normal',
+          ttl: (opts.ttl || 3600) * 1000
+        }
+      });
+    } catch (e) {
+      failed += chunk.length;
+      continue;
+    }
+
+    res.responses.forEach(function (r, idx) {
+      if (r.success) {
+        sent += 1;
+        return;
+      }
+      failed += 1;
+      const code = (r.error && r.error.code) || '';
+      if (code === 'messaging/registration-token-not-registered'
+          || code === 'messaging/invalid-registration-token') {
+        removed += 1;
+        const doc = owners.get(chunk[idx]);
+        if (doc) doc.ref.delete().catch(function () { /* yoksay */ });
+      }
+    });
+  }
+
+  return { targeted: tokens.length, sent: sent, removed: removed, failed: failed };
+}
+
 /* Zamanlanmış işler (Vercel Cron) ve elle tetikleme için tek yetki kapısı.
    CRON_SECRET tanımlıysa Vercel, cron isteğine "Authorization: Bearer ..."
    başlığını kendisi ekler. Elle denemek için x-dd-secret kullanılabilir. */
@@ -100,5 +173,6 @@ module.exports = {
   initAdmin: initAdmin,
   initVapid: initVapid,
   sendToSubs: sendToSubs,
+  sendFcm: sendFcm,
   authorized: authorized
 };

@@ -267,6 +267,7 @@
   const COL_AUDIT = 'audit_logs';
   const COL_EVENTS = 'alarm_events';
   const COL_PUSH = 'push_subs';
+  const COL_FCM = 'push_tokens';
 
   function profilesRef() { return db.collection(COL_PROFILES); }
   function bindingsRef() { return db.collection(COL_BINDINGS); }
@@ -277,6 +278,7 @@
   function auditRef() { return db.collection(COL_AUDIT); }
   function eventsRef() { return db.collection(COL_EVENTS); }
   function pushRef() { return db.collection(COL_PUSH); }
+  function fcmRef() { return db.collection(COL_FCM); }
 
   /* Push abonelik kimliği: uid + uç nokta özeti. Böylece aynı hesabın birden
      fazla cihazı/tarayıcısı ayrı kayıt olur ve tekrar abone olmak aynı kaydı
@@ -322,6 +324,39 @@
     if (!endpoint) return false;
     await pushRef().doc(pushDocId(uid, endpoint)).delete();
     return true;
+  }
+
+  /* --- FCM token'ları (Android uygulaması) --------------------------------
+     Web Push aboneliğinden ayrı koleksiyon: token'lar cihaz başına değişir ve
+     sunucu tarafında Firebase Admin ile gönderilir (bkz. api/_lib.js). */
+  async function saveFcmToken(uid, token, meta) {
+    if (!uid || !token) {
+      const e = new Error('FCM token bilgisi eksik.');
+      e.code = 'invalid'; e.human = e.message;
+      throw e;
+    }
+    const ref = fcmRef().doc(pushDocId(uid, 'fcm:' + token));
+    const data = {
+      id: ref.id,
+      uid: uid,
+      token: token,
+      platform: (meta && meta.platform) || 'android',
+      app_version: (meta && meta.app_version) || '',
+      ua: (typeof navigator !== 'undefined' ? navigator.userAgent : ''),
+      updated_at: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    await ref.set(data, { merge: true });
+    return ref.id;
+  }
+
+  async function deleteFcmToken(uid, token) {
+    if (!uid || !token) return false;
+    try {
+      await fcmRef().doc(pushDocId(uid, 'fcm:' + token)).delete();
+      return true;
+    } catch (e) {
+      return false;
+    }
   }
 
   /* Profiles collection: doc ID = user.uid */
@@ -875,6 +910,10 @@
     /* --- Push abonelikleri (arka plan bildirimi) --- */
     savePushSubscription: savePushSubscription,
     deletePushSubscription: deletePushSubscription,
+
+    /* --- FCM token'ları (Android uygulaması) --- */
+    saveFcmToken: saveFcmToken,
+    deleteFcmToken: deleteFcmToken,
 
     token: async function () {
       const s = await ensureSession();

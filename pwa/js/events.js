@@ -442,6 +442,120 @@
     if (App.toast) App.toast(rows.length + ' olay CSV olarak indirildi.', { kind: 'ok' });
   }
 
+  /* ------------------------------------------------------ PDF rapor ----
+     Android uygulamasında PDF'i native taraf çizer (Türkçe karakterler ve
+     paylaşım sayfası sorunsuz). Tarayıcıda yazdırma penceresi açılır:
+     kullanıcı "PDF olarak kaydet" seçebilir. */
+  function pdfModel() {
+    const rows = readLocal().slice(0, 1000);
+    const tr = function (ms) {
+      try {
+        return new Date(ms).toLocaleString('tr-TR', {
+          day: '2-digit', month: '2-digit', year: 'numeric',
+          hour: '2-digit', minute: '2-digit'
+        });
+      } catch (e) { return ''; }
+    };
+
+    let critical = 0;
+    let warning = 0;
+    const devices = {};
+    rows.forEach(function (e) {
+      const m = meta(e.type);
+      const sev = e.sev || m.sev;
+      if (sev === 'danger') critical += 1;
+      else if (sev === 'warn') warning += 1;
+      if (e.dev) devices[e.dev] = true;
+    });
+
+    const times = rows.map(function (e) { return Number(e.at) || 0; }).filter(Boolean);
+    const first = times.length ? Math.min.apply(null, times) : Date.now();
+    const last = times.length ? Math.max.apply(null, times) : Date.now();
+
+    const sevLabel = { danger: 'Kritik', warn: 'Uyarı', info: 'Bilgi' };
+
+    return {
+      title: 'Deneyap Ev Koruma — Olay Raporu',
+      range: tr(first) + ' – ' + tr(last),
+      generated: tr(Date.now()),
+      summary: [
+        { label: 'Toplam olay', value: String(rows.length) },
+        { label: 'Kritik', value: String(critical) },
+        { label: 'Uyarı', value: String(warning) },
+        { label: 'Cihaz', value: String(Object.keys(devices).length) }
+      ],
+      rows: rows.map(function (e) {
+        const m = meta(e.type);
+        const sev = e.sev || m.sev;
+        return {
+          time: tr(e.at),
+          device: e.dev || '—',
+          type: m.label,
+          severity: sevLabel[sev] || 'Bilgi',
+          message: e.msg || ''
+        };
+      })
+    };
+  }
+
+  function printFallback(model) {
+    const esc = function (s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    };
+    const rows = model.rows.map(function (r) {
+      return '<tr><td>' + esc(r.time) + '</td><td>' + esc(r.device) + '</td><td>' +
+        esc(r.type) + '</td><td>' + esc(r.severity) + '</td><td>' + esc(r.message) + '</td></tr>';
+    }).join('');
+
+    const w = window.open('', '_blank');
+    if (!w) {
+      if (App.toast) App.toast('Yazdırma penceresi engellendi. CSV indirmeyi deneyin.', { kind: 'warn' });
+      return;
+    }
+    w.document.write(
+      '<!doctype html><html lang="tr"><head><meta charset="utf-8">' +
+      '<title>' + esc(model.title) + '</title><style>' +
+      'body{font:12px/1.5 system-ui,sans-serif;color:#0f172a;margin:28px}' +
+      'h1{font-size:18px;margin:0 0 4px}p.meta{color:#64748b;margin:0 0 16px}' +
+      'table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:6px;border-bottom:1px solid #e2e8f0;vertical-align:top}' +
+      'th{color:#64748b;font-size:10px;text-transform:uppercase}' +
+      '@media print{@page{size:A4;margin:14mm}}' +
+      '</style></head><body>' +
+      '<h1>' + esc(model.title) + '</h1>' +
+      '<p class="meta">' + esc(model.range) + ' · Oluşturma: ' + esc(model.generated) + '</p>' +
+      '<p><strong>Toplam:</strong> ' + esc(model.summary[0].value) +
+      ' · <strong>Kritik:</strong> ' + esc(model.summary[1].value) +
+      ' · <strong>Uyarı:</strong> ' + esc(model.summary[2].value) + '</p>' +
+      '<table><thead><tr><th>Zaman</th><th>Cihaz</th><th>Tür</th><th>Önem</th><th>Mesaj</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody></table>' +
+      '<script>window.onload=function(){setTimeout(function(){window.print();},250);};<\/script>' +
+      '</body></html>'
+    );
+    w.document.close();
+  }
+
+  function exportPdf() {
+    const model = pdfModel();
+    if (!model.rows.length) {
+      if (App.toast) App.toast('Rapor için henüz olay kaydı yok.', { kind: 'warn' });
+      return;
+    }
+
+    if (window.AndroidApp && typeof window.AndroidApp.exportPdf === 'function') {
+      try {
+        window.AndroidApp.exportPdf(JSON.stringify(model));
+        if (App.toast) {
+          App.toast(model.rows.length + ' olaylık PDF hazırlanıyor…', { kind: 'ok' });
+        }
+        return;
+      } catch (e) {
+        /* Native başarısızsa yazdırma penceresine düş. */
+      }
+    }
+    printFallback(model);
+  }
+
   function clearLocalAsk() {
     if (!window.confirm('Yerel olay günlüğü temizlensin mi? (Bulut kayıtları silinmez.)')) return;
     writeLocal([]);
@@ -489,6 +603,8 @@
 
     const exp = $('evExportBtn');
     if (exp) exp.addEventListener('click', exportCsv);
+    const pdf = $('evPdfBtn');
+    if (pdf) pdf.addEventListener('click', exportPdf);
     const clr = $('evClearBtn');
     if (clr) clr.addEventListener('click', clearLocalAsk);
     const ref = $('evRefreshBtn');
@@ -540,6 +656,7 @@
     record: record,
     list: readLocal,
     exportCsv: exportCsv,
+    exportPdf: exportPdf,
     clearLocal: function () { writeLocal([]); renderAll(); },
     syncPending: syncPending,
     pullMine: pullMine,

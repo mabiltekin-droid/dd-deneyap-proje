@@ -750,6 +750,30 @@
     if (window.App.Blackbox && window.App.Blackbox.ingest) {
       window.App.Blackbox.ingest(data);
     }
+
+    /* Çevrimdışı dayanıklılık: son canlı veriyi önbelleğe yaz. */
+    try {
+      document.dispatchEvent(new CustomEvent('deneyap:telemetry', { detail: data }));
+    } catch (e) { /* yoksay */ }
+  }
+
+  /* Önbellekteki son telemetriyi ekrana basar (ağ yokken ilk açılış).
+     Çağıran taraf zaman damgasını korur ki "son veri" yaşı doğru görünsün. */
+  function renderCached(data, at) {
+    if (!data) return false;
+    try {
+      render(data);
+      lastUpdateTs = Number(at) || lastUpdateTs;
+      setText('wAge', App.fmtAgo(lastUpdateTs));
+      try {
+        document.dispatchEvent(new CustomEvent('deneyap:cache', {
+          detail: { at: lastUpdateTs }
+        }));
+      } catch (e) { /* yoksay */ }
+      return true;
+    } catch (e) {
+      return false;
+    }
   }
 
   /* Cihaz başka hesaba bağlıysa kumanda bölgesinde açıklayıcı not. */
@@ -839,6 +863,11 @@
     failStreak = 0;
     App.setConnBadge('live', 'Canlı Telemetri');
     if (window.App.Events && window.App.Events.setOnline) { try { window.App.Events.setOnline(true); } catch (e) {} }
+    try {
+      document.dispatchEvent(new CustomEvent('deneyap:connection', {
+        detail: { online: true }
+      }));
+    } catch (e) { /* yoksay */ }
   }
 
   function markOffline(err) {
@@ -868,6 +897,12 @@
 
     const hint = $('controlHint');
     if (hint) hint.textContent = 'bağlantı bekleniyor — kumandalar kilitli';
+
+    try {
+      document.dispatchEvent(new CustomEvent('deneyap:connection', {
+        detail: { online: false, reason: reason }
+      }));
+    } catch (e) { /* yoksay */ }
   }
 
   /* ------------------------------------------------------------- Polling */
@@ -1364,8 +1399,18 @@
   window.App.initDashboard = init;
   window.App.destroyDashboard = destroy;
   window.App.setupVirtualKeyboardHandler = setupVirtualKeyboardHandler;
+  window.App.renderCached = renderCached;
   /* Sesli komut / otomasyon modülleri için son telemetri erişimi */
   window.App.lastTelemetry = function () { return lastData; };
+
+  /* Çevrimdışıyken "Yeniden dene" düğmesi: yoklamayı hemen başlatır. */
+  window.App.retryConnection = function () {
+    clearTimeout(pollTimer);
+    if (App.api.transport()) {
+      try { App.api.startMqtt(); } catch (e) { /* yoksay */ }
+    }
+    poll();
+  };
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () {
