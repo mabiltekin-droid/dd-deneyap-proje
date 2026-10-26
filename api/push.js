@@ -75,10 +75,11 @@ module.exports = async function handler(req, res) {
 
   /* --- sağlık / yapılandırma sorgusu ------------------------------------- */
   if (req.method === 'GET') {
-    const out = { ok: true, configured: { vapid: false, firestore: false, fcm: false } };
+    const out = { ok: true, configured: { vapid: false, firestore: false, fcm: false, email: false } };
     try { out.configured.vapid = lib.initVapid(); } catch (e) { /* yoksay */ }
     try { out.configured.firestore = lib.initAdmin(); } catch (e) { out.error = e.message; }
     out.configured.fcm = out.configured.firestore;
+    out.configured.email = lib.emailReady();
     out.ready = out.configured.firestore;
     res.status(200).json(out);
     return;

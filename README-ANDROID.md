@@ -99,7 +99,8 @@ tutulmaz):
 | `PUSH_TRIGGER_SECRET` | Firmware'in `/api/push` çağrısını doğrular |
 
 Sağlık kontrolü: `GET https://ddproje.vercel.app/api/push` yanıtında
-`configured.fcm: true` ve `configured.vapid: true` görünmelidir.
+`configured.fcm: true`, `configured.vapid: true` ve `configured.email: true`
+görünmelidir.
 
 > **Gerçek alarmlar için firmware ayarı:** FCM yalnızca sunucuya bildirim isteği
 > geldiğinde gönderilir. `firmware-mqtt/DeneyapEvKoruma/config.h` içinde `PUSH_URL`

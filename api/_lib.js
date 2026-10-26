@@ -383,6 +383,7 @@ module.exports = {
   sendFcm: sendFcm,
   sendEmail: sendEmail,
   sendEmergencyEmails: sendEmergencyEmails,
+  emailReady: function () { return !!emailConfig(); },
   deviceOwner: deviceOwner,
   authorized: authorized
 };
