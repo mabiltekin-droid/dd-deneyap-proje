@@ -117,6 +117,30 @@ veya oturum açmış istemciden `POST /api/notify`.
 > **Force-stop notu:** Android, kullanıcı uygulamayı "Durdur" ile zorla kapatırsa
 > bildirimler yeniden açılana kadar gelmez. Bu Android'in kendi kısıtıdır.
 
+## Acil durum e-postaları
+
+Ayarlar → **Acil Durum E-postaları** bölümünden en fazla 20 kişi eklenir. Kişiler
+Firestore'da `emergency_contacts` koleksiyonunda `uid`, `name`, `email`, `enabled`
+alanlarıyla tutulur; yalnızca hesap sahibi okuyup yazabilir. Paneldeki
+**Test E-postası Gönder** düğmesi `POST /api/notify` (`emailTest: true`) çağırır.
+
+Alarm anında `api/push.js`, önce istekteki `uid` alanına bakar; yoksa
+`device_bindings/{device}.owner_id` üzerinden cihaz sahibini bulur ve o hesabın aktif
+kişilerine e-posta gönderir. `test` türünde e-posta gönderilmez.
+
+Vercel **Production** ortamına eklenmesi gerekenler:
+
+| Değişken | Örnek / görev |
+|---|---|
+| `EMERGENCY_FROM` | `Deneyap Ev Koruma <alerts@alanadiniz.com>` |
+| `RESEND_API_KEY` | Resend kullanılıyorsa API anahtarı |
+| `BREVO_API_KEY` | Brevo kullanılıyorsa API anahtarı |
+
+İki sağlayıcıdan biri yeterlidir; `RESEND_API_KEY` varsa Resend, yoksa Brevo denenir.
+Gönderen adresi sağlayıcıda **doğrulanmış** olmalıdır. Anahtar yoksa panelde test
+e-postası "Sunucuda e-posta servisi yapılandırılmadı" uyarısı verir; uygulamanın diğer
+işlevleri çalışmaya devam eder.
+
 ## Gereksinimler
 
 Bu makinede hazır:

@@ -45,6 +45,7 @@ const PRECACHE = [
   './js/app.js',
   './js/offline.js',
   './js/native-push.js',
+  './js/emergency.js',
   './js/settings.js',
   './js/mobile-app.js',
   './js/studio-nav.js',

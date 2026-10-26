@@ -1595,6 +1595,65 @@
         </div>
       </section>
 
+      <!-- ============ ACİL DURUM E-POSTA KİŞİLERİ ============ -->
+      <section class="config-panel" aria-labelledby="h-emergency" id="emergencySection">
+        <div class="panel-header">
+          <span class="panel-tag">[CONFIG 09C // ACİL DURUM E-POSTALARI]</span>
+          <div class="panel-title-row">
+            <div class="head-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                <polyline points="22,6 12,13 2,6"/>
+              </svg>
+              <h3 id="h-emergency">Acil Durum E-postaları</h3>
+            </div>
+          </div>
+          <p class="panel-desc">Gaz, alev, su baskını ve sarsıntı alarmlarında yakınlarınıza otomatik e-posta.</p>
+        </div>
+
+        <div class="panel-content">
+          <p class="help">
+            Alarm anında bu listedeki <strong>aktif</strong> kişilere sunucu üzerinden e-posta gönderilir.
+            Uygulama kapalıyken de çalışır. En fazla 20 kişi ekleyebilirsiniz; adresler yalnızca
+            hesabınıza bağlıdır. E-posta servisinin sunucuda tanımlı olması gerekir.
+          </p>
+
+          <form id="emForm" autocomplete="off">
+            <div class="field-row">
+              <div class="field">
+                <label for="emContactName">Ad / Yakınlık <span class="opt">opsiyonel</span></label>
+                <input type="text" id="emContactName" name="emContactName" maxlength="60"
+                       placeholder="Örn. Ayşe (komşu)" autocomplete="off">
+              </div>
+              <div class="field">
+                <label for="emContactEmail">E-posta adresi</label>
+                <input type="email" id="emContactEmail" name="emContactEmail" maxlength="254"
+                       placeholder="ornek@eposta.com" inputmode="email"
+                       autocomplete="off" spellcheck="false" required>
+              </div>
+            </div>
+            <div class="btn-row">
+              <button class="btn primary" type="submit" id="emAddBtn">Kişi Ekle</button>
+              <button class="btn ghost" type="button" id="emTestBtn" disabled>Test E-postası Gönder</button>
+            </div>
+          </form>
+
+          <p class="result" id="emStatus" role="status" aria-live="polite"></p>
+
+          <div class="em-list-head">
+            <strong>Kişiler</strong>
+            <span id="emCount">Henüz kişi yok</span>
+          </div>
+          <div id="emList" class="em-list"></div>
+          <p class="help" id="emEmpty">Henüz acil durum kişisi eklenmedi.</p>
+
+          <p class="help">
+            <strong>Not:</strong> Test e-postası yalnızca kayıtlı kişilere gider. Gerçek alarmlarda
+            cihazın sunucuya bildirim göndermesi gerekir; cihaz bağlantısı yoksa e-posta da gitmez.
+          </p>
+        </div>
+      </section>
+
       <!-- ==================== GÖRÜNÜM & TEMA ==================== -->
       <section class="config-panel" aria-labelledby="h-theme" id="themeSection">
         <div class="panel-header">
@@ -1817,6 +1876,7 @@
   <script src="./js/history.js"></script>
   <script src="./js/app.js"></script>
   <script src="./js/native-push.js"></script>
+  <script src="./js/emergency.js"></script>
   <script src="./js/settings.js"></script>
   <script src="./js/studio-nav.js"></script>
   <script src="./js/account.js"></script>

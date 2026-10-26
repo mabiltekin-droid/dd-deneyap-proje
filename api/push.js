@@ -122,6 +122,16 @@ module.exports = async function handler(req, res) {
   const title = body.title || k.title;
   const text = body.body || (device ? k.body + ' (Cihaz: ' + device + ')' : k.body);
 
+  /* E-posta alıcılarını bul: önce açık uid, yoksa cihaz sahibi. */
+  let uid = body.uid ? String(body.uid) : '';
+  if (!uid && device) {
+    uid = await lib.deviceOwner(device);
+  }
+
+  const panelUrl = (body.url && /^https?:\/\//i.test(String(body.url)))
+    ? String(body.url)
+    : 'https://' + (req.headers.host || 'ddproje.vercel.app') + '/';
+
   const webPayload = JSON.stringify({
     title: title,
     body: text,
@@ -163,6 +173,22 @@ module.exports = async function handler(req, res) {
     fcm.error = e && e.message;
   }
 
+  /* --- Acil durum e-postaları (gerçek alarmlarda; testte isteğe bağlı) --- */
+  let email = { targeted: 0, sent: 0, failed: 0, skipped: true };
+  if (kindName !== 'test' || body.emailTest === true) {
+    try {
+      email = await lib.sendEmergencyEmails(uid, {
+        title: title,
+        body: text,
+        device: device,
+        kind: kindName,
+        url: panelUrl
+      });
+    } catch (e) {
+      email.error = e && e.message;
+    }
+  }
+
   res.status(200).json({
     ok: true,
     kind: kindName,
@@ -171,6 +197,7 @@ module.exports = async function handler(req, res) {
     removed: (web.removed || 0) + (fcm.removed || 0),
     failed: (web.failed || 0) + (fcm.failed || 0),
     web: web,
-    fcm: fcm
+    fcm: fcm,
+    email: email
   });
 };

@@ -131,7 +131,8 @@
           <div class="mini"><strong>Cihaz bilgileri</strong><span>Cihaz kimliği, cihaz adı, sahiplik, bağlantı durumu, aktivasyon kodu ve yazılım sürümü.</span></div>
           <div class="mini"><strong>Telemetri ve olaylar</strong><span>Sensör ölçümleri, sıcaklık/nem/gaz/hareket verileri, komutlar, modlar, ayarlar ve olay günlükleri.</span></div>
           <div class="mini"><strong>Güvenlik kayıtları</strong><span>Giriş/denetim kayıtları, kullanıcı aracısı, hata ve kötüye kullanım önleme kayıtları.</span></div>
-          <div class="mini"><strong>Bildirimler</strong><span>Web push aboneliği (uç nokta ve anahtarlar) ile bildirim tercihleri.</span></div>
+          <div class="mini"><strong>Bildirimler</strong><span>Web push aboneliği (uç nokta ve anahtarlar), Android FCM token'ı ve bildirim tercihleri.</span></div>
+          <div class="mini"><strong>Acil durum kişileri</strong><span>Yalnızca sizin eklediğiniz ad/yakınlık ve e-posta adresi; alarm anında bilgilendirme göndermek için kullanılır.</span></div>
           <div class="mini"><strong>Yerel veriler</strong><span>Tarayıcıda/cihazda tutulan oturum, tema, son sekme ve çevrimdışı önbellek. Gün doğumu/batımı için girilen konum yalnızca cihazda saklanır, sunucuya gönderilmez.</span></div>
         </div>
 
@@ -152,9 +153,10 @@
         <h2 id="paylasim">3. Paylaşım ve üçüncü taraflar</h2>
         <p>Verileriniz satılmaz. Hizmeti çalıştırmak için şu altyapılar kullanılır:</p>
         <ul>
-          <li><strong>Google Firebase / Google Cloud</strong> — kimlik doğrulama, Firestore veritabanı ve barındırma altyapısı.</li>
-          <li><strong>Vercel</strong> — web barındırma ve sunucusuz görevler (ör. haftalık özet).</li>
+          <li><strong>Google Firebase / Google Cloud</strong> — kimlik doğrulama, Firestore veritabanı, FCM bildirimleri ve barındırma altyapısı.</li>
+          <li><strong>Vercel</strong> — web barındırma ve sunucusuz görevler (ör. haftalık özet, alarm e-postası tetikleme).</li>
           <li><strong>Tarayıcı üreticisinin push servisi</strong> — yalnızca bildirim göndermek için; abonelik uç noktası ilgili tarayıcıya aittir.</li>
+          <li><strong>E-posta sağlayıcısı (Brevo veya Resend)</strong> — yalnızca acil durum kişisi olarak eklediğiniz adreslere alarm e-postası iletmek için; mesaj içeriği ve alıcı adresi sağlayıcıya iletilir.</li>
         </ul>
         <p>
           Bu hizmetler verileri kendi altyapılarında ve yurt dışında işleyebilir. Ayrıntılar için
@@ -167,8 +169,9 @@
           Hesap ve profil verileri hesabınız aktif olduğu sürece; cihaz bağlantıları ve telemetri,
           hizmetin doğası gereği makul süre boyunca saklanır. Güvenlik/denetim kayıtları ve yedekler,
           kötüye kullanımı önlemek ve yasal yükümlülükler için sınırlı süre daha tutulabilir.
-          Hesap silme talebiniz işleme alındığında profil, kimlik doğrulama hesabı, cihaz bağlantıları
-          ve push aboneliği silinir veya anonimleştirilir; yedeklerden silinmesi ek süre alabilir.
+          Hesap silme talebiniz işleme alındığında profil, kimlik doğrulama hesabı, cihaz bağlantıları,
+          push aboneliği/FCM token'ı ve acil durum e-posta kişileri silinir veya anonimleştirilir;
+          yedeklerden silinmesi ek süre alabilir.
         </p>
 
         <h2 id="guvenlik">5. Güvenlik</h2>

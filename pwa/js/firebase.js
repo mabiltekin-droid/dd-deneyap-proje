@@ -268,6 +268,7 @@
   const COL_EVENTS = 'alarm_events';
   const COL_PUSH = 'push_subs';
   const COL_FCM = 'push_tokens';
+  const COL_EMERGENCY = 'emergency_contacts';
 
   function profilesRef() { return db.collection(COL_PROFILES); }
   function bindingsRef() { return db.collection(COL_BINDINGS); }
@@ -279,6 +280,7 @@
   function eventsRef() { return db.collection(COL_EVENTS); }
   function pushRef() { return db.collection(COL_PUSH); }
   function fcmRef() { return db.collection(COL_FCM); }
+  function emergencyRef() { return db.collection(COL_EMERGENCY); }
 
   /* Push abonelik kimliği: uid + uç nokta özeti. Böylece aynı hesabın birden
      fazla cihazı/tarayıcısı ayrı kayıt olur ve tekrar abone olmak aynı kaydı
@@ -357,6 +359,86 @@
     } catch (e) {
       return false;
     }
+  }
+
+  /* --- Acil durum e-posta kişileri ---------------------------------------
+     Kişiler hesaba bağlıdır; sunucu alarm anında bu listeye e-posta atar.
+     E-posta adresi istemcide yalnızca sahibine gösterilir (Firestore kuralı). */
+  function cleanEmail(value) {
+    return String(value || '').trim().toLowerCase();
+  }
+
+  function validEmail(value) {
+    const email = cleanEmail(value);
+    return email.length >= 5 && email.length <= 254
+      && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
+  }
+
+  async function listEmergencyContacts(uid) {
+    if (!uid) return [];
+    const snap = await emergencyRef().where('uid', '==', uid).limit(20).get();
+    const list = snap.docs.map(function (d) {
+      return Object.assign({ id: d.id }, d.data());
+    });
+    list.sort(function (a, b) {
+      return String(a.name || a.email || '').localeCompare(String(b.name || b.email || ''), 'tr');
+    });
+    return list;
+  }
+
+  async function saveEmergencyContact(uid, contact) {
+    if (!uid) {
+      const e = new Error('Oturum gerekli.');
+      e.code = 'auth'; e.human = e.message;
+      throw e;
+    }
+    const email = cleanEmail(contact && contact.email);
+    if (!validEmail(email)) {
+      const e = new Error('Geçerli bir e-posta adresi girin.');
+      e.code = 'invalid'; e.human = e.message;
+      throw e;
+    }
+    const name = String((contact && contact.name) || '').trim().slice(0, 60)
+      || email.split('@')[0];
+
+    const hasId = !!(contact && contact.id);
+    const ref = hasId ? emergencyRef().doc(String(contact.id)) : emergencyRef().doc();
+
+    if (hasId) {
+      const cur = await ref.get();
+      if (!cur.exists || (cur.data() || {}).uid !== uid) {
+        const e = new Error('Kişi bulunamadı.');
+        e.code = 'not-found'; e.human = e.message;
+        throw e;
+      }
+    }
+
+    const data = {
+      id: ref.id,
+      uid: uid,
+      name: name,
+      email: email,
+      enabled: !(contact && contact.enabled === false),
+      updated_at: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    if (!hasId) data.created_at = firebase.firestore.FieldValue.serverTimestamp();
+
+    await ref.set(data, { merge: true });
+    return data;
+  }
+
+  async function deleteEmergencyContact(uid, contactId) {
+    if (!uid || !contactId) return false;
+    const ref = emergencyRef().doc(String(contactId));
+    const cur = await ref.get();
+    if (!cur.exists) return false;
+    if ((cur.data() || {}).uid !== uid) {
+      const e = new Error('Bu kişiyi silme yetkiniz yok.');
+      e.code = 'permission-denied'; e.human = e.message;
+      throw e;
+    }
+    await ref.delete();
+    return true;
   }
 
   /* Profiles collection: doc ID = user.uid */
@@ -914,6 +996,11 @@
     /* --- FCM token'ları (Android uygulaması) --- */
     saveFcmToken: saveFcmToken,
     deleteFcmToken: deleteFcmToken,
+
+    /* --- Acil durum e-posta kişileri --- */
+    listEmergencyContacts: listEmergencyContacts,
+    saveEmergencyContact: saveEmergencyContact,
+    deleteEmergencyContact: deleteEmergencyContact,
 
     token: async function () {
       const s = await ensureSession();

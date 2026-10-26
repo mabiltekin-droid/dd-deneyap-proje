@@ -62,6 +62,47 @@ module.exports = async function handler(req, res) {
   }
   body = body || {};
 
+  const panelUrl = 'https://' + (req.headers.host || 'ddproje.vercel.app') + '/';
+
+  /* Acil durum e-posta testi: FCM göndermez, yalnızca kayıtlı kişilere yazar. */
+  if (body.emailTest === true) {
+    let email;
+    try {
+      email = await lib.sendEmergencyEmails(decoded.uid, {
+        title: String(body.title || 'Test e-postası').slice(0, 120),
+        body: String(body.body
+          || 'Acil durum e-posta bildirimi çalışıyor. Gerçek alarmda bu adrese benzer bir e-posta gelecek.')
+          .slice(0, 400),
+        device: '',
+        kind: 'test',
+        url: panelUrl
+      });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: 'e-posta gönderilemedi: ' + (e && e.message) });
+      return;
+    }
+
+    if (!email.targeted) {
+      res.status(409).json({
+        ok: false,
+        error: 'Kayıtlı acil durum e-postası yok. Önce bir kişi ekleyin.',
+        email: email
+      });
+      return;
+    }
+    if (email.skipped) {
+      res.status(503).json({
+        ok: false,
+        error: email.error || 'Sunucuda e-posta servisi yapılandırılmadı.',
+        email: email
+      });
+      return;
+    }
+
+    res.status(200).json({ ok: true, email: email });
+    return;
+  }
+
   const title = String(body.title || 'Test bildirimi').slice(0, 120);
   const text = String(body.body
     || 'Bildirimler çalışıyor. Alarm anında uygulama kapalı olsa bile bu bildirimi alacaksınız.')

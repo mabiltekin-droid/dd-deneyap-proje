@@ -5970,3 +5970,87 @@ html.studio-menu-open {
   .studio-menu-btn,
   .stb-arrow { transition: none !important; }
 }
+
+/* --------------------------------------------------- Acil Durum E-postaları */
+.em-list-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 1rem 0 0.35rem;
+  font-size: 0.8rem;
+  color: var(--text);
+}
+
+#emCount {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--text-dim);
+}
+
+.em-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0 0 0.35rem;
+}
+
+.em-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-glass);
+}
+
+.em-main {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
+
+.em-main strong {
+  font-size: 0.86rem;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.em-main span {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  overflow-wrap: anywhere;
+}
+
+.em-main .em-off {
+  color: var(--warn);
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.em-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.em-del { flex: none; }
+
+#emStatus[data-kind="ok"] { color: var(--accent); }
+#emStatus[data-kind="warn"] { color: var(--warn); }
+#emStatus[data-kind="danger"] { color: var(--danger); }
+
+@media (max-width: 620px) {
+  .em-item { align-items: flex-start; flex-wrap: wrap; }
+  .em-main { flex-basis: 100%; }
+  .em-toggle { margin-left: auto; }
+}

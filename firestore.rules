@@ -332,6 +332,36 @@ service cloud.firestore {
     }
 
     // ================================================================
+    // EMERGENCY_CONTACTS - acil durum e-posta kişileri
+    // Kullanıcı yalnızca kendi kişilerini yönetir. Gönderici (Vercel
+    // fonksiyonu) servis hesabıyla okur; e-posta adresleri başka
+    // kullanıcılara açılmaz.
+    // ================================================================
+    match /emergency_contacts/{contactId} {
+      allow read: if signedIn() && resource.data.uid == uid();
+      allow create: if signedIn()
+        && request.resource.data.uid == uid()
+        && request.resource.data.email is string
+        && request.resource.data.email.size() >= 5
+        && request.resource.data.email.size() <= 254
+        && request.resource.data.email.matches('^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$')
+        && request.resource.data.name is string
+        && request.resource.data.name.size() <= 60
+        && request.resource.data.enabled is bool;
+      allow update: if signedIn()
+        && resource.data.uid == uid()
+        && request.resource.data.uid == uid()
+        && request.resource.data.email is string
+        && request.resource.data.email.size() >= 5
+        && request.resource.data.email.size() <= 254
+        && request.resource.data.email.matches('^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$')
+        && request.resource.data.name is string
+        && request.resource.data.name.size() <= 60
+        && request.resource.data.enabled is bool;
+      allow delete: if signedIn() && resource.data.uid == uid();
+    }
+
+    // ================================================================
     // PUSH_SUBS - Web Push abonelikleri (arka plan bildirimi)
     // Panel yalnızca KENDİ aboneliğini yazar/siler. Gönderici (Vercel
     // fonksiyonu) servis hesabıyla okur; servis hesabı kuralları atlar.

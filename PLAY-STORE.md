@@ -153,6 +153,7 @@ Play Console formunda aşağıdaki tabloyu kendi akışınıza göre doğrulayı
 | Cihaz veya diğer kimlikler | Evet | Hizmet sağlayıcı | Evet | Cihaz eşleştirme, FCM/push token'ı, güvenlik |
 | Uygulama etkinliği | Evet | Hizmet sağlayıcı | Evet | Telemetri, komutlar, olay günlükleri, otomasyon |
 | Uygulama bilgileri ve performans | Evet | Hizmet sağlayıcı | Hayır | Hata ayıklama, kötüye kullanım tespiti |
+| Diğer kişisel bilgiler (acil durum kişisi adı/e-postası) | Evet | Evet (e-posta sağlayıcısı) | Hayır | Alarm anında yakınları bilgilendirme |
 | Yaklaşık konum | Hayır* | Hayır | Hayır | Gün doğumu/batımı yalnızca cihazda; sunucuya gönderilmez |
 
 \* Kullanıcı “Konumumu Kullan” derse koordinatlar yalnızca tarayıcı yerel depolamasında
@@ -168,11 +169,15 @@ Cevaplar:
 - **Veri toplama isteğe bağlı mı?** Hesap ve cihaz verileri hizmet için zorunlu;
   görünen ad ve bildirimler isteğe bağlı.
 - **Veri işleyen hizmet sağlayıcılar:** Google Firebase/Cloud (kimlik doğrulama,
-  Firestore, FCM bildirimleri), Vercel (web/API barındırma), tarayıcı push servisi.
+  Firestore, FCM bildirimleri), Vercel (web/API barındırma), tarayıcı push servisi,
+  e-posta sağlayıcısı (Brevo veya Resend; yalnızca acil durum e-postaları için).
   Play formunda “shared” tanımına göre işaretleyin; reklam ortağı değildir.
 - **Bildirimler:** Android'de FCM token'ı hesaba bağlı olarak `push_tokens` koleksiyonunda
   saklanır. Bildirim izni isteğe bağlıdır; verilmezse uygulamanın diğer işlevleri çalışır.
   Kullanıcı bildirimleri Ayarlar → Android bildirimleri bölümünden kapatabilir.
+- **Acil durum kişileri:** Kullanıcının eklediği ad/e-posta `emergency_contacts`
+  koleksiyonunda yalnızca hesabına bağlı olarak saklanır; alarm anında e-posta
+  sağlayıcısına iletilir. Kişi eklemek isteğe bağlıdır ve kullanıcı silebilir.
 - **PDF/CSV dışa aktarma:** Rapor yalnızca cihazda üretilir; kullanıcı paylaşmadıkça
   hiçbir sunucuya yüklenmez.
 
@@ -218,7 +223,8 @@ Bu bağlantı `privacy.html#hesap-silme` sayfasını açar. Kullanıcı oradan G
 
 1. Kullanıcının kimliği/hesap sahipliği doğrulanır.
 2. Firebase Authentication kullanıcısı silinir.
-3. Firestore profili, cihaz bağlantıları ve push aboneliği silinir.
+3. Firestore profili, cihaz bağlantıları, push aboneliği/FCM token'ı ve acil durum
+   e-posta kişileri silinir.
 4. Güvenlik/denetim kayıtları gerekiyorsa anonimleştirilir veya yasal süre kadar tutulur.
 5. Talebe en geç 30 gün içinde yanıt verilir.
 
@@ -238,6 +244,8 @@ istenirse, ileride Firestore `deletion_requests` + Cloud Function akışı eklen
 - [ ] `GET /api/push` yanıtında `configured.fcm` ve `configured.vapid` true.
 - [ ] Canlı durum bildirimi ve ana ekran widget'ı güncelleniyor.
 - [ ] PDF ve CSV dışa aktarma Android paylaşım sayfasını açıyor.
+- [ ] Acil durum e-postası eklendi; test e-postası gönderildi.
+- [ ] `EMERGENCY_FROM` + `BREVO_API_KEY`/`RESEND_API_KEY` Vercel'de tanımlı.
 - [ ] Gizlilik politikası URL'si canlı ve giriş gerektirmiyor.
 - [ ] Hesap silme bağlantısı canlı ve uygulama içinden erişilebilir.
 - [ ] Data safety formu dolduruldu.
