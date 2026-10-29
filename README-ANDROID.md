@@ -138,9 +138,16 @@ Vercel **Production** ortamına eklenmesi gerekenler:
 | `BREVO_API_KEY` | Brevo kullanılıyorsa API anahtarı |
 
 İki sağlayıcıdan biri yeterlidir; `RESEND_API_KEY` varsa Resend, yoksa Brevo denenir.
+Ortam değişkenleri eklendikten sonra Production yeniden deploy edilmelidir
+(`npx vercel --prod --yes`); aksi halde çalışan sürüm yeni anahtarları görmez.
 Gönderen adresi sağlayıcıda **doğrulanmış** olmalıdır. Anahtar yoksa panelde test
 e-postası "Sunucuda e-posta servisi yapılandırılmadı" uyarısı verir; uygulamanın diğer
 işlevleri çalışmaya devam eder.
+
+> **Brevo IP notu:** Brevo → Security → Authorised IPs sayfasında API anahtarları için
+> "Block unknown IP addresses" **kapalı** olmalıdır. Vercel'in çıkış IP'leri değişken
+> olduğundan bu ayar açıkken API `401 unauthorized` döner. SMTP anahtarı için ayrı
+> ayar olduğuna dikkat edin; kapatılması gereken bölüm **API keys**'tir.
 
 ## Gereksinimler
 
