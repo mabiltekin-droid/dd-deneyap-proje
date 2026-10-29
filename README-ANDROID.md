@@ -127,7 +127,13 @@ alanlarıyla tutulur; yalnızca hesap sahibi okuyup yazabilir. Paneldeki
 
 Alarm anında `api/push.js`, önce istekteki `uid` alanına bakar; yoksa
 `device_bindings/{device}.owner_id` üzerinden cihaz sahibini bulur ve o hesabın aktif
-kişilerine e-posta gönderir. `test` türünde e-posta gönderilmez.
+kişilerine e-posta gönderir. Aynı sahip bilgisi FCM/Web Push alıcılarını daraltmak için
+de kullanılır. `test` türünde e-posta gönderilmez.
+
+> **Cihaz bağlama:** Firmware yalnızca `device` ve `kind` gönderir. Gerçek alarmın
+> doğru hesaba (ve o hesabın acil durum kişilerine) ulaşması için cihazın panelde
+> kodla bağlanmış olması, yani `device_bindings/{device}` kaydının bulunması gerekir.
+> Bağlantı yoksa e-posta gönderilmez; FCM/Web Push eski davranışla tüm abonelere gider.
 
 Vercel **Production** ortamına eklenmesi gerekenler:
 
