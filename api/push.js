@@ -14,7 +14,8 @@
      POST /api/push
      x-dd-secret: <PUSH_TRIGGER_SECRET>
      { "device": "DK-1744", "kind": "flame|gas|flood|vib|offline|test", "uid": "op-01" }
-       - uid verilmezse TÜM abonelere gönderilir (alarm = herkes),
+       - uid verilmezse device_bindings üzerinden cihaz sahibi aranır,
+         bulunamazsa tüm abonelere gönderilir (eski davranış).
        - test için: { "kind": "test", "uid": "<kendi-uid>" }
 
    Yanıt: { ok, kind, targeted, sent, removed, failed, web, fcm }
@@ -149,7 +150,7 @@ module.exports = async function handler(req, res) {
       web = await lib.sendToSubs(webPayload, {
         ttl: 3600,
         urgent: k.urgent,
-        uid: body.uid
+        uid: uid
       });
       web.skipped = false;
     } catch (e) {
@@ -168,7 +169,7 @@ module.exports = async function handler(req, res) {
     }, {
       ttl: 3600,
       urgent: k.urgent,
-      uid: body.uid
+      uid: uid
     });
   } catch (e) {
     fcm.error = e && e.message;
