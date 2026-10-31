@@ -2,6 +2,8 @@
 # Kişisel donanım/ağ ayarları. Şifreler burada olduğu için takip edilmez.
 firmware/config.h
 firmware/secrets.h
+firmware-mqtt/DeneyapEvKoruma/config.local.h
+firmware-mqtt/DeneyapEvKoruma/secrets.h
 
 # ---------------------------------------------------------------- derleme
 # Arduino IDE 2 / PlatformIO / eski IDE çıktıları

@@ -1,7 +1,7 @@
 /*
  * ============================================================================
  *  Deneyap Ev Koruma Sistemi — Deneyap Kart / Arduino IDE firmware
- *  Sürüm v3.0.0  (MQTT + HTTP)
+ *  Sürüm v3.4.0  (MQTT + HTTP)
  * ----------------------------------------------------------------------------
  *  Bu kod, depodaki `pwa/` kontrol paneli ile VARSAYILAN MQTT taşıması üzerinden
  *  haberleşir; ayrıca aynı yerel ağdan HTTP JSON API de sunar.
@@ -15,9 +15,12 @@
  *   • MQ2 gaz + yağmur sensörü, EMA filtre, histerezisli durum makinesi
  *   • Fan / su motoru / buzzer röleleri ve 2 servo (pencere + panjur)
  *   • Gaz tehlikesi ve su baskınında Telegram bildirimi
+ *   • Alarm anında Vercel /api/push üzerinden FCM + Web Push + acil e-posta
+ *   • ESP32 Arduino core 2.x ve 3.x uyumlu (LEDC servo, OTA, I2S)
  *   • HTTP eşdeğerleri: /api/status /api/control /api/settings /api/history
  *
  *  Donanım / ağ / eşik ayarları -> config.h
+ *  Gizli değerler (Wi-Fi, PUSH_SECRET) -> config.local.h (git dışında)
  *  (Bu dosya ile config.h aynı klasörde olmalı; derlemeden önce config.h'de
  *   WIFI_SSID / WIFI_PASS ve MQTT_TOPIC değerlerini doldurun.)
  *
@@ -39,6 +42,16 @@
 #include <driver/i2s.h>
 
 #include "config.h"
+
+/* Farklı ESP32 Arduino core sürümlerinde derlenebilmek için güvenli varsayılanlar. */
+#ifndef ARDUINO_BOARD
+#define ARDUINO_BOARD "deneyap"
+#endif
+#ifndef ESP_ARDUINO_VERSION_MAJOR
+#define ESP_ARDUINO_VERSION_MAJOR 2
+#define ESP_ARDUINO_VERSION_MINOR 0
+#define ESP_ARDUINO_VERSION_PATCH 0
+#endif
 
 /* Brownout detektörünü kapatmak için SDK kayıt tanımları */
 #include "soc/soc.h"
@@ -819,8 +832,16 @@ static bool tgSend(const String &text, bool force) {
    bir HTTPS isteği atar. Panel tarafındaki tür tercihleri göndericide tutulur;
    cihaz yalnızca "şu tür olay oldu" bilgisini + cihaz kimliğini iletir.
    Aynı türden 30 sn içinde tek istek gider (alarm titremeleri tek bildirim). */
+static uint32_t pushLastTryMs = 0;
+static int      pushLastCode  = 0;
+static bool     pushLastOk    = false;
+
+static bool pushReady() {
+  return PUSH_URL[0] != '\0' && PUSH_SECRET[0] != '\0';
+}
+
 static bool pushNotify(const char *kind) {
-  if (strlen(PUSH_URL) == 0 || strlen(PUSH_SECRET) == 0) return false;
+  if (!pushReady()) return false;
   if (WiFi.status() != WL_CONNECTED) return false;
 
   int idx = 3;
@@ -831,19 +852,35 @@ static bool pushNotify(const char *kind) {
   uint32_t now = millis();
   if (pushLastMs[idx] != 0 && (uint32_t)(now - pushLastMs[idx]) < 30000UL) return false;
   pushLastMs[idx] = now;
+  pushLastTryMs = now;
 
   WiFiClientSecure sec; sec.setInsecure();      // kök sertifika yüklenmez (pin sınırı)
   HTTPClient http;
-  http.setConnectTimeout(6000);
-  http.setTimeout(6000);
-  if (!http.begin(sec, PUSH_URL)) return false;
+  http.setConnectTimeout(PUSH_HTTP_TIMEOUT_MS);
+  http.setTimeout(PUSH_HTTP_TIMEOUT_MS);
+  if (!http.begin(sec, PUSH_URL)) {
+    pushLastCode = -1000;
+    pushLastOk = false;
+    Serial.println(F("[push] HTTPS baslatilamadi"));
+    return false;
+  }
   http.addHeader("Content-Type", "application/json");
   http.addHeader("x-dd-secret", PUSH_SECRET);
-  String body = String("{\"device\":\"") + deviceId + "\",\"kind\":\"" + kind + "\"}";
+  String body = String("{\"device\":\"") + deviceId
+              + "\",\"kind\":\"" + kind
+              + "\",\"fw\":\"" FW_VERSION "\"}";
   int code = http.POST(body);
+  pushLastCode = code;
+  pushLastOk = (code == 200 || code == 202);
+  if (!pushLastOk) {
+    String resp = http.getString();
+    resp.trim();
+    if (resp.length() > 120) resp = resp.substring(0, 120);
+    Serial.printf("[push] hata %d: %s\n", code, resp.c_str());
+  }
   http.end();
   Serial.print(F("[push] gonderim kodu: ")); Serial.println(code);
-  return code == 200 || code == 202;
+  return pushLastOk;
 }
 
 /* --------------------------------------------------------------- geçmiş */
@@ -920,10 +957,19 @@ static String buildStatus() {
   int clients = apActive ? (int)WiFi.softAPgetStationNum() : (wifiStaOk ? 1 : 0);
   String err = lastCmdErr;
 
-  String j; j.reserve(1320);
+  String j; j.reserve(1600);
   j += "{\"ok\":true,\"fw\":\""; j += FW_VERSION;
   j += "\",\"dev\":\""; j += deviceId;
-  j += "\",\"t\":"; j += (unsigned long)now;
+  j += "\",\"board\":\""; j += ARDUINO_BOARD;
+  j += "\",\"core\":\""; j += ESP_ARDUINO_VERSION_MAJOR; j += '.';
+  j += ESP_ARDUINO_VERSION_MINOR; j += '.'; j += ESP_ARDUINO_VERSION_PATCH;
+  j += "\",\"push\":"; j += (pushReady() ? "true" : "false");
+  j += ",\"pushUrlSet\":"; j += (PUSH_URL[0] ? "true" : "false");
+  j += ",\"pushSecretSet\":"; j += (PUSH_SECRET[0] ? "true" : "false");
+  j += ",\"pushCode\":"; j += pushLastCode;
+  j += ",\"pushOk\":"; j += (pushLastOk ? "true" : "false");
+  j += ",\"pushAge\":"; j += (unsigned long)(pushLastTryMs ? (now - pushLastTryMs) / 1000UL : 0UL);
+  j += ",\"t\":"; j += (unsigned long)now;
   j += ",\"uptime\":"; j += (unsigned long)(now - bootMs);
   j += ",\"ip\":\""; j += (wifiStaOk ? WiFi.localIP().toString() : WiFi.softAPIP().toString());
   j += "\",\"clients\":"; j += clients;
@@ -1476,6 +1522,21 @@ void setup() {
   bootMs = millis();
   Serial.println();
   Serial.println(F("=== Deneyap Ev Koruma v" FW_VERSION " (MQTT) ==="));
+  Serial.printf("[sys] board=%s core=%d.%d.%d\n",
+                ARDUINO_BOARD,
+                ESP_ARDUINO_VERSION_MAJOR,
+                ESP_ARDUINO_VERSION_MINOR,
+                ESP_ARDUINO_VERSION_PATCH);
+  Serial.printf("[push] %s (url=%s secret=%s)\n",
+                pushReady() ? "hazir" : "kapali",
+                PUSH_URL[0] ? "var" : "yok",
+                PUSH_SECRET[0] ? "var" : "yok");
+  if (!strcmp(WIFI_SSID, "EV_WIFI_ADI") || !strcmp(WIFI_PASS, "EV_WIFI_SIFRESI")) {
+    Serial.println(F("[wifi] UYARI: config.h/config.local.h icinde Wi-Fi bilgileri doldurulmadi"));
+  }
+  if (!pushReady()) {
+    Serial.println(F("[push] UYARI: PUSH_SECRET bos - gercek alarmda uzak bildirim gitmez"));
+  }
 
   if (PIN_LED >= 0) { pinMode(PIN_LED, OUTPUT); digitalWrite(PIN_LED, LOW); }
 

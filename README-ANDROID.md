@@ -103,10 +103,13 @@ Sağlık kontrolü: `GET https://ddproje.vercel.app/api/push` yanıtında
 görünmelidir.
 
 > **Gerçek alarmlar için firmware ayarı:** FCM yalnızca sunucuya bildirim isteği
-> geldiğinde gönderilir. `firmware-mqtt/DeneyapEvKoruma/config.h` içinde `PUSH_URL`
-> (`https://ddproje.vercel.app/api/push`) ve `PUSH_SECRET` (Vercel'deki
-> `PUSH_TRIGGER_SECRET` ile aynı) tanımlanmalı ve karta yüklenmelidir. Bu alanlar boşsa
-> yalnızca paneldeki **Test bildirimi** çalışır; gerçek alarmda bildirim gitmez.
+> geldiğinde gönderilir. Aktif firmware **v3.4.0** (`firmware-mqtt/DeneyapEvKoruma`)
+> `PUSH_URL` için production adresini varsayılan olarak taşır. `PUSH_SECRET`
+> (Vercel'deki `PUSH_TRIGGER_SECRET` ile aynı) depoya yazılmaz; aynı klasördeki
+> `config.local.h` içinde tanımlanır. Örnek için `config.local.example.h` dosyasına
+> bakın. Bu alan boşsa yalnızca paneldeki **Test bildirimi** çalışır; gerçek alarmda
+> uzak bildirim/e-posta gitmez. Firmware `/status` yanıtında `push`, `pushUrlSet`,
+> `pushSecretSet`, `pushCode`, `pushOk` ve `core` alanlarıyla bu durumu bildirir.
 
 Token'lar `push_tokens` koleksiyonunda `platform: "android"` alanıyla saklanır. FCM
 mesajları **data-only** gönderilir; bildirimi uygulama kendisi çizer. Böylece uygulama
