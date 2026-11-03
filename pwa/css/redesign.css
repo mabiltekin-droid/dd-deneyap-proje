@@ -358,6 +358,14 @@ body {
   color: var(--paper);
   background: var(--primary);
   box-shadow: none;
+  text-shadow: none;
+}
+
+[data-theme="light"] .header-nav .nav-item.active,
+[data-theme="light"] .settings-header-nav .nav-item.active {
+  color: var(--paper);
+  background: var(--primary);
+  text-shadow: none;
 }
 
 .header-nav .nav-item::after,
