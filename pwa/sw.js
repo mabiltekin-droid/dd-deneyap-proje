@@ -18,7 +18,7 @@
    ========================================================================== */
 
 const VERSION = '2.23.0';
-const CACHE = 'deneyap-pwa-v' + VERSION;
+const CACHE = 'deneyap-pwa-v' + VERSION + '-r1';
 const SHELL = './index.html';
 const NETWORK_TIMEOUT = 4000;   // cihaz yanıt vermezse cache'e düş (ms)
 
@@ -29,6 +29,11 @@ const PRECACHE = [
   './privacy.html',
   './css/style.css',
   './css/mobile-app.css',
+  './css/redesign.css',
+  './fonts/dm-sans-latin.woff2',
+  './fonts/dm-sans-latin-ext.woff2',
+  './fonts/fraunces-latin.woff2',
+  './fonts/fraunces-latin-ext.woff2',
   './js/config.js',
   './js/theme-boot.js',
   './js/tier.js',

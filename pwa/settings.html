@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="tr" data-theme="dark" data-tier="mid">
+<html lang="tr" data-theme="light" data-tier="mid">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Ayarlar Stüdyosu · Deneyap Ev Koruma</title>
-  <meta name="description" content="Deneyap Kart ev güvenlik konsolu ayar ve kalibrasyon paneli (SCADA Configuration Suite)">
-  <meta name="theme-color" content="#0a0d14" id="metaThemeColor">
+  <title>Ayarlar · Deneyap Ev Koruma</title>
+  <meta name="description" content="Deneyap Ev Koruma ayarları: sensörler, bildirimler, hesap ve bağlantı.">
+  <meta name="theme-color" content="#f6f2e9" id="metaThemeColor">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Ev Koruma">
   <link rel="manifest" href="./manifest.json">
@@ -13,8 +13,11 @@
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
   <link rel="prefetch" href="./index.html">
   <link rel="preconnect" href="https://unpkg.com">
+  <link rel="preload" href="./fonts/dm-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="./fonts/fraunces-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="./css/style.css">
   <link rel="stylesheet" href="./css/mobile-app.css">
+  <link rel="stylesheet" href="./css/redesign.css">
   <script src="./js/theme-boot.js"></script>
 </head>
 <body class="mission-control-body settings-studio-body">
@@ -40,7 +43,7 @@
         </svg>
       </div>
       <div class="brand-meta">
-        <h1>Sistem Ayarları</h1>
+        <h1>Ayarlar</h1>
         <p class="conn" id="conn" data-state="connecting">
           <span class="dot" aria-hidden="true"></span>
           <span id="connText">Bağlanıyor…</span>
@@ -50,12 +53,12 @@
 
     <div class="header-actions">
       <!-- Sensörler Ekranına Hızlı Dönüş -->
-      <a href="./index.html" class="nav-back-pill" title="Sensörler ve Görev Kontrol Merkezine Dön">
+      <a href="./index.html" class="nav-back-pill" title="Panele dön">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <line x1="19" y1="12" x2="5" y2="12"></line>
           <polyline points="12 19 5 12 12 5"></polyline>
         </svg>
-        <span>Sensörler</span>
+        <span>Panele dön</span>
       </a>
 
       <button id="pwaInstallBtn" class="pwa-install-btn" type="button" aria-label="Uygulamayı İndir" title="Ev Koruma Uygulamasını Cihazınıza İndirin">
@@ -102,19 +105,19 @@
     <div class="studio-intro-bar">
       <div class="hero-badge">
         <span class="badge-pulse"></span>
-        <span class="badge-text">DENEYAP KART // MERKEZİ YAPILANDIRMA STÜDYOSU</span>
+        <span class="badge-text">EV VE CİHAZ AYARLARI</span>
         <span class="badge-version" id="studioVersion">v2.23.0</span>
       </div>
       <p class="studio-intro-sub">
-        NVS flash kayıtları, MQTT bulut köprüsü, telemetri eşikleri ve alarm kuralları.
+        Bağlantı, sensör eşikleri, bildirimler ve hesap ayarlarını buradan yönetin.
       </p>
     </div>
 
     <!-- Aktif bölüm çubuğu (hamburger menü ile birlikte çalışır) -->
     <div class="studio-toolbar" id="studioToolbar">
       <div class="stb-crumbs">
-        <span class="stb-kicker">YAPILANDIRMA BÖLÜMÜ</span>
-        <h2 class="stb-title" id="studioCurrent" tabindex="-1">Hesap &amp; Roller</h2>
+        <span class="stb-kicker">BÖLÜMLER</span>
+        <h2 class="stb-title" id="studioCurrent" tabindex="-1">Hesap ve roller</h2>
       </div>
       <div class="stb-meta">
         <span class="stb-count" id="studioStep">01 / 11</span>
@@ -145,11 +148,11 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
             </svg>
-            <h3 id="h-acc">Hesap &amp; Roller</h3>
+            <h3 id="h-acc">Hesap ve roller</h3>
           </div>
           <span class="chip" id="authChip" data-state="unknown">-</span>
         </div>
-        <p class="panel-desc">Kullanıcı kimlik doğrulama, yönetici yetkileri ve Deneyap Kart cihaz mülkiyet denetimi.</p>
+        <p class="panel-desc">Hesabınıza giriş yapın, rolleri yönetin ve cihaz sahipliğini kontrol edin.</p>
       </div>
 
       <div class="panel-content">
@@ -226,9 +229,9 @@
             </button>
           </div>
           <p class="help">
-            <strong>İlk açılan hesap otomatik ADMIN olur</strong> ve kendi menüsünden
-            yeni (admin dahil) hesap açabilir. Cihaz bir hesaba bağlandığında yalnızca
-            sahibi veya admin kumanda gönderebilir.
+            İlk açılan hesap otomatik olarak <strong>yönetici</strong> olur ve kendi menüsünden
+            yeni (yönetici dahil) hesap açabilir. Cihaz bir hesaba bağlandığında yalnızca
+            sahibi veya yönetici kumanda gönderebilir.
             <br><br>
             Hesabınız zaten varsa <strong>"Yeni Hesap Aç" yerine "Giriş Yap"</strong> kullanın.
             Giriş yapamıyorsanız önce e-postanızı girin ve <strong>"Şifremi Unuttum"</strong>
@@ -305,7 +308,7 @@
         <!-- ---- Admin menüsü ---- -->
         <div id="adminPanel" hidden>
           <div class="admin-head">
-            <span class="chip" data-state="normal">ADMIN</span>
+            <span class="chip" data-state="normal">Yönetici</span>
             <span>Kayıtlı Kullanıcı Hesapları</span>
           </div>
 
@@ -337,7 +340,7 @@
               <label for="newUserRole">Rol</label>
               <select id="newUserRole">
                 <option value="user">Kullanıcı — yalnız kendi cihazları</option>
-                <option value="admin">Admin — tüm cihazlar + hesap yönetimi</option>
+                <option value="admin">Yönetici — tüm cihazlar + hesap yönetimi</option>
               </select>
             </div>
             <div class="btn-row">
@@ -355,7 +358,7 @@
           <!-- ---- Admin: Cihaz Bağlantıları ---- -->
           <div id="adminDevices">
             <div class="admin-head">
-              <span class="chip" data-state="normal">ADMIN</span>
+              <span class="chip" data-state="normal">Yönetici</span>
               <span>Cihaz Bağlantıları</span>
             </div>
             <div class="user-table-wrap">
@@ -369,7 +372,7 @@
               </table>
             </div>
             <p class="help">
-              Bağlı cihazları yalnızca sahibi ve admin görebilir. <strong>Onayla</strong>, bağlantı
+              Bağlı cihazları yalnızca sahibi ve yönetici görebilir. <strong>Onayla</strong>, bağlantı
               kesme talebini kabul edip cihazı serbest bırakır (başka hesap bağlanabilir);
               <strong>Reddet</strong> talebi iptal eder. <strong>Ata</strong> ile cihazı doğrudan
               başka bir hesaba bağlayabilirsiniz.
@@ -379,7 +382,7 @@
           <!-- ---- Admin: Cihaz Aktivasyon Kodları ---- -->
           <div id="adminCodes">
             <div class="admin-head">
-              <span class="chip" data-state="normal">ADMIN</span>
+              <span class="chip" data-state="normal">Yönetici</span>
               <span>Cihaz Aktivasyon Kodları</span>
             </div>
             <div class="field-row">
@@ -414,7 +417,7 @@
             </div>
             <p class="help">
               Aktivasyon kodu <strong>cihazın kendi parolasıdır</strong>. Bu kodları
-              <strong>yalnızca admin görebilir</strong>; kullanıcılar cihazı bağlamak için
+              <strong>yalnızca yönetici görebilir</strong>; kullanıcılar cihazı bağlamak için
               kodu girmek zorundadır. Kod girildiğinde cihaz otomatik olarak o kişiye bağlanır
               ve yalnızca o kişide (ve adminde) görünür. Cihazı kullanıcıya vermeden önce
               buradan bir kod tanımlayın ve kodu kullanıcıya iletin.
@@ -424,7 +427,7 @@
           <!-- ---- Admin: Olay Günlüğü (Tüm Cihazlar) ---- -->
           <div id="adminEvents">
             <div class="admin-head">
-              <span class="chip" data-state="normal">ADMIN</span>
+              <span class="chip" data-state="normal">Yönetici</span>
               <span>Olay Günlüğü — Tüm Cihazlar</span>
               <span class="chip" id="adminEventChip" data-state="unknown" style="margin-left:auto;">—</span>
             </div>
@@ -451,7 +454,7 @@
             <p class="help">
               Tüm hesapların cihaz olaylarını (gaz, alev, sarsıntı, su, bağlantı) burada
               görürsünüz. Kayıtlar cihaz paneli açıkken oluşur ve buluta yazılır;
-              <strong>yalnızca admin</strong> hepsini görebilir ve silebilir.
+              <strong>yalnızca yönetici</strong> hepsini görebilir ve silebilir.
             </p>
           </div>
         </div>
@@ -523,7 +526,7 @@
             </button>
             <button class="btn ghost" type="button" id="releaseBtn">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-              <span>Bağlantıyı Kes (admin onayı)</span>
+              <span>Bağlantıyı Kes (yönetici onayı)</span>
             </button>
             <button class="btn ghost" type="button" id="cancelReleaseBtn" hidden>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
@@ -532,7 +535,7 @@
           </div>
           <p class="help">
             Cihaz kimliği kartın efuse MAC'inden üretilir. Bir cihaz bir hesaba bağlandığında
-            <strong>admin dışında kimse onu göremez veya bağlayamaz</strong>. Cihazı bağlamak için
+            <strong>yönetici dışında kimse onu göremez veya bağlayamaz</strong>. Cihazı bağlamak için
             <strong>cihazın aktivasyon kodunu</strong> girmeniz gerekir; kod doğruysa cihaz otomatik
             olarak size bağlanır ve yalnızca sizde görünür. Başka hesaplar ve giriş yapmamış kişiler
             için cihaz <strong>hiç yokmuş gibi</strong> görünür.
@@ -792,7 +795,7 @@
             <label for="inviteRole">Rol</label>
             <select id="inviteRole">
               <option value="user">Kullanıcı</option>
-              <option value="admin">Admin</option>
+              <option value="admin">Yönetici</option>
             </select>
           </div>
         </div>
@@ -884,7 +887,7 @@
                 <line x1="2" y1="12" x2="22" y2="12"/>
                 <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
               </svg>
-              <h3 id="h-conn">Deneyap Kart Bağlantı Noktası</h3>
+              <h3 id="h-conn">Ev ağı bağlantısı</h3>
             </div>
           </div>
           <p class="panel-desc">Deneyap Kart ile tarayıcı arasındaki gerçek zamanlı WebSocket / MQTT iletişim kanalı.</p>
@@ -1004,13 +1007,13 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
               </svg>
-              Telemetri Sorgu Periyodu
+              Veri güncelleme sıklığı
             </label>
             <select id="pollMs" name="pollMs">
-              <option value="1000">1 saniye (Yüksek Hassasiyet)</option>
-              <option value="2000">2 saniye (Önerilen Denge)</option>
-              <option value="5000">5 saniye (Düşük Trafik)</option>
-              <option value="10000">10 saniye (Pil Tasarrufu)</option>
+              <option value="1000">1 saniye (yüksek hassasiyet)</option>
+              <option value="2000">2 saniye (önerilen)</option>
+              <option value="5000">5 saniye (düşük trafik)</option>
+              <option value="10000">10 saniye (pil tasarrufu)</option>
             </select>
           </div>
 
@@ -1035,7 +1038,7 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
               </svg>
-              <h3 id="h-th">Donanım Eşikleri &amp; NVS Flash Otomasyonu</h3>
+              <h3 id="h-th">Sensör eşikleri ve otomasyon</h3>
             </div>
           </div>
           <p class="panel-desc">Deneyap Kart kalıcı hafızasına kaydedilen otonom tehlike tetikleyicileri.</p>
@@ -1268,7 +1271,7 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2"/><path d="M9 2h6"/><path d="M12 2v3"/>
               </svg>
-              <h3 id="h-auto">Çalışma Modları &amp; Zamanlanmış Otomasyon</h3>
+              <h3 id="h-auto">Çalışma modları ve zamanlama</h3>
             </div>
           </div>
           <p class="panel-desc">Mod, paneli ve cihazı birlikte yönetir. Kurallarla gün içinde kendiliğinden mod geçişi yapılır.</p>
@@ -1361,7 +1364,7 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M21.5 2.5 11 13"/><path d="M21.5 2.5 15 21.5l-4-8.5-8.5-4z"/>
               </svg>
-              <h3 id="h-tg">Telegram Bildirim Ağ Geçidi</h3>
+              <h3 id="h-tg">Telegram bildirimleri</h3>
             </div>
           </div>
           <p class="panel-desc">Kritik gaz sızıntısı, su baskını ve donanım arızalarını anlık olarak telefonunuza iletir.</p>
@@ -1432,7 +1435,7 @@
                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
                 <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
               </svg>
-              <h3 id="h-notify">Sistem Bildirimleri</h3>
+              <h3 id="h-notify">Bildirimler</h3>
             </div>
           </div>
           <p class="panel-desc">Alarm anında işletim sisteminin bildirim merkezinde uyarı gösterir.</p>
@@ -1663,10 +1666,10 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 0 0 20v-20z"/>
               </svg>
-              <h3 id="h-theme">Görünüm &amp; Renk Atmosferi</h3>
+              <h3 id="h-theme">Görünüm</h3>
             </div>
           </div>
-          <p class="panel-desc">Arayüz renk uzayı, AMOLED derin siyah modu ve sistem kontrastı.</p>
+          <p class="panel-desc">Arayüz renkleri, AMOLED siyah modu ve sistem tercihi.</p>
         </div>
 
         <div class="panel-content">
@@ -1677,25 +1680,25 @@
               <div class="theme-card-box">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
                 <div class="theme-preview-palette">
-                  <span class="palette-swatch" style="background:#f0f4f9;"></span>
-                  <span class="palette-swatch" style="background:#0284c7;"></span>
-                  <span class="palette-swatch" style="background:#059669;"></span>
+                  <span class="palette-swatch" style="background:#f6f2e9;"></span>
+                  <span class="palette-swatch" style="background:#1f5c45;"></span>
+                  <span class="palette-swatch" style="background:#b86a45;"></span>
                 </div>
                 <span class="theme-card-title">Aydınlık</span>
               </div>
             </label>
 
-            <!-- Karanlık (Cyber Dark) -->
+            <!-- Karanlık -->
             <label class="theme-card-option">
               <input type="radio" name="theme" value="dark">
               <div class="theme-card-box">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
                 <div class="theme-preview-palette">
-                  <span class="palette-swatch" style="background:#0a0d14;"></span>
-                  <span class="palette-swatch" style="background:#38bdf8;"></span>
-                  <span class="palette-swatch" style="background:#10b981;"></span>
+                  <span class="palette-swatch" style="background:#0f1714;"></span>
+                  <span class="palette-swatch" style="background:#8fc7ab;"></span>
+                  <span class="palette-swatch" style="background:#c98a63;"></span>
                 </div>
-                <span class="theme-card-title">Karanlık (Cyber)</span>
+                <span class="theme-card-title">Karanlık</span>
               </div>
             </label>
 
@@ -1705,11 +1708,11 @@
               <div class="theme-card-box">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4" fill="currentColor"/></svg>
                 <div class="theme-preview-palette">
-                  <span class="palette-swatch" style="background:#000000;"></span>
-                  <span class="palette-swatch" style="background:#00f0ff;"></span>
-                  <span class="palette-swatch" style="background:#00ff88;"></span>
+                  <span class="palette-swatch" style="background:#050806;"></span>
+                  <span class="palette-swatch" style="background:#a7d3bb;"></span>
+                  <span class="palette-swatch" style="background:#b86a45;"></span>
                 </div>
-                <span class="theme-card-title">AMOLED Derin</span>
+                <span class="theme-card-title">AMOLED siyah</span>
               </div>
             </label>
 
@@ -1719,11 +1722,11 @@
               <div class="theme-card-box">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
                 <div class="theme-preview-palette">
-                  <span class="palette-swatch" style="background:#0a0d14;"></span>
-                  <span class="palette-swatch" style="background:#f0f4f9;"></span>
-                  <span class="palette-swatch" style="background:#38bdf8;"></span>
+                  <span class="palette-swatch" style="background:#0f1714;"></span>
+                  <span class="palette-swatch" style="background:#f6f2e9;"></span>
+                  <span class="palette-swatch" style="background:#1f5c45;"></span>
                 </div>
-                <span class="theme-card-title">İşletim Sistemi</span>
+                <span class="theme-card-title">Sistem</span>
               </div>
             </label>
           </div>
@@ -1739,7 +1742,7 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
               </svg>
-              <h3 id="h-backup">Ayar Yedekleme &amp; Konsol Bakımı</h3>
+              <h3 id="h-backup">Yedekleme ve bakım</h3>
             </div>
           </div>
           <p class="panel-desc">Yapılandırmayı JSON olarak dışa aktarın, geri yükleyin veya Service Worker önbelleğini temizleyin.</p>
@@ -1767,7 +1770,7 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
               </svg>
-              <strong>Konsol Önbellek &amp; Sıfırlama İstasyonu</strong>
+              <strong>Bakım ve önbellek</strong>
             </div>
             <div class="btn-row" style="margin-top:1rem;">
               <button class="btn sm" type="button" id="updateBtn">Yeni Sürümü Denetle</button>
@@ -1786,14 +1789,14 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <polyline points="20 6 9 17 4 12"/>
           </svg>
-          Ayarları Deneyap Kart'a &amp; Hafızaya Kaydet
+          Ayarları kaydet
         </button>
         <a class="btn ghost" href="./index.html">İptal</a>
       </div>
     </form>
 
     <footer class="studio-footer">
-      <p>Deneyap Ev Koruma Konsolu · Sürüm <span id="appVersion">—</span></p>
+      <p>Deneyap Ev Koruma · Sürüm <span id="appVersion">—</span></p>
       <p class="studio-footer-links">
         <a href="./privacy.html">Gizlilik ve Veri Politikası</a>
         <span aria-hidden="true">·</span>
@@ -1819,21 +1822,21 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M3 12h4l2-7 4 14 2-7h6"/>
       </svg>
-      <span>Telemetri</span>
+      <span>Sensörler</span>
     </a>
     <a href="./index.html#command-center">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
         <path d="M9 12l2 2 4-4"/>
       </svg>
-      <span>Savunma</span>
+      <span>Kontrol</span>
     </a>
     <a href="./index.html#analytics">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M3 3v18h18"/>
         <path d="M7 15l4-4 3 3 5-6"/>
       </svg>
-      <span>Analitik</span>
+      <span>Geçmiş</span>
     </a>
     <a href="./settings.html" class="active" aria-current="page">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

@@ -15,9 +15,9 @@
   const $ = function (id) { return document.getElementById(id); };
 
   const STATE_LABEL = {
-    normal:  'GÜVENDE',
-    warning: 'UYARI',
-    danger:  'TEHLİKE'
+    normal:  'Güvende',
+    warning: 'Uyarı',
+    danger:  'Tehlike'
   };
 
   let pollTimer = null;
@@ -299,8 +299,8 @@
       dangerMark.title = 'Tehlike: ' + dangerTh + ' PPM';
     }
 
-    setText('labelWarn', warnTh + ' UYARI');
-    setText('labelDanger', dangerTh + ' TEHLİKE');
+    setText('labelWarn', warnTh + ' uyarı');
+    setText('labelDanger', dangerTh + ' tehlike');
 
     /* 20 Segmentli LED Matrisinin Aydınlatılması */
     const segments = document.querySelectorAll('#gasSegMeter .seg');
@@ -335,11 +335,11 @@
     const card = $('rainCard');
     if (card) card.setAttribute('data-state', !ok ? 'unknown' : (wet ? 'wet' : 'normal'));
 
-    setText('rainValue', !ok ? 'SENSÖR YOK' : (wet ? 'ISLAK' : 'KURU'));
-    const rainTxt = 'ham: ' + (Number(data.rainRaw) || 0) + (data.rainFiltered !== undefined ? ' · filtre: ' + data.rainFiltered : '');
+    setText('rainValue', !ok ? 'Sensör yok' : (wet ? 'Islak' : 'Kuru'));
+    const rainTxt = 'ölçüm: ' + (Number(data.rainRaw) || 0) + (data.rainFiltered !== undefined ? ' · filtre: ' + data.rainFiltered : '');
     setText('rainRaw', rainTxt);
     setChip('rainChip', !ok ? 'unknown' : (wet ? 'wet' : 'normal'),
-      !ok ? 'KOPUK' : (wet ? 'ISLAK' : 'KURU'));
+      !ok ? 'Kopuk' : (wet ? 'Islak' : 'Kuru'));
 
     const modeTxt = $('rainMode');
     if (modeTxt) {
@@ -359,10 +359,10 @@
 
     const card = $('vibCard');
     if (card) card.setAttribute('data-state', active ? 'danger' : (enabled ? 'normal' : 'unknown'));
-    setText('vibValue', active ? 'SARSINTI!' : (enabled ? 'SAKİN' : 'PASİF'));
+    setText('vibValue', active ? 'Sarsıntı!' : (enabled ? 'Sakin' : 'Pasif'));
     setChip('vibChip', active ? 'danger' : (enabled ? 'normal' : 'unknown'),
-      active ? 'ALARM' : (enabled ? 'İZLENİYOR' : 'KAPALI'));
-    setText('vibRaw', 'ham ' + raw + ' · taban ' + base + ' · DO ' + (digital ? '1' : '0'));
+      active ? 'Alarm' : (enabled ? 'İzleniyor' : 'Kapalı'));
+    setText('vibRaw', 'ölçüm ' + raw + ' · başlangıç ' + base + ' · dijital ' + (digital ? '1' : '0'));
 
     const fill = $('vibFill');
     if (fill) {
@@ -385,10 +385,10 @@
 
     const card = $('flameCard');
     if (card) card.setAttribute('data-state', active ? 'danger' : (enabled ? 'normal' : 'unknown'));
-    setText('flameValue', active ? 'ALEV!' : (enabled ? 'GÜVENDE' : 'PASİF'));
+    setText('flameValue', active ? 'Alev!' : (enabled ? 'Güvende' : 'Pasif'));
     setChip('flameChip', active ? 'danger' : (enabled ? 'normal' : 'unknown'),
-      active ? 'YANGIN' : (enabled ? 'İZLENİYOR' : 'KAPALI'));
-    setText('flameRaw', 'ham ' + raw + ' · taban ' + base + ' · DO ' + (digital ? '1' : '0'));
+      active ? 'Yangın' : (enabled ? 'İzleniyor' : 'Kapalı'));
+    setText('flameRaw', 'ölçüm ' + raw + ' · başlangıç ' + base + ' · dijital ' + (digital ? '1' : '0'));
 
     const fill = $('flameFill');
     if (fill) {
@@ -405,7 +405,7 @@
     const on = !!(data && (data.buzzer === true || data.buzzer === 'true'));
     const btn = document.querySelector('.btn[data-device="sound"][data-action="toggle"]');
     const lbl = $('soundState');
-    if (lbl) lbl.textContent = on ? 'ÇALIYOR' : 'SESSİZ';
+    if (lbl) lbl.textContent = on ? 'Çalıyor' : 'Sessiz';
     if (btn) btn.classList.toggle('on', on);
 
     const vol = (data && typeof data.sndVol === 'number') ? data.sndVol : Number(App.settings().sndVolume);
@@ -534,7 +534,7 @@
     pairs.forEach(function (p) {
       const btn = document.querySelector('.btn[data-device="' + p[0] + '"][data-action="toggle"]');
       const lbl = $(p[2]);
-      const text = p[1] ? 'AÇIK' : 'KAPALI';
+      const text = p[1] ? 'Açık' : 'Kapalı';
       if (lbl) lbl.textContent = text;
       if (btn) {
         if (pumpArmed && p[0] === 'pump') return; // Onay beklerken metni koru
@@ -795,7 +795,7 @@
   const W_STATE = {
     unknown: 'Bağlanıyor',
     offline: 'Cihaz çevrimdışı',
-    danger: 'GAZ TEHLİKESİ',
+    danger: 'Gaz tehlikesi',
     warning: 'Gaz uyarısı',
     normal: 'Güvende'
   };
@@ -815,13 +815,13 @@
     /* Sel, gazdan bağımsız ve daha acildir. */
     if (data && data.flame && st !== 'offline') {
       st = 'danger';
-      label = 'ALEV ALARMI';
+      label = 'Alev alarmı';
     } else if (data && data.vib && st !== 'offline') {
       st = 'danger';
-      label = 'SARSINTI / KURCALAMA';
+      label = 'Sarsıntı / kurcalama';
     } else if (data && data.flood && st !== 'offline') {
       st = 'danger';
-      label = 'SEL TEHLİKESİ';
+      label = 'Sel tehlikesi';
     } else if (data && data.gasFault && st !== 'offline') {
       /* ppm okunamıyor; "0 = temiz" dememek için ayrıca söylenir. */
       st = 'warning';
@@ -984,7 +984,7 @@
     if (btn) btn.classList.remove('armed');
     if (lastData) {
       const lbl = $('pumpState');
-      if (lbl) lbl.textContent = lastData.pump ? 'AÇIK' : 'KAPALI';
+      if (lbl) lbl.textContent = lastData.pump ? 'Açık' : 'Kapalı';
       if (btn) btn.classList.toggle('on', !!lastData.pump);
     }
   }
@@ -1057,7 +1057,7 @@
       btn.classList.add('armed');
       btn.classList.remove('on');
       const lbl = $('pumpState');
-      if (lbl) lbl.textContent = 'ONAYLA';
+      if (lbl) lbl.textContent = 'Onayla';
       App.toast('Su motorunu çalıştırmak için 6 saniye içinde tekrar basın', { kind: 'warn', duration: 4000 });
       App.sound.click();
       App.haptic(35);
@@ -1312,7 +1312,7 @@
       'color:#38bdf8;font-weight:bold;font-size:12px');
     /* Hero sürüm etiketini tek kaynaktan güncelle (bayat etiketi önler) */
     const heroVer = document.getElementById('heroVersion');
-    if (heroVer) heroVer.textContent = 'SCADA v' + App.VERSION;
+    if (heroVer) heroVer.textContent = 'v' + App.VERSION;
   }
 
   /* --------------------------------- Sanal Klavye Yönetimi (Virtual Keyboard) */

@@ -24,11 +24,11 @@
 
   /* Menüde görünen kısa adlar. Tanımsız panelde h3 metni kullanılır. */
   var LABELS = {
-    accountCard: 'Hesap & Roller',
+    accountCard: 'Hesap ve roller',
     profileCard: 'Profilim',
     inviteCard: 'Davetler',
     devicesSection: 'Cihazlarım',
-    connSection: 'Cihaz & Ağ',
+    connSection: 'Cihaz ve ağ',
     thresholdSection: 'Eşikler',
     automationSection: 'Modlar',
     telegramSection: 'Telegram',
@@ -168,7 +168,7 @@
       drawer.innerHTML =
         '<div class="studio-drawer-head">' +
           '<div class="sdb-brand">' +
-            '<span class="sdb-kicker">MERKEZİ YAPILANDIRMA</span>' +
+            '<span class="sdb-kicker">AYARLAR</span>' +
             '<h2 id="studioMenuTitle">Bölümler</h2>' +
           '</div>' +
           '<button type="button" class="studio-drawer-close" id="studioMenuClose" aria-label="Menüyü kapat">' +
@@ -242,7 +242,7 @@
       el.id = 'studioToolbar';
       el.innerHTML =
         '<div class="stb-crumbs">' +
-          '<span class="stb-kicker">YAPILANDIRMA BÖLÜMÜ</span>' +
+          '<span class="stb-kicker">BÖLÜMLER</span>' +
           '<h2 class="stb-title" id="studioCurrent" tabindex="-1">—</h2>' +
         '</div>' +
         '<div class="stb-meta">' +

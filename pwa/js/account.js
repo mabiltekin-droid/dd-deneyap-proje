@@ -47,15 +47,15 @@
     $('adminPanel').hidden = !snap.isAdmin;
 
     if (chip) {
-      if (setup) { chip.dataset.state = 'warning'; chip.textContent = 'ŞEMA YOK'; }
-      else if (snap.signedIn && snap.isAdmin) { chip.dataset.state = 'normal'; chip.textContent = 'ADMIN'; }
-      else if (snap.signedIn) { chip.dataset.state = 'normal'; chip.textContent = 'GİRİŞLİ'; }
-      else { chip.dataset.state = 'unknown'; chip.textContent = 'OTURUM YOK'; }
+      if (setup) { chip.dataset.state = 'warning'; chip.textContent = 'Şema yok'; }
+      else if (snap.signedIn && snap.isAdmin) { chip.dataset.state = 'normal'; chip.textContent = 'Yönetici'; }
+      else if (snap.signedIn) { chip.dataset.state = 'normal'; chip.textContent = 'Giriş yapıldı'; }
+      else { chip.dataset.state = 'unknown'; chip.textContent = 'Oturum yok'; }
     }
 
     if (snap.signedIn) {
       $('authUserEmail').textContent = (snap.user && snap.user.email) || '—';
-      $('authUserRole').textContent = snap.isAdmin ? 'Admin (tam yetki)' : 'Kullanıcı';
+      $('authUserRole').textContent = snap.isAdmin ? 'Yönetici (tam yetki)' : 'Kullanıcı';
       $('authUserSince').textContent =
         fmtDate(snap.profile && snap.profile.created_at) ||
         fmtDate(snap.user && snap.user.created_at);
@@ -110,7 +110,7 @@
         '<td class="u-mail">' + esc(u.email) + (self ? ' <em>(sen)</em>' : '') + '</td>' +
         '<td><select class="role-select"' + (self ? ' disabled title="Kendi rolünüzü buradan değiştiremezsiniz"' : '') + '>' +
           '<option value="user"' + (u.role === 'user' ? ' selected' : '') + '>Kullanıcı</option>' +
-          '<option value="admin"' + (u.role === 'admin' ? ' selected' : '') + '>Admin</option>' +
+          '<option value="admin"' + (u.role === 'admin' ? ' selected' : '') + '>Yönetici</option>' +
         '</select></td>' +
         '<td class="u-date">' + esc(fmtDate(u.created_at)) + '</td>' +
         '<td class="u-act"><button type="button" class="btn sm ghost u-del"' +
@@ -125,7 +125,7 @@
     busy = true;
     try {
       await App.Auth.setRole(tr.dataset.id, sel.value);
-      setResult('Rol güncellendi: ' + (sel.value === 'admin' ? 'Admin' : 'Kullanıcı'), 'ok');
+      setResult('Rol güncellendi: ' + (sel.value === 'admin' ? 'Yönetici' : 'Kullanıcı'), 'ok');
       App.sound && App.sound.click();
     } catch (e) {
       setResult('Rol değiştirilemedi: ' + (e.human || e.message), 'err');
@@ -195,7 +195,7 @@
         setResult('Hesap oluşturuldu. E-postanıza gelen bağlantıya tıklayıp ' +
                   'onaylayın, sonra giriş yapın.', 'ok');
       } else {
-        setResult('Hesap açıldı ve giriş yapıldı. İlk hesapsanız ADMINsiniz.', 'ok');
+        setResult('Hesap açıldı ve giriş yapıldı. İlk hesapsanız yöneticisiniz.', 'ok');
       }
       App.haptic && App.haptic(40);
     } catch (e) {
@@ -303,7 +303,7 @@
       $('newUserEmail').value = '';
       $('newUserPass').value = '';
       if (r && r.pending) {
-        setResult('Hesap açıldı (' + (role === 'admin' ? 'admin' : 'kullanıcı') +
+        setResult('Hesap açıldı (' + (role === 'admin' ? 'yönetici' : 'kullanıcı') +
                   '). Kullanıcı e-postasını onaylamalı.', 'ok');
       } else {
         setResult('Hesap açıldı ve giriş yapıldı: ' + email, 'ok');
@@ -366,11 +366,11 @@
         break;
       case 'mine_pending':
         owner = 'Siz';
-        stateText = 'Bağlantı kesildi — admin onayı bekleniyor';
+        stateText = 'Bağlantı kesildi — yönetici onayı bekleniyor';
         break;
       case 'other':
         owner = ownerLabel + ' (başka hesap)';
-        stateText = 'Admin erişimi — kumanda edebilirsiniz';
+        stateText = 'Yönetici erişimi — kumanda edebilirsiniz';
         break;
       case 'pending_other':
         owner = ownerLabel + ' (başka hesap)';
@@ -378,7 +378,7 @@
         break;
       case 'hidden':
         owner = '[GİZLİ]';
-        stateText = 'Başka bir hesaba bağlı — yalnızca sahibi ve admin görebilir';
+        stateText = 'Başka bir hesaba bağlı — yalnızca sahibi ve yönetici görebilir';
         break;
       default:
         owner = '-';
@@ -473,12 +473,12 @@
   async function doRelease() {
     if (!lastDeviceId) return;
     if (!confirm(lastDeviceId + ' cihazının bağlantısı kesilsin mi?\n\n' +
-                 'Cihaz kilitli kalır ve ancak bir admin ONAYLAYINCA yeniden ' +
+                 'Cihaz kilitli kalır ve ancak bir yönetici onaylayınca yeniden ' +
                  'başka bir hesaba bağlanabilir.')) return;
     setResult('Bağlantı kesme talebi gönderiliyor…');
     try {
       await App.Auth.requestRelease(lastDeviceId);
-      setResult('Bağlantı kesildi. Admin onayı bekleniyor.', 'ok');
+      setResult('Bağlantı kesildi. Yönetici onayı bekleniyor.', 'ok');
       await loadDevice();
     } catch (e) {
       setResult('Kesilemedi: ' + (e.human || e.message), 'err');

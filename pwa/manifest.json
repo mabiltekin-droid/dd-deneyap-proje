@@ -1,7 +1,7 @@
 {
   "name": "Deneyap Ev Koruma Sistemi",
   "short_name": "Ev Koruma",
-  "description": "ESP32 tabanlı akıllı ev güvenlik ve koruma kontrol paneli",
+  "description": "Gaz, duman, su ve hareket sensörlerini tek ekranda izleyin.",
   "id": "./index.html",
   "start_url": "./index.html",
   "scope": "./",
@@ -11,8 +11,8 @@
   "lang": "tr",
   "dir": "ltr",
   "categories": ["utilities", "smart-home", "lifestyle"],
-  "background_color": "#121212",
-  "theme_color": "#121212",
+  "background_color": "#f6f2e9",
+  "theme_color": "#f6f2e9",
   "shortcuts": [
     {
       "name": "Canlı Sensörler",
@@ -20,7 +20,7 @@
       "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
     },
     {
-      "name": "Sistem Ayarları",
+      "name": "Ayarlar",
       "url": "./settings.html",
       "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
     }

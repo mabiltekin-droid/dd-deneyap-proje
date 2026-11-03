@@ -65,7 +65,7 @@
     gasDanger: 400,
     rainInvert: false, // true = ters mantık
     autoControl: true, // otomatik fan, servo ve güvenlik müdahalesi
-    theme: 'dark',     // 'dark' | 'amoled' | 'light' | 'system'
+    theme: 'light',    // 'dark' | 'amoled' | 'light' | 'system'
     soundEnabled: true,// Web Audio API sesli geri bildirim
     vibrateEnabled: true, // Haptik titreşim desteği
     aiVoice: true,     // Tarayıcı konuşma sentezi (Web Speech) ile Türkçe sesli uyarı/anons
@@ -297,14 +297,14 @@
   }
 
   App.isDark = function (mode) {
-    const m = mode || settings.theme || 'dark';
+    const m = mode || settings.theme || 'light';
     if (m === 'amoled' || m === 'dark') return true;
     if (m === 'light') return false;
     return prefersDark();
   };
 
   App.applyTheme = function (mode) {
-    const target = mode || settings.theme || 'dark';
+    const target = mode || settings.theme || 'light';
     const isDarkTheme = App.isDark(target);
     const resolved = (target === 'system') ? (prefersDark() ? 'dark' : 'light') : target;
 
@@ -313,9 +313,9 @@
 
     const meta = document.getElementById('metaThemeColor');
     if (meta) {
-      if (resolved === 'amoled') meta.setAttribute('content', '#000000');
-      else if (isDarkTheme) meta.setAttribute('content', '#0a0d14');
-      else meta.setAttribute('content', '#f0f4f9');
+      if (resolved === 'amoled') meta.setAttribute('content', '#050806');
+      else if (isDarkTheme) meta.setAttribute('content', '#0f1714');
+      else meta.setAttribute('content', '#f6f2e9');
     }
 
     const toggleBtn = document.getElementById('themeToggleBtn');

@@ -536,6 +536,13 @@
   function init(tierOverride) {
     destroy();
 
+    /* Yeni sade arayüzde gaz/yağmur vortex ve glitch katmanları kullanılmıyor.
+       İstenirse App.enableShaders = true ile geri açılabilir. */
+    if (!window.App || window.App.enableShaders !== true) {
+      console.info('[shaders] Dekoratif WebGL katmanı bu sürümde kapalı.');
+      return;
+    }
+
     const tier = tierOverride || (window.App.Tier && window.App.Tier.get()) || 'mid';
     const reducedMotion = window.matchMedia &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;

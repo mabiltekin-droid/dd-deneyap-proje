@@ -3,31 +3,46 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0A0D14">
+  <meta name="theme-color" content="#f6f2e9">
   <title>Gizlilik ve Veri Politikası — Deneyap Ev Koruma</title>
   <meta name="description" content="Deneyap Ev Koruma PWA ve Android uygulaması gizlilik, veri işleme ve hesap silme politikası.">
   <link rel="icon" href="./icons/favicon.svg" type="image/svg+xml">
   <style>
+    @font-face {
+      font-family: "DM Sans";
+      font-style: normal;
+      font-weight: 100 1000;
+      font-display: swap;
+      src: url("./fonts/dm-sans-latin.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "Fraunces";
+      font-style: normal;
+      font-weight: 100 900;
+      font-display: swap;
+      src: url("./fonts/fraunces-latin.woff2") format("woff2");
+    }
     :root {
-      --bg: #0a0d14;
-      --panel: #111827;
-      --panel-2: #0f172a;
-      --border: rgba(148, 163, 184, .18);
-      --text: #e5eefb;
-      --muted: #94a3b8;
-      --accent: #10b981;
-      --accent-2: #4c8df6;
-      --warn: #f5b82e;
+      --bg: #f6f2e9;
+      --panel: #fffdf9;
+      --panel-2: #f3eee4;
+      --border: #e4ded2;
+      --text: #1b2822;
+      --muted: #5b6a62;
+      --accent: #1f5945;
+      --accent-2: #b86a45;
+      --warn: #a76c1e;
     }
     * { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
     body {
       margin: 0;
       background:
-        radial-gradient(circle at 50% -10%, rgba(76, 141, 246, .18), transparent 42rem),
+        radial-gradient(900px 520px at 88% -10%, rgba(207, 226, 214, .7), transparent 62%),
+        radial-gradient(700px 480px at -8% 14%, rgba(244, 220, 202, .65), transparent 58%),
         var(--bg);
       color: var(--text);
-      font: 16px/1.65 "Segoe UI", system-ui, -apple-system, sans-serif;
+      font: 16px/1.65 "DM Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
     }
     a { color: var(--accent); text-decoration: none; }
     a:hover { text-decoration: underline; }
@@ -35,45 +50,45 @@
     header { padding: 2.25rem 0 1.5rem; }
     .brand { display: flex; align-items: center; gap: .8rem; }
     .brand img { width: 44px; height: 44px; border-radius: 12px; }
-    .brand strong { letter-spacing: .08em; font-size: .95rem; }
-    .brand span { color: var(--muted); font-size: .8rem; display: block; letter-spacing: .04em; }
+    .brand strong { letter-spacing: .02em; font-size: 1rem; font-weight: 650; }
+    .brand span { color: var(--muted); font-size: .8rem; display: block; }
     .back { display: inline-flex; align-items: center; gap: .4rem; margin-top: 1.2rem; font-size: .9rem; }
     main { padding-bottom: 2rem; }
     .card {
-      background: linear-gradient(180deg, rgba(17, 24, 39, .92), rgba(15, 23, 42, .86));
+      background: var(--panel);
       border: 1px solid var(--border);
-      border-radius: 18px;
+      border-radius: 22px;
       padding: clamp(1.2rem, 3vw, 2.2rem);
-      box-shadow: 0 20px 60px rgba(0, 0, 0, .28);
+      box-shadow: 0 1px 2px rgba(27, 40, 34, .04), 0 24px 60px -38px rgba(27, 40, 34, .4);
     }
-    h1 { font-size: clamp(1.45rem, 4vw, 2.2rem); line-height: 1.2; margin: 0 0 .4rem; }
+    h1 { font-family: "Fraunces", Georgia, serif; font-size: clamp(1.6rem, 4vw, 2.35rem); font-weight: 500; line-height: 1.12; letter-spacing: -.03em; margin: 0 0 .4rem; }
     .updated { color: var(--muted); font-size: .85rem; margin: 0 0 1.6rem; }
-    h2 { font-size: 1.08rem; margin: 1.8rem 0 .55rem; color: #fff; }
-    p, li { color: #cbd5e1; }
+    h2 { font-size: 1.08rem; margin: 1.8rem 0 .55rem; color: var(--text); }
+    p, li { color: #4f5e56; }
     ul { padding-left: 1.25rem; }
     li { margin: .25rem 0; }
     .note {
       border-left: 3px solid var(--warn);
-      background: rgba(245, 184, 46, .08);
+      background: #fbf1e1;
       padding: .8rem 1rem;
       border-radius: 0 .6rem .6rem 0;
-      color: #fde68a;
+      color: #6b4a13;
       margin: 1rem 0;
       font-size: .94rem;
     }
     .grid { display: grid; gap: .7rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin: .8rem 0; }
-    .mini { border: 1px solid var(--border); background: rgba(2, 6, 23, .35); border-radius: 12px; padding: .8rem .9rem; }
-    .mini strong { color: #fff; display: block; margin-bottom: .15rem; font-size: .92rem; }
+    .mini { border: 1px solid var(--border); background: var(--panel-2); border-radius: 12px; padding: .8rem .9rem; }
+    .mini strong { color: var(--text); display: block; margin-bottom: .15rem; font-size: .92rem; }
     .mini span { color: var(--muted); font-size: .85rem; }
     .toc { display: flex; flex-wrap: wrap; gap: .45rem; margin: 1rem 0 0; }
-    .toc a { border: 1px solid var(--border); border-radius: 999px; padding: .3rem .7rem; font-size: .8rem; color: #cbd5e1; }
+    .toc a { border: 1px solid var(--border); border-radius: 999px; padding: .3rem .7rem; font-size: .8rem; color: var(--muted); }
     .toc a:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
     .cta {
       display: inline-block;
       margin-top: .8rem;
       background: var(--accent);
-      color: #04130c;
-      font-weight: 700;
+      color: #fffdf9;
+      font-weight: 650;
       border-radius: 10px;
       padding: .65rem 1rem;
     }
