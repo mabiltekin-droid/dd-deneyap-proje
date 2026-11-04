@@ -1018,7 +1018,8 @@ Yanıt:
 ```
 
 - `targeted: 0` ise abonelik/token yoktur.
-- `removed`, geçersiz FCM token’larının silindiğini gösterir.
+- `removed`, geçersiz FCM token’larının ve Web Push aboneliklerinin silindiğini
+  gösterir.
 - `uid` yoksa ve cihaz bağlı değilse Web Push/FCM tüm abonelere gidebilir; e-posta
   gönderilmez.
 - Aynı tür alarm cihaz tarafında 30 saniyede bir sınırlandırılır.
