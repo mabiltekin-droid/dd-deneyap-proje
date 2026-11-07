@@ -139,10 +139,10 @@ if (swJs) {
       listelenen.push(shellM[1]);
     }
 
-    /* sw.js'in kendisi cache'e girmez, listeye de girmez */
+    /* sw.js ve yalnızca mobil önizlemede kullanılan geçici dosya cache'e girmez */
     const yerel = walk(PWA)
       .map(function (f) { return './' + path.relative(PWA, f).replace(/\\/g, '/'); })
-      .filter(function (p) { return p !== './sw.js'; });
+      .filter(function (p) { return p !== './sw.js' && p !== './_mobile-preview.html'; });
 
     const eksik = yerel.filter(function (p) { return listelenen.indexOf(p) === -1; });
     const olmayan = listelenen.filter(function (p) {
@@ -169,7 +169,7 @@ console.log('\n[4/6] HTML dosya referansları');
   const src = oku(rel);
   if (!src) { basarisiz(rel + ' yok'); return; }
   const refs = [];
-  const re = /(?:src|href)="(\.\/[^"]+)"/g;
+  const re = /(?:src|href)="(\.\/[^\"]+)"/g;
   let m;
   while ((m = re.exec(src)) !== null) refs.push(m[1]);
 
