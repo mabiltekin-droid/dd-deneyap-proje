@@ -26,13 +26,14 @@
    (karta özel, yeniden flaşta değişmez). Aynı MQTT_TOPIC'i kullanan iki
    kart olmasın! */
 #define DEVICE_ID          ""        // boş = otomatik "DK-XXXX"; istersen sabit ad yaz (örn. "kart1")
-#define FW_VERSION         "3.4.0"   // cihazın kendi sürümü; panel /status'te `fw` olarak gösterir
+#define FW_VERSION         "3.5.0"   // cihazın kendi sürümü; panel /status'te `fw` olarak gösterir
                                      // 3.1.0: titreşim sensörü + I2S hoparlör (MAX98357A) + sesli alarm
-                                     // 3.2.0: alev (IR flame) sensörü — dijital + analog, tam alarm
+                                     // 3.2.0: alev (IR flame) sensörü - dijital + analog, tam alarm
                                      // 3.2.1: LEDC servo sürücüsü ESP32 çekirdeği 3.x uyumlu
                                      // 3.2.2: alarm anında Vercel göndericisine Web Push isteği (PUSH_URL)
                                      // 3.3.0: kablosuz güncelleme (ArduinoOTA, şifreli)
                                      // 3.4.0: ESP32 core 3.3.x uyumu, config.local.h, push/core durum bilgisi
+                                     // 3.5.0: bulut OTA (HTTPS + SHA-256), periyodik sürüm denetimi, ota komutu
                                      // (not: panel sürümü package.json/config.js/sw.js'ten ayrıdır)
 
 /* ============================ Wi-Fi (STA) ============================== */
@@ -261,6 +262,28 @@
 #define OTA_HOST           "deneyap-ev"          // mDNS: deneyap-ev.local
 #define OTA_PASSWORD       "deneyap-ota-2026"    // <<< degistirin (en az 8 karakter)
 #define OTA_PORT           3232
+
+/* ==================== BULUT OTA (otomatik guncelleme) ================= */
+/* Kart, yayindaki surumu Vercel uzerinden periyodik olarak denetler. Yeni
+   surum varsa HTTPS ile indirir, SHA-256 ozetini dogrular ve yalnizca
+   dogrulama basariliysa pasif OTA bolumune yazar. Guncelleme sonrasi kart
+   kendiliginden yeniden baslar.
+
+   Guvenlik:
+     • Yalnizca https:// adresleri kabul edilir; sertifika kokleri kullanilir.
+     • SHA-256 uyusmazsa Update.abort() cagrilir; calisan bolum degismez.
+     • Surum karsilastirmasi ileri yonludur (eski surume donus yok).
+
+   Yayinlamak icin: npm run fw:bin && npm run ota:publish -- --file ... --version ... */
+#define CLOUD_OTA_ENABLED        1
+#define OTA_MANIFEST_URL         "https://ddproje.vercel.app/api/ota"
+#define OTA_CHANNEL              "stable"
+#define OTA_BOOT_DELAY_MS        60000UL      // acilistan sonra ilk denetim (60 sn)
+#define OTA_CHECK_INTERVAL_MS    21600000UL   // 6 saatte bir denetim
+#define OTA_RETRY_MIN_MS         900000UL     // hata sonrasi ilk yeniden deneme (15 dk)
+#define OTA_RETRY_MAX_MS         21600000UL   // yeniden deneme tavani (6 saat)
+#define OTA_HTTP_TIMEOUT_MS      15000        // manifest/indirme zaman asimi
+#define OTA_MAX_BYTES            4194304UL    // 4 MB guvenlik siniri
 
 /* ==================== YEREL GİZLİ AYARLAR (opsiyonel) ================= */
 /* Wi-Fi şifresi, PUSH_SECRET ve OTA_PASSWORD gibi değerleri depoya

@@ -95,7 +95,76 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/device_bindings/$(id)).data;
     }
     function deviceOwner(id) { return deviceData(id).owner_id; }
-    function deviceReleased(id) { return deviceData(id).status == 'release_pending'; }
+    function bindingHome(data) {
+      return ('home_id' in data && data.home_id is string) ? data.home_id : '';
+    }
+    function bindingHasHome(data) { return bindingHome(data).size() > 0; }
+
+    // ================================================================
+    // EV / AILE (multi-tenant) yardimcilari
+    //
+    //  homes/{homeId}            -> ev kaydi (owner_id = kuran hesap)
+    //  home_members/{homeId__uid}-> uyelik + rol (admin|maintainer|viewer)
+    //  home_invites/{code}       -> suresi dolan tek kullanimlik davet
+    //
+    //  Platform rolu (profiles.role == 'admin') ile ev rolu ayridir:
+    //  platform admin her eve erisebilir; ev rolu yalnizca o evi kapsar.
+    // ================================================================
+    function homeExists(id) {
+      return exists(/databases/$(database)/documents/homes/$(id));
+    }
+    function homeData(id) {
+      return get(/databases/$(database)/documents/homes/$(id)).data;
+    }
+    function homeOwner(id) { return homeData(id).owner_id; }
+    function memberId(homeId, memberUid) { return homeId + '__' + memberUid; }
+    function memberExists(homeId, memberUid) {
+      return exists(/databases/$(database)/documents/home_members/$(memberId(homeId, memberUid)));
+    }
+    function memberData(homeId, memberUid) {
+      return get(/databases/$(database)/documents/home_members/$(memberId(homeId, memberUid))).data;
+    }
+    function homeRole(homeId, memberUid) {
+      return memberExists(homeId, memberUid) ? memberData(homeId, memberUid).role : '';
+    }
+    function isHomeMember(homeId) {
+      return signedIn()
+          && homeId is string
+          && homeId.size() > 0
+          && homeExists(homeId)
+          && memberExists(homeId, uid());
+    }
+    function isHomeAdmin(homeId) {
+      return isAdmin()
+          || (isHomeMember(homeId)
+              && (homeOwner(homeId) == uid()
+                  || homeRole(homeId, uid()) == 'admin'));
+    }
+    function isHomeMaintainer(homeId) {
+      return isHomeMember(homeId)
+          && (homeOwner(homeId) == uid()
+              || homeRole(homeId, uid()) in ['admin', 'maintainer']);
+    }
+    function homeInviteExists(code) {
+      return code is string
+          && code.size() > 0
+          && exists(/databases/$(database)/documents/home_invites/$(code));
+    }
+    function homeInviteData(code) {
+      return get(/databases/$(database)/documents/home_invites/$(code)).data;
+    }
+    function inviteUsable(code, homeId, role) {
+      return homeInviteExists(code)
+          && homeInviteData(code).home_id == homeId
+          && homeInviteData(code).role == role
+          && homeInviteData(code).used == false
+          && homeInviteData(code).expires_at > request.time
+          && (
+            !('email' in homeInviteData(code))
+            || homeInviteData(code).email == ''
+            || homeInviteData(code).email == request.auth.token.email
+          );
+    }
 
     // Aktivasyon kodu yardimcilari.
     // device_codes dokumanini YALNIZCA admin okuyabilir; asagidaki get()
@@ -168,28 +237,155 @@ service cloud.firestore {
     }
 
     // ================================================================
+    // HOMES / HOME_MEMBERS / HOME_INVITES - coklu kullanici (aile) modeli
+    // ================================================================
+    match /homes/{homeId} {
+      allow get: if signedIn() && (isHomeMember(homeId) || isAdmin());
+
+      // Liste istemcide kullanilmaz (aidiyet home_members uzerinden okunur).
+      allow list: if isAdmin();
+
+      allow create: if signedIn()
+                    && freshSignIn()
+                    && verifiedEmail()
+                    && request.resource.data.owner_id == uid()
+                    && request.resource.data.name is string
+                    && request.resource.data.name.size() >= 2
+                    && request.resource.data.name.size() <= 80
+                    && (!('home_id' in request.resource.data)
+                        || request.resource.data.home_id == homeId);
+
+      allow update: if signedIn()
+                    && isHomeAdmin(homeId)
+                    && freshSignIn()
+                    && request.resource.data.owner_id == resource.data.owner_id
+                    && request.resource.data.name is string
+                    && request.resource.data.name.size() >= 2
+                    && request.resource.data.name.size() <= 80;
+
+      allow delete: if isAdmin() && freshSignIn()
+                    || (signedIn() && isHomeAdmin(homeId) && freshSignIn());
+    }
+
+    match /home_members/{homeMemberId} {
+      allow get: if signedIn() && (
+        !exists(/databases/$(database)/documents/home_members/$(homeMemberId))
+        || resource.data.uid == uid()
+        || isHomeMember(resource.data.home_id)
+        || isAdmin()
+      );
+
+      allow list: if signedIn() && (
+        isAdmin()
+        || isHomeMember(resource.data.home_id)
+        || resource.data.uid == uid()
+      );
+
+      allow create: if signedIn()
+                    && recentSignIn()
+                    && homeMemberId == request.resource.data.home_id + '__' + request.resource.data.uid
+                    && request.resource.data.home_id is string
+                    && request.resource.data.home_id.size() > 0
+                    && request.resource.data.uid is string
+                    && request.resource.data.uid.size() > 0
+                    && request.resource.data.role in ['admin', 'maintainer', 'viewer']
+                    && (
+                      (request.resource.data.uid == uid()
+                       && homeExists(request.resource.data.home_id)
+                       && (
+                         homeOwner(request.resource.data.home_id) == uid()
+                         || (
+                           ('invite_code' in request.resource.data)
+                           && inviteUsable(request.resource.data.invite_code,
+                                           request.resource.data.home_id,
+                                           request.resource.data.role)
+                         )
+                       ))
+                      || (request.resource.data.uid != uid()
+                          && freshSignIn()
+                          && isHomeAdmin(request.resource.data.home_id))
+                    );
+
+      allow update: if signedIn()
+                    && isHomeAdmin(resource.data.home_id)
+                    && freshSignIn()
+                    && request.resource.data.home_id == resource.data.home_id
+                    && request.resource.data.uid == resource.data.uid
+                    && request.resource.data.role in ['admin', 'maintainer', 'viewer']
+                    && resource.data.uid != homeOwner(resource.data.home_id);
+
+      allow delete: if signedIn() && (
+        (recentSignIn()
+         && resource.data.uid == uid()
+         && resource.data.uid != homeOwner(resource.data.home_id))
+        || (freshSignIn()
+            && isHomeAdmin(resource.data.home_id)
+            && resource.data.uid != homeOwner(resource.data.home_id))
+        || (isAdmin() && freshSignIn())
+      );
+    }
+
+    match /home_invites/{code} {
+      // Kayit oncesi/giris sonrasi kod dogrulamasi icin okunabilir.
+      allow get: if signedIn();
+
+      allow list: if signedIn() && (isAdmin() || isHomeAdmin(resource.data.home_id));
+
+      allow create: if signedIn()
+                    && freshSignIn()
+                    && isHomeAdmin(request.resource.data.home_id)
+                    && request.resource.data.code == code
+                    && request.resource.data.role in ['admin', 'maintainer', 'viewer']
+                    && request.resource.data.expires_at > request.time;
+
+      allow update: if signedIn() && (
+        (isAdmin() && freshSignIn())
+        || (freshSignIn() && isHomeAdmin(resource.data.home_id))
+        || (recentSignIn()
+            && resource.data.used == false
+            && request.resource.data.used == true
+            && request.resource.data.used_by == uid()
+            && request.resource.data.home_id == resource.data.home_id
+            && request.resource.data.role == resource.data.role
+            && request.resource.data.code == resource.data.code
+            && request.resource.data.created_by == resource.data.created_by
+            && request.resource.data.expires_at == resource.data.expires_at
+            && resource.data.expires_at > request.time)
+      );
+
+      allow delete: if isAdmin() && freshSignIn()
+                    || (signedIn() && isHomeAdmin(resource.data.home_id) && freshSignIn());
+    }
+
+    // ================================================================
     // DEVICE_BINDINGS - cihaz mulkiyeti (doc ID = device_id)
     //
     //  * Cihaz BOSTA ise (dokuman yok): giris yapmis herkes "get" ile
     //    yoklugunu dogrulayabilir ve ilk baglayan sahibi olur.
-    //  * Cihaz BAGLI ise: yalnizca SAHIBI ve ADMIN gorebilir.
-    //    Admin disindaki hic kimse bagli cihazi GOREMEZ veya BAGLAYAMAZ.
+    //  * Cihaz BAGLI ise: sahibi, ev uyeleri ve admin gorebilir.
+    //  * Ev uyeligi owner_id'yi DEGISTIRMEZ; erisim home_id uzerinden gelir.
     //  * Baglantiyi kesme: sahibi status'u 'release_pending' yapar ve
     //    cihaz KILITLI kalir. Yalnizca ADMIN onaylarsa (dokumani silerse)
     //    cihaz serbest kalir; ancak o zaman baska bir hesap baglanabilir.
     // ================================================================
     match /device_bindings/{deviceId} {
 
-      // Tek dokuman okuma: bosta VEYA sahibi VEYA admin.
+      // Tek dokuman okuma: bosta VEYA sahibi VEYA ev uyesi VEYA admin.
       allow get: if signedIn() && (
         !deviceExists(deviceId)
         || deviceOwner(deviceId) == uid()
         || isAdmin()
+        || (bindingHasHome(deviceData(deviceId))
+            && isHomeMember(bindingHome(deviceData(deviceId))))
       );
 
-      // Liste: admin tumunu; kullanici yalnizca KENDI kayitlarini gorur.
-      // (Istemci sorgusu owner_id == uid ile kisitlanmalidir.)
-      allow list: if signedIn() && (isAdmin() || resource.data.owner_id == uid());
+      // Liste: admin tumunu; kullanici kendi kayitlarini ve ev cihazlarini.
+      allow list: if signedIn() && (
+        isAdmin()
+        || resource.data.owner_id == uid()
+        || (bindingHasHome(resource.data)
+            && isHomeMember(bindingHome(resource.data)))
+      );
 
       // Bagla: yalnizca BOSTA bir cihazi kendi adina, 'active' durumuyla.
       // Sahibi olabilmek icin cihazin AKTIVASYON KODUNU dogru girmis olmasi
@@ -204,26 +400,41 @@ service cloud.firestore {
                     && (
                       (unlockExists(deviceId) && unlockUid(deviceId) == uid())
                       || isAdmin()
+                    )
+                    && (
+                      !bindingHasHome(request.resource.data)
+                      || (homeExists(bindingHome(request.resource.data))
+                          && isHomeAdmin(bindingHome(request.resource.data)))
                     );
 
       // Guncelle:
-      //  * admin  -> her sey (onay, yeniden atama, serbest birakma) + TAZE GIRIS
-      //  * sahibi -> YALNIZCA active <-> release_pending gecisi yapabilir
-      //              (son 60 dk icinde giris yapmis olmali)
-      //  * baskasi -> KESINLIKLE HAYIR
-      allow update: if signedIn() && (
-        (
-          deviceExists(deviceId)
-          && deviceOwner(deviceId) == uid()
-          && recentSignIn()
-          && request.resource.data.owner_id == uid()
-          && (
-            (!deviceReleased(deviceId) && request.resource.data.status == 'release_pending')
-            || (deviceReleased(deviceId) && request.resource.data.status == 'active')
-          )
-        )
-        || (isAdmin() && freshSignIn())
-      );
+      //  * admin      -> her sey + TAZE GIRIS
+      //  * sahibi     -> durum, etiket/konu ve ev atamasi (hedef evde admin)
+      //  * ev admini  -> kendi evindeki cihazin etiket/konu/durum/ev alanlari
+      //  * baskasi    -> HAYIR
+      allow update: if signedIn()
+                    && request.resource.data.owner_id == resource.data.owner_id
+                    && request.resource.data.device_id == resource.data.device_id
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['label', 'topic', 'status', 'home_id', 'home_name',
+                                   'released_by', 'released_at'])
+                    && (
+                      bindingHome(request.resource.data) == bindingHome(resource.data)
+                      || bindingHome(request.resource.data).size() == 0
+                      || (homeExists(bindingHome(request.resource.data))
+                          && isHomeAdmin(bindingHome(request.resource.data)))
+                    )
+                    && (
+                      (recentSignIn() && deviceOwner(deviceId) == uid())
+                      || (recentSignIn()
+                          && bindingHasHome(resource.data)
+                          && isHomeAdmin(bindingHome(resource.data)))
+                      || (recentSignIn()
+                          && bindingHasHome(resource.data)
+                          && isHomeMaintainer(bindingHome(resource.data))
+                          && bindingHome(request.resource.data) == bindingHome(resource.data))
+                      || (isAdmin() && freshSignIn())
+                    );
 
       // Silme = baglanti kesme onayi -> cihazi serbest birakir. Yalnizca admin
       // ve TAZE GIRIS ile (cihaz sahipligi degistiren kritik islem).
@@ -290,12 +501,33 @@ service cloud.firestore {
                       isAdmin()
                       || !deviceExists(request.resource.data.dev)
                       || deviceOwner(request.resource.data.dev) == uid()
+                      || (bindingHasHome(deviceData(request.resource.data.dev))
+                          && isHomeMember(bindingHome(deviceData(request.resource.data.dev))))
+                    )
+                    && (
+                      !('home_id' in request.resource.data)
+                      || request.resource.data.home_id == ''
+                      || (deviceExists(request.resource.data.dev)
+                          && bindingHome(deviceData(request.resource.data.dev))
+                             == request.resource.data.home_id
+                          && isHomeMember(request.resource.data.home_id))
                     );
 
-      allow read: if signedIn() && (resource.data.owner_id == uid() || isAdmin());
+      allow read: if signedIn() && (
+        resource.data.owner_id == uid()
+        || isAdmin()
+        || (('home_id' in resource.data)
+            && resource.data.home_id is string
+            && resource.data.home_id.size() > 0
+            && isHomeMember(resource.data.home_id))
+      );
 
       allow update: if false;
-      allow delete: if isAdmin();
+      allow delete: if isAdmin()
+                    || (('home_id' in resource.data)
+                        && resource.data.home_id is string
+                        && resource.data.home_id.size() > 0
+                        && isHomeAdmin(resource.data.home_id));
     }
 
     // ================================================================

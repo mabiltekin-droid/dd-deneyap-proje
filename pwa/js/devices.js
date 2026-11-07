@@ -112,14 +112,20 @@
     const out = [];
     (rows || []).forEach(function (r) {
       if (!r || !r.device_id) return;
-      if (uid && r.owner_id && r.owner_id !== uid) return;   /* admin: başkalarınınkini listeleme */
+      const homeRole = r.home_id && App.Auth && App.Auth.homeRoleFor
+        ? App.Auth.homeRoleFor(r.home_id) : null;
+      /* Platform admin dışında: kendi cihazı veya üyesi olduğu evin cihazı. */
+      if (uid && r.owner_id && r.owner_id !== uid && !homeRole) return;
       out.push({
         id: r.device_id,
         label: r.label || '',
         status: r.status || 'active',
         topic: topicFor(r.device_id),
         bound: true,
-        active: (active === r.device_id)
+        active: (active === r.device_id),
+        home_id: r.home_id || '',
+        home_name: r.home_name || '',
+        role: homeRole || (uid && r.owner_id === uid ? 'admin' : '')
       });
     });
 

@@ -188,6 +188,78 @@ async function main() {
   ok(yabanci === 200 || yabanci === 403,
     'cihaz sahibi kendi bağlantısını okuyabildi (' + yabanci + ')');
 
+  /* ------------------------------------------------ H) ev / aile rolleri */
+  console.log('\nH) homes / home_members / home_invites — çoklu kullanıcı');
+  await create('profiles', 'user2', { id: 'user2', role: 'user' }, YONETICI);
+  await create('profiles', 'user3', { id: 'user3', role: 'user' }, YONETICI);
+  await create('profiles', 'user4', { id: 'user4', role: 'user' }, YONETICI);
+
+  ok(await create('homes', 'h1',
+    { home_id: 'h1', name: 'Sahil Evi', owner_id: 'user1' }, taze('user1')) === 200,
+    'taze kullanıcı ev oluşturabildi');
+  ok(await create('home_members', 'h1__user1',
+    { home_id: 'h1', uid: 'user1', role: 'admin' }, taze('user1')) === 200,
+    'ev sahibi kendini yönetici olarak ekleyebildi');
+  ok(await create('homes', 'h2',
+    { home_id: 'h2', name: 'Başka Ev', owner_id: 'user2' }, bayat('user2', 30)) === 403,
+    'bayat oturum ev oluşturamadı (taze giriş şartı)');
+
+  const bitis = { __ts: Date.now() + 3600000 };
+  ok(await create('home_invites', 'INV1',
+    { code: 'INV1', home_id: 'h1', role: 'viewer', created_by: 'user1',
+      used: false, expires_at: bitis }, taze('user1')) === 200,
+    'ev yöneticisi görüntüleyici daveti oluşturabildi');
+  ok(await create('home_invites', 'INV2',
+    { code: 'INV2', home_id: 'h1', role: 'viewer', created_by: 'user3',
+      used: false, expires_at: bitis }, taze('user3')) === 403,
+    'ev üyesi olmayan kullanıcı davet oluşturamadı');
+
+  ok(await create('home_members', 'h1__user2',
+    { home_id: 'h1', uid: 'user2', role: 'viewer', invite_code: 'INV1' },
+    taze('user2')) === 200,
+    'davetli kullanıcı görüntüleyici olarak eve katılabildi');
+  ok(await update('home_invites', 'INV1', { used: true, used_by: 'user2' },
+    bayat('user2', 30)) === 200,
+    'davet tek kullanımlık olarak işaretlendi');
+  ok(await create('home_members', 'h1__user4',
+    { home_id: 'h1', uid: 'user4', role: 'viewer', invite_code: 'INV1' },
+    taze('user4')) === 403,
+    'kullanılmış davet ikinci kez kullanılamadı');
+
+  ok(await read('homes', 'h1', taze('user4')) === 403,
+    'ev üyesi olmayan kullanıcı evi okuyamadı');
+
+  ok(await update('device_bindings', 'DK-1',
+    { device_id: 'DK-1', owner_id: 'user1', status: 'active', home_id: 'h1',
+      label: 'Salon' }, taze('user1')) === 200,
+    'cihaz sahibi cihazı eve bağlayabildi');
+  ok(await read('device_bindings', 'DK-1', taze('user2')) === 200,
+    'ev üyesi görüntüleyici cihazı okuyabildi');
+  ok(await update('device_bindings', 'DK-1',
+    { device_id: 'DK-1', owner_id: 'user1', status: 'active', home_id: 'h1',
+      label: 'Mutfak' }, taze('user2')) === 403,
+    'görüntüleyici cihaz ayarını DEĞİŞTİREMEDİ');
+
+  await create('home_members', 'h1__user3',
+    { home_id: 'h1', uid: 'user3', role: 'maintainer' }, YONETICI);
+  ok(await update('device_bindings', 'DK-1',
+    { device_id: 'DK-1', owner_id: 'user1', status: 'active', home_id: 'h1',
+      label: 'Mutfak' }, taze('user3')) === 200,
+    'bakımcı cihaz etiketini güncelleyebildi');
+  ok(await update('device_bindings', 'DK-1',
+    { device_id: 'DK-1', owner_id: 'user1', status: 'active', home_id: 'h1',
+      label: 'Mutfak', topic: 'yeni/topic' }, taze('user3')) === 200,
+    'bakımcı cihaz konusunu güncelleyebildi');
+  ok(await update('device_bindings', 'DK-1',
+    { device_id: 'DK-1', owner_id: 'user1', status: 'active', home_id: '',
+      label: 'Mutfak', topic: 'yeni/topic' }, taze('user3')) === 403,
+    'bakımcı cihazı evden ÇIKARAMADI (ev yöneticisi işi)');
+
+  ok(await update('homes', 'h1', { name: 'Yazlık' }, taze('user2')) === 403,
+    'görüntüleyici ev adını değiştiremedi');
+  ok(await update('homes', 'h1', { name: 'Yazlık' }, taze('user1')) === 200,
+    'ev yöneticisi ev adını değiştirebildi');
+
   console.log('\nSONUÇ: ' + gecti + ' geçti, ' + basarisiz + ' başarısız\n');
   process.exit(basarisiz === 0 ? 0 : 1);
 }

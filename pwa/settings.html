@@ -876,6 +876,141 @@
         </div>
       </section>
 
+      <!-- ==================== EV VE AİLE ==================== -->
+      <section class="config-panel" aria-labelledby="h-homes" id="homesSection">
+        <div class="panel-header">
+          <span class="panel-tag">[AİLE // EV, ÜYELER &amp; YETKİLER]</span>
+          <div class="panel-title-row">
+            <div class="head-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/>
+              </svg>
+              <h3 id="h-homes">Ev ve aile erişimi</h3>
+            </div>
+          </div>
+          <p class="panel-desc">Bir ev oluşturun, aile üyelerini davet edin ve herkesin rolünü ayrı belirleyin.</p>
+        </div>
+
+        <div class="panel-content">
+          <div id="homesSignedOut" class="help">Ev ve üye yönetimi için giriş yapmalısınız.</div>
+
+          <div id="homesSignedIn" hidden>
+            <p class="help">
+              <strong>Roller:</strong> <strong>Yönetici</strong> evi, üyeleri ve cihazları yönetir;
+              <strong>Bakımcı</strong> cihaz kumandalarını ve eşikleri değiştirebilir;
+              <strong>İzleyici</strong> yalnızca görüntüler. Ev sahibi her zaman yöneticidir.
+            </p>
+
+            <div class="home-create">
+              <div class="field">
+                <label for="newHomeName">Yeni ev adı</label>
+                <input type="text" id="newHomeName" maxlength="80" autocomplete="off" placeholder="Örn. Sahil Evi">
+              </div>
+              <button class="btn" type="button" id="homeCreateBtn">Ev oluştur</button>
+            </div>
+            <p class="result" id="homeResult" role="status" aria-live="polite"></p>
+
+            <div id="homeList" class="home-list" role="list" aria-label="Evler"></div>
+
+            <div id="homeDetail" hidden>
+              <div class="home-detail-head">
+                <div>
+                  <h4 id="homeDetailName">Ev</h4>
+                  <p class="help" id="homeDetailMeta"></p>
+                </div>
+                <button class="btn ghost" type="button" id="homeRenameBtn">Yeniden adlandır</button>
+              </div>
+
+              <h5 class="home-subhead">Üyeler</h5>
+              <div id="homeMemberList" class="home-members" role="list"></div>
+
+              <h5 class="home-subhead">Davet</h5>
+              <div class="home-invite-grid">
+                <div class="field">
+                  <label for="homeInviteRole">Rol</label>
+                  <select id="homeInviteRole">
+                    <option value="viewer">İzleyici — yalnızca görüntüleme</option>
+                    <option value="maintainer">Bakımcı — cihaz kumandası</option>
+                    <option value="admin">Yönetici — ev ve üye yönetimi</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="homeInviteEmail">E-posta (opsiyonel)</label>
+                  <input type="email" id="homeInviteEmail" autocomplete="off" placeholder="yalnizca@ornek.com">
+                </div>
+                <button class="btn" type="button" id="homeInviteBtn">Davet oluştur</button>
+              </div>
+              <p class="help">Davet kodu 7 gün geçerlidir ve yalnızca bir kez kullanılabilir.</p>
+              <div id="homeInviteList" class="home-invites" role="list"></div>
+
+              <h5 class="home-subhead">Evdeki cihazlar</h5>
+              <div id="homeDeviceList" class="home-devices" role="list"></div>
+              <div class="home-device-actions">
+                <div class="field">
+                  <label for="homeAddDevice">Cihaz seç</label>
+                  <select id="homeAddDevice"></select>
+                </div>
+                <button class="btn" type="button" id="homeAttachBtn">Seçili cihazı eve bağla</button>
+                <button class="btn ghost" type="button" id="homeMigrateBtn">Eski cihazları eve taşı</button>
+              </div>
+
+              <div class="btn-row home-leave-row">
+                <button class="btn ghost danger" type="button" id="homeLeaveBtn">Evden ayrıl</button>
+              </div>
+            </div>
+
+            <div class="home-join">
+              <div class="field">
+                <label for="homeJoinCode">Davet kodunuz mu var?</label>
+                <input type="text" id="homeJoinCode" maxlength="12" autocomplete="off" placeholder="ÖRN. ABCD2345" spellcheck="false">
+              </div>
+              <button class="btn" type="button" id="homeJoinBtn">Kodla eve katıl</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== CİHAZ YAZILIMI (OTA) ==================== -->
+      <section class="config-panel" aria-labelledby="h-ota" id="otaSection">
+        <div class="panel-header">
+          <span class="panel-tag">[FLEET // BULUT YAZILIM GÜNCELLEMESİ]</span>
+          <div class="panel-title-row">
+            <div class="head-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 3v12"/><polyline points="7 10 12 15 17 10"/><path d="M5 21h14"/>
+              </svg>
+              <h3 id="h-ota">Cihaz yazılımı</h3>
+            </div>
+          </div>
+          <p class="panel-desc">Kart, yayınlanan yeni yazılımı buluttan kendiliğinden indirir ve doğrular.</p>
+        </div>
+
+        <div class="panel-content">
+          <p class="help">
+            Cihaz açıkken <strong>6 saatte bir</strong> yeni sürüm denetlenir. Alarm sürerken güncelleme başlatılmaz;
+            indirme tamamlanınca SHA-256 özeti doğrulanır, ardından kart yeniden başlar. İşlem sırasında ışıklar
+            birkaç saniye yanıt vermeyebilir.
+          </p>
+          <div class="ota-grid">
+            <div class="ota-card">
+              <span class="ota-label">Cihazdaki sürüm</span>
+              <strong id="otaCurrent">—</strong>
+              <small id="otaState">Kart bağlanınca okunur.</small>
+            </div>
+            <div class="ota-card">
+              <span class="ota-label">Buluttaki son sürüm</span>
+              <strong id="otaLatest">—</strong>
+              <small id="otaNotes">Yayın bilgisi yükleniyor…</small>
+            </div>
+          </div>
+          <div class="btn-row">
+            <button class="btn" type="button" id="otaCheckBtn">Güncellemeyi şimdi denetle</button>
+            <button class="btn ghost" type="button" id="otaRefreshBtn">Yayın bilgisini yenile</button>
+          </div>
+          <p class="result" id="otaResult" role="status" aria-live="polite"></p>
+        </div>
+      </section>
+
       <!-- ==================== CİHAZ BAĞLANTISI ==================== -->
       <section class="config-panel" aria-labelledby="h-conn" id="connSection">
         <div class="panel-header">
@@ -1838,6 +1973,12 @@
       </svg>
       <span>Geçmiş</span>
     </a>
+    <a href="./earthquake.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M2 12h4l2-7 4 14 2-7h8"/>
+      </svg>
+      <span>Deprem</span>
+    </a>
     <a href="./settings.html" class="active" aria-current="page">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
@@ -1881,6 +2022,8 @@
   <script src="./js/native-push.js"></script>
   <script src="./js/emergency.js"></script>
   <script src="./js/settings.js"></script>
+  <script src="./js/homes.js"></script>
+  <script src="./js/ota.js"></script>
   <script src="./js/studio-nav.js"></script>
   <script src="./js/account.js"></script>
   <script src="./js/profile-ui.js"></script>

@@ -19,6 +19,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const earthquakesApi = require('../api/earthquakes');
 
 /* --------------------------------------------------------------- ayarlar */
 
@@ -305,6 +306,23 @@ const server = http.createServer(function (req, res) {
   if (p === '/api/control' && req.method === 'GET') {
     control(query.device, query.action, query.value);
     sendJson(res, 200, status());
+    return;
+  }
+
+  /* Deprem sayfası yerelde de gerçek AFAD verisiyle denenebilsin: Vercel
+     fonksiyonunu küçük bir uyarlayıcıyla çalıştır. */
+  if (p === '/api/earthquakes' && req.method === 'GET') {
+    let code = 200;
+    const mockRes = {
+      setHeader: function (key, value) { res.setHeader(key, value); },
+      status: function (next) { code = next; return this; },
+      json: function (obj) { sendJson(res, code, obj); },
+      end: function () { res.end(); }
+    };
+    Promise.resolve(earthquakesApi({ method: 'GET', query: query }, mockRes))
+      .catch(function (err) {
+        sendJson(res, 500, { ok: false, error: err && err.message });
+      });
     return;
   }
 

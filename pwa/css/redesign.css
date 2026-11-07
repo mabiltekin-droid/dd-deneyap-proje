@@ -2540,6 +2540,22 @@ body {
     background: var(--surface);
   }
 
+  /* Altı bölüm (Panel, Sensörler, Kontrol, Geçmiş, Deprem, Ayarlar)
+     390 px genişlikte taşmasın. */
+  .bottom-nav a {
+    min-width: 0;
+    padding-left: 0.1rem;
+    padding-right: 0.1rem;
+    font-size: 0.62rem;
+  }
+
+  .bottom-nav a span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .settings-studio-main {
     padding: 0 0.8rem 2rem;
   }
@@ -2661,5 +2677,253 @@ body {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
+  }
+}
+
+/* ==========================================================================
+   EV / AİLE ERİŞİMİ + OTA
+   ========================================================================== */
+.home-create,
+.home-join,
+.home-invite-grid,
+.home-device-actions {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  margin: 0.8rem 0;
+}
+
+.home-create .field,
+.home-join .field,
+.home-invite-grid .field,
+.home-device-actions .field {
+  flex: 1 1 220px;
+  margin: 0;
+}
+
+.home-list {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0.9rem 0;
+}
+
+.home-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  width: 100%;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  background: var(--surface-alt);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.home-card:hover,
+.home-card:focus-visible {
+  border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
+}
+
+.home-card.is-active {
+  border-color: color-mix(in srgb, var(--primary) 55%, var(--border));
+  background: color-mix(in srgb, var(--primary) 7%, var(--surface));
+}
+
+.home-card-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.home-card-main strong {
+  font-size: 0.92rem;
+  font-weight: 650;
+}
+
+.home-card-main small {
+  color: var(--text-dim);
+  font-size: 0.72rem;
+}
+
+.home-card-arrow {
+  color: var(--text-dim);
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.home-detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding: 0.9rem 0;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.home-detail-head h4 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 500;
+}
+
+.home-subhead {
+  margin: 1.2rem 0 0.45rem;
+  color: var(--text-dim);
+  font-size: 0.74rem;
+  font-weight: 650;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.home-members,
+.home-invites,
+.home-devices {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.home-member,
+.home-invite,
+.home-device {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 11px;
+  background: var(--surface-alt);
+}
+
+.home-member-main,
+.home-invite-main,
+.home-device-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.home-member-main strong,
+.home-device-main strong {
+  font-size: 0.8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-member-main small,
+.home-invite-main small,
+.home-device-main small {
+  color: var(--text-dim);
+  font-size: 0.68rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.home-member-actions,
+.home-invite-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.home-role-select {
+  min-height: 32px;
+  padding: 0.25rem 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.72rem;
+}
+
+.home-role {
+  padding: 0.22rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-dim);
+  font-size: 0.68rem;
+}
+
+.home-invite-main code {
+  color: var(--primary);
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.home-leave-row {
+  margin-top: 1rem;
+}
+
+.btn.ghost.danger {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 35%, var(--border));
+}
+
+.ota-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+  margin: 0.9rem 0;
+}
+
+.ota-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  padding: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  background: var(--surface-alt);
+}
+
+.ota-label {
+  color: var(--text-dim);
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ota-card strong {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 550;
+}
+
+.ota-card small {
+  color: var(--text-dim);
+  font-size: 0.7rem;
+  line-height: 1.4;
+}
+
+@media (max-width: 640px) {
+  .home-member,
+  .home-invite,
+  .home-device {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .home-member-actions,
+  .home-invite-actions,
+  .home-device .btn {
+    width: 100%;
+  }
+
+  .home-invite-actions .btn,
+  .home-member-actions .btn,
+  .home-member-actions .home-role-select {
+    flex: 1 1 auto;
+  }
+
+  .ota-grid {
+    grid-template-columns: 1fr;
   }
 }

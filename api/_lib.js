@@ -26,7 +26,12 @@ function initAdmin() {
   try {
     const creds = JSON.parse(raw);
     if (creds.private_key) creds.private_key = String(creds.private_key).replace(/\\n/g, '\n');
-    admin.initializeApp({ credential: admin.credential.cert(creds) });
+    const bucket = process.env.FIREBASE_STORAGE_BUCKET
+      || (creds.project_id ? creds.project_id + '.firebasestorage.app' : undefined);
+    admin.initializeApp({
+      credential: admin.credential.cert(creds),
+      ...(bucket ? { storageBucket: bucket } : {})
+    });
     return true;
   } catch (e) {
     console.error('[lib] servis hesabı okunamadı:', e && e.message);
@@ -44,20 +49,70 @@ function initVapid() {
   return true;
 }
 
-/* Tüm aboneliklere (veya tek bir uid'ye) bildirim gönderir.
+/* Bir cihazın bildirim alıcıları: cihaz sahibi + bağlı olduğu evin tüm
+   üyeleri. Eski (home_id'siz) kayıtlar yalnızca sahibine gider. */
+async function deviceAudience(device) {
+  const out = { owner: '', homeId: '', uids: [], homeName: '' };
+  if (!device) return out;
+  if (!admin.apps.length && !initAdmin()) return out;
+  try {
+    const snap = await admin.firestore().collection('device_bindings').doc(String(device)).get();
+    if (!snap.exists) return out;
+    const b = snap.data() || {};
+    out.owner = String(b.owner_id || '');
+    out.homeId = String(b.home_id || '');
+    out.homeName = String(b.home_name || '');
+    const set = new Set();
+    if (out.owner) set.add(out.owner);
+    if (out.homeId) {
+      const ms = await admin.firestore().collection('home_members')
+        .where('home_id', '==', out.homeId).get();
+      ms.docs.forEach(function (d) {
+        const m = d.data() || {};
+        if (m.uid) set.add(String(m.uid));
+      });
+    }
+    out.uids = Array.from(set);
+  } catch (e) {
+    console.warn('[lib] cihaz kitlesi okunamadı:', e && e.message);
+  }
+  return out;
+}
+
+async function queryByUids(col, opts) {
+  if (Array.isArray(opts.uids)) {
+    const docs = [];
+    const seen = new Set();
+    for (const uid of opts.uids) {
+      try {
+        const snap = await col.where('uid', '==', String(uid)).get();
+        snap.docs.forEach(function (d) {
+          if (seen.has(d.id)) return;
+          seen.add(d.id);
+          docs.push(d);
+        });
+      } catch (e) { /* tek uid hatası diğerlerini durdurmasın */ }
+    }
+    return docs;
+  }
+  const snap = opts.uid
+    ? await col.where('uid', '==', String(opts.uid)).get()
+    : await col.get();
+  return snap.docs;
+}
+
+/* Tüm aboneliklere (veya tek bir uid / uid listesine) bildirim gönderir.
    404/410 dönen ölü abonelikler Firestore'dan temizlenir. */
 async function sendToSubs(payload, opts) {
   opts = opts || {};
   const db = admin.firestore();
   const col = db.collection('push_subs');
-  const snap = opts.uid
-    ? await col.where('uid', '==', String(opts.uid)).get()
-    : await col.get();
+  const docs = await queryByUids(col, opts);
 
   const body = (typeof payload === 'string') ? payload : JSON.stringify(payload);
   const options = { TTL: opts.ttl || 3600, urgency: opts.urgent ? 'high' : 'normal' };
 
-  const results = await Promise.all(snap.docs.map(async function (doc) {
+  const results = await Promise.all(docs.map(async function (doc) {
     const s = doc.data() || {};
     if (!s.endpoint || !s.keys) return { ok: false, dead: true };
     try {
@@ -76,7 +131,7 @@ async function sendToSubs(payload, opts) {
   const sent = results.filter(function (r) { return r.ok; }).length;
   const removed = results.filter(function (r) { return r.dead; }).length;
   return {
-    targeted: snap.size,
+    targeted: docs.length,
     sent: sent,
     removed: removed,
     failed: results.length - sent - removed
@@ -94,18 +149,16 @@ async function sendFcm(payload, opts) {
   const db = admin.firestore();
   const col = db.collection('push_tokens');
 
-  let snap;
+  let docs;
   try {
-    snap = opts.uid
-      ? await col.where('uid', '==', String(opts.uid)).get()
-      : await col.get();
+    docs = await queryByUids(col, opts);
   } catch (e) {
     return { targeted: 0, sent: 0, failed: 0, removed: 0, error: e && e.message };
   }
 
   /* Aynı token birden fazla kayıtta olabilir; tekilleştir. */
   const owners = new Map();
-  snap.docs.forEach(function (doc) {
+  docs.forEach(function (doc) {
     const v = doc.data() || {};
     if (!v.token || owners.has(v.token)) return;
     owners.set(v.token, doc);
@@ -254,32 +307,40 @@ async function sendEmail(to, subject, text, html) {
   }
 }
 
-/* Bir hesabın acil durum kişilerine e-posta gönderir. */
-async function sendEmergencyEmails(uid, message) {
+/* Bir veya birden çok hesabın acil durum kişilerine e-posta gönderir.
+   Ev modelinde alarm, cihaz sahibi + ev üyelerinin kişilerine gider. */
+async function sendEmergencyEmails(uidOrUids, message) {
   message = message || {};
   const empty = { targeted: 0, sent: 0, failed: 0, skipped: true };
-  if (!uid) return empty;
+  const uids = Array.isArray(uidOrUids)
+    ? uidOrUids.filter(Boolean).map(String)
+    : (uidOrUids ? [String(uidOrUids)] : []);
+  if (!uids.length) return empty;
   if (!admin.apps.length && !initAdmin()) {
     return Object.assign({}, empty, { error: 'servis hesabı yok' });
   }
 
-  let snap;
+  const contacts = [];
+  const seen = new Set();
   try {
-    snap = await admin.firestore().collection('emergency_contacts')
-      .where('uid', '==', String(uid))
-      .limit(20)
-      .get();
+    for (const uid of uids) {
+      const snap = await admin.firestore().collection('emergency_contacts')
+        .where('uid', '==', uid)
+        .limit(20)
+        .get();
+      snap.docs.forEach(function (doc) {
+        const c = doc.data() || {};
+        if (c.enabled === false) return;
+        if (!c.email || String(c.email).indexOf('@') < 1) return;
+        const key = String(c.email).toLowerCase();
+        if (seen.has(key)) return;
+        seen.add(key);
+        contacts.push(c);
+      });
+    }
   } catch (e) {
     return Object.assign({}, empty, { error: e && e.message });
   }
-
-  const contacts = [];
-  snap.docs.forEach(function (doc) {
-    const c = doc.data() || {};
-    if (c.enabled === false) return;
-    if (!c.email || String(c.email).indexOf('@') < 1) return;
-    contacts.push(c);
-  });
 
   if (!contacts.length) return empty;
   if (!emailConfig()) {
@@ -376,6 +437,124 @@ function authorized(req) {
   return !!secret && given === secret;
 }
 
+/* --------------------------------------------------------------------------
+   BULUT OTA (firmware_releases + Firebase Storage)
+   --------------------------------------------------------------------------
+   `firmware_releases/{channel}` belgesi:
+     { version, storage_path, sha256, size, notes, mandatory, published_at }
+
+   İkili dosya Storage'da tutulur. Vercel'e doğrudan bin dosyası koymuyoruz;
+   endpoint yalnızca kısa ömürlü imzalı indirme adresi üretir. Böylece firmware
+   güncellemesi Vercel dağıtımını gerektirmez.
+   -------------------------------------------------------------------------- */
+
+function firebaseProjectId() {
+  try {
+    const app = admin.app();
+    if (app && app.options && app.options.projectId) return app.options.projectId;
+  } catch (e) { /* yoksay */ }
+  const raw = process.env.FIREBASE_SERVICE_ACCOUNT || '';
+  try {
+    const creds = JSON.parse(raw);
+    return creds.project_id || '';
+  } catch (e) { return ''; }
+}
+
+function storageBucketCandidates() {
+  const list = [];
+  const env = String(process.env.FIREBASE_STORAGE_BUCKET || '').trim();
+  if (env) list.push(env);
+  const project = firebaseProjectId();
+  if (project) {
+    list.push(project + '.firebasestorage.app');
+    list.push(project + '.appspot.com');
+  }
+  return Array.from(new Set(list.filter(Boolean)));
+}
+
+async function findStorageFile(storagePath) {
+  if (!storagePath) return null;
+  const names = storageBucketCandidates();
+  for (const name of names) {
+    try {
+      const bucket = admin.storage().bucket(name);
+      const file = bucket.file(storagePath);
+      const meta = await file.getMetadata();
+      return { bucket: bucket, file: file, meta: (meta && meta[0]) || {} };
+    } catch (e) {
+      /* 404 veya izin: sıradaki olası kovayı dene. */
+    }
+  }
+  return null;
+}
+
+function normalizeChannel(channel) {
+  const c = String(channel || 'stable').trim().toLowerCase();
+  return /^[a-z0-9_-]{1,32}$/.test(c) ? c : 'stable';
+}
+
+async function firmwareManifest(channel, opts) {
+  opts = opts || {};
+  const ch = normalizeChannel(channel);
+  if (!admin.apps.length && !initAdmin()) {
+    return { ok: false, error: 'servis hesabı yok', channel: ch };
+  }
+  let snap;
+  try {
+    snap = await admin.firestore().collection('firmware_releases').doc(ch).get();
+  } catch (e) {
+    return { ok: false, error: e && e.message, channel: ch };
+  }
+  if (!snap.exists) {
+    return { ok: false, notFound: true, channel: ch, error: 'bu kanal için yayın yok' };
+  }
+  const d = snap.data() || {};
+  const version = String(d.version || '').trim();
+  const sha256 = String(d.sha256 || '').trim().toLowerCase();
+  const storagePath = String(d.storage_path || '').trim();
+  if (!/^\d+\.\d+\.\d+([.-][0-9A-Za-z]+)?$/.test(version)) {
+    return { ok: false, error: 'yayın sürümü geçersiz', channel: ch };
+  }
+  if (!/^[a-f0-9]{64}$/.test(sha256)) {
+    return { ok: false, error: 'yayın SHA-256 özeti geçersiz', channel: ch };
+  }
+
+  const out = {
+    ok: true,
+    channel: ch,
+    version: version,
+    latest: version,
+    sha256: sha256,
+    size: Number(d.size) || 0,
+    notes: String(d.notes || '').slice(0, 500),
+    mandatory: d.mandatory === true,
+    min_version: String(d.min_version || ''),
+    published_at: d.published_at || null,
+    storage_path: storagePath
+  };
+
+  if (opts.signedUrl) {
+    if (!storagePath) {
+      return Object.assign({}, out, { ok: false, error: 'yayında storage_path yok' });
+    }
+    const found = await findStorageFile(storagePath);
+    if (!found) {
+      return Object.assign({}, out, { ok: false, error: 'firmware dosyası Storage\'da bulunamadı' });
+    }
+    try {
+      const url = await found.file.getSignedUrl({
+        action: 'read',
+        expires: Date.now() + (opts.urlTtlMs || 15 * 60 * 1000)
+      });
+      out.url = url && url[0];
+      out.size = Number(out.size) || Number(found.meta.size) || 0;
+    } catch (e) {
+      return Object.assign({}, out, { ok: false, error: 'imzalı indirme adresi üretilemedi: ' + (e && e.message) });
+    }
+  }
+  return out;
+}
+
 module.exports = {
   initAdmin: initAdmin,
   initVapid: initVapid,
@@ -385,5 +564,9 @@ module.exports = {
   sendEmergencyEmails: sendEmergencyEmails,
   emailReady: function () { return !!emailConfig(); },
   deviceOwner: deviceOwner,
+  deviceAudience: deviceAudience,
+  firmwareManifest: firmwareManifest,
+  storageBucketCandidates: storageBucketCandidates,
+  normalizeChannel: normalizeChannel,
   authorized: authorized
 };

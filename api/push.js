@@ -124,11 +124,20 @@ module.exports = async function handler(req, res) {
   const title = body.title || k.title;
   const text = body.body || (device ? k.body + ' (Cihaz: ' + device + ')' : k.body);
 
-  /* E-posta alıcılarını bul: önce açık uid, yoksa cihaz sahibi. */
+  /* E-posta alıcılarını bul: önce açık uid, yoksa cihazın evi + sahibi. */
   let uid = body.uid ? String(body.uid) : '';
+  let uids = uid ? [uid] : [];
+  let homeId = '';
   if (!uid && device) {
-    uid = await lib.deviceOwner(device);
+    const audience = await lib.deviceAudience(device);
+    uid = audience.owner || '';
+    homeId = audience.homeId || '';
+    uids = (audience.uids || []).slice();
   }
+  /* Hedef yoksa eski davranış korunur: tüm abonelere gönder. */
+  const emailTargets = uids.length ? uids : uid;
+  const pushTargets = { ttl: 3600, urgent: k.urgent, uid: uid };
+  if (uids.length) pushTargets.uids = uids;
 
   const panelUrl = (body.url && /^https?:\/\//i.test(String(body.url)))
     ? String(body.url)
@@ -147,11 +156,7 @@ module.exports = async function handler(req, res) {
   let web = { targeted: 0, sent: 0, removed: 0, failed: 0, skipped: true };
   if (vapidReady) {
     try {
-      web = await lib.sendToSubs(webPayload, {
-        ttl: 3600,
-        urgent: k.urgent,
-        uid: uid
-      });
+      web = await lib.sendToSubs(webPayload, pushTargets);
       web.skipped = false;
     } catch (e) {
       web.error = e && e.message;
@@ -166,11 +171,7 @@ module.exports = async function handler(req, res) {
       title: title,
       body: text,
       url: body.url || './'
-    }, {
-      ttl: 3600,
-      urgent: k.urgent,
-      uid: uid
-    });
+    }, pushTargets);
   } catch (e) {
     fcm.error = e && e.message;
   }
@@ -179,7 +180,7 @@ module.exports = async function handler(req, res) {
   let email = { targeted: 0, sent: 0, failed: 0, skipped: true };
   if (kindName !== 'test' || body.emailTest === true) {
     try {
-      email = await lib.sendEmergencyEmails(uid, {
+      email = await lib.sendEmergencyEmails(emailTargets, {
         title: title,
         body: text,
         device: device,
@@ -194,6 +195,7 @@ module.exports = async function handler(req, res) {
   res.status(200).json({
     ok: true,
     kind: kindName,
+    home_id: homeId || undefined,
     targeted: (web.targeted || 0) + (fcm.targeted || 0),
     sent: (web.sent || 0) + (fcm.sent || 0),
     removed: (web.removed || 0) + (fcm.removed || 0),

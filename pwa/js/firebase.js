@@ -269,6 +269,9 @@
   const COL_PUSH = 'push_subs';
   const COL_FCM = 'push_tokens';
   const COL_EMERGENCY = 'emergency_contacts';
+  const COL_HOMES = 'homes';
+  const COL_HOME_MEMBERS = 'home_members';
+  const COL_HOME_INVITES = 'home_invites';
 
   function profilesRef() { return db.collection(COL_PROFILES); }
   function bindingsRef() { return db.collection(COL_BINDINGS); }
@@ -281,6 +284,10 @@
   function pushRef() { return db.collection(COL_PUSH); }
   function fcmRef() { return db.collection(COL_FCM); }
   function emergencyRef() { return db.collection(COL_EMERGENCY); }
+  function homesRef() { return db.collection(COL_HOMES); }
+  function homeMembersRef() { return db.collection(COL_HOME_MEMBERS); }
+  function homeInvitesRef() { return db.collection(COL_HOME_INVITES); }
+  function homeMemberId(homeId, uid) { return String(homeId) + '__' + String(uid); }
 
   /* Push abonelik kimliği: uid + uç nokta özeti. Böylece aynı hesabın birden
      fazla cihazı/tarayıcısı ayrı kayıt olur ve tekrar abone olmak aynı kaydı
@@ -540,6 +547,288 @@
     return snap.docs.map(d => d.data());
   }
 
+  /* ==========================================================================
+     EV / AILE (multi-tenant)
+     --------------------------------------------------------------------------
+     homes/{homeId}              ev kaydı
+     home_members/{homeId__uid}  üyelik + rol (admin|maintainer|viewer)
+     home_invites/{code}         süreli tek kullanımlık davet
+     device_bindings.home_id     cihazın bağlı olduğu ev (opsiyonel)
+     ========================================================================== */
+
+  function homeCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let c = '';
+    for (let i = 0; i < 8; i++) c += chars[Math.floor(Math.random() * chars.length)];
+    return c;
+  }
+
+  function timestampLabel(ts) {
+    if (!ts) return 0;
+    if (typeof ts.toMillis === 'function') return ts.toMillis();
+    if (typeof ts.seconds === 'number') return ts.seconds * 1000;
+    if (typeof ts === 'number') return ts;
+    const d = Date.parse(ts);
+    return isNaN(d) ? 0 : d;
+  }
+
+  async function listHomeMemberships(uid) {
+    if (!uid) return [];
+    ensureFirebase();
+    const snap = await homeMembersRef().where('uid', '==', uid).get();
+    return snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
+  }
+
+  async function getHome(homeId) {
+    if (!homeId) return null;
+    ensureFirebase();
+    const snap = await homesRef().doc(String(homeId)).get();
+    return snap.exists ? Object.assign({ id: snap.id }, snap.data()) : null;
+  }
+
+  async function createHome(name, uid, email, displayName) {
+    ensureFirebase();
+    const clean = String(name || '').trim().replace(/\s+/g, ' ').slice(0, 80);
+    if (clean.length < 2) {
+      const e = new Error('Ev adı en az 2 karakter olmalı.');
+      e.code = 'invalid'; e.human = e.message;
+      throw e;
+    }
+    const ref = homesRef().doc();
+    const homeId = ref.id;
+    const now = firebase.firestore.FieldValue.serverTimestamp();
+    await ref.set({
+      home_id: homeId,
+      name: clean,
+      owner_id: uid,
+      created_by: uid,
+      created_at: now,
+      updated_at: now
+    });
+    try {
+      await homeMembersRef().doc(homeMemberId(homeId, uid)).set({
+        home_id: homeId,
+        uid: uid,
+        role: 'admin',
+        email: String(email || '').toLowerCase(),
+        display_name: String(displayName || '').slice(0, 80),
+        added_by: uid,
+        added_at: now,
+        updated_at: now
+      });
+    } catch (e) {
+      try { await ref.delete(); } catch (e2) { /* yoksay */ }
+      throw toError(e);
+    }
+    return Object.assign({ id: homeId, home_id: homeId, name: clean, owner_id: uid, role: 'admin' });
+  }
+
+  async function updateHomeName(homeId, name) {
+    ensureFirebase();
+    const clean = String(name || '').trim().replace(/\s+/g, ' ').slice(0, 80);
+    if (clean.length < 2) {
+      const e = new Error('Ev adı en az 2 karakter olmalı.');
+      e.code = 'invalid'; e.human = e.message;
+      throw e;
+    }
+    await homesRef().doc(String(homeId)).update({
+      name: clean,
+      updated_at: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    return clean;
+  }
+
+  async function listHomeMembers(homeId) {
+    if (!homeId) return [];
+    ensureFirebase();
+    const snap = await homeMembersRef().where('home_id', '==', String(homeId)).get();
+    return snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
+  }
+
+  async function updateHomeMemberRole(homeId, uid, role) {
+    ensureFirebase();
+    role = (role === 'admin' || role === 'maintainer' || role === 'viewer') ? role : 'viewer';
+    await homeMembersRef().doc(homeMemberId(homeId, uid)).update({
+      role: role,
+      updated_at: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    return role;
+  }
+
+  async function removeHomeMember(homeId, uid) {
+    ensureFirebase();
+    await homeMembersRef().doc(homeMemberId(homeId, uid)).delete();
+  }
+
+  async function listHomeInvites(homeId) {
+    if (!homeId) return [];
+    ensureFirebase();
+    const snap = await homeInvitesRef().where('home_id', '==', String(homeId)).get();
+    const rows = snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
+    rows.sort(function (a, b) { return timestampLabel(b.created_at) - timestampLabel(a.created_at); });
+    return rows;
+  }
+
+  async function createHomeInvite(homeId, homeName, role, email, createdBy) {
+    ensureFirebase();
+    role = (role === 'admin' || role === 'maintainer' || role === 'viewer') ? role : 'viewer';
+    const code = homeCode();
+    const now = Date.now();
+    const expiresMs = now + 7 * 24 * 60 * 60 * 1000;
+    await homeInvitesRef().doc(code).set({
+      code: code,
+      home_id: String(homeId),
+      home_name: String(homeName || '').slice(0, 80),
+      role: role,
+      email: String(email || '').trim().toLowerCase().slice(0, 254),
+      created_by: createdBy || null,
+      used: false,
+      used_by: null,
+      created_at: firebase.firestore.FieldValue.serverTimestamp(),
+      created_at_ms: now,
+      expires_at: firebase.firestore.Timestamp.fromMillis(expiresMs),
+      expires_at_ms: expiresMs
+    });
+    return {
+      code: code,
+      home_id: homeId,
+      home_name: homeName,
+      role: role,
+      email: String(email || '').trim().toLowerCase(),
+      used: false,
+      expires_at_ms: expiresMs
+    };
+  }
+
+  async function verifyHomeInvite(code) {
+    ensureFirebase();
+    code = String(code || '').trim().toUpperCase();
+    if (!code) return null;
+    const snap = await homeInvitesRef().doc(code).get();
+    if (!snap.exists) return null;
+    const inv = Object.assign({ id: snap.id }, snap.data());
+    if (inv.used) return null;
+    const exp = timestampLabel(inv.expires_at) || Number(inv.expires_at_ms) || 0;
+    if (exp && Date.now() > exp) return null;
+    return inv;
+  }
+
+  async function revokeHomeInvite(code) {
+    ensureFirebase();
+    if (!code) return false;
+    await homeInvitesRef().doc(String(code)).delete();
+    return true;
+  }
+
+  async function joinHomeByInvite(code, uid, email, displayName) {
+    ensureFirebase();
+    code = String(code || '').trim().toUpperCase();
+    if (!code) {
+      const e = new Error('Davet kodu gerekli.');
+      e.code = 'invalid'; e.human = e.message;
+      throw e;
+    }
+    const invRef = homeInvitesRef().doc(code);
+
+    const result = await db.runTransaction(async function (tx) {
+      const invSnap = await tx.get(invRef);
+      if (!invSnap.exists) {
+        const e = new Error('Davet bulunamadı.');
+        e.code = 'not-found'; e.human = 'Davet kodu geçersiz veya iptal edilmiş.';
+        throw e;
+      }
+      const inv = invSnap.data() || {};
+      if (inv.used) {
+        const e = new Error('Davet kullanılmış.');
+        e.code = 'used'; e.human = 'Bu davet daha önce kullanılmış.';
+        throw e;
+      }
+      const exp = timestampLabel(inv.expires_at) || Number(inv.expires_at_ms) || 0;
+      if (exp && Date.now() > exp) {
+        const e = new Error('Davet süresi dolmuş.');
+        e.code = 'expired'; e.human = 'Davet kodunun süresi dolmuş. Yeni bir kod isteyin.';
+        throw e;
+      }
+      if (inv.email && String(inv.email).toLowerCase() !== String(email || '').toLowerCase()) {
+        const e = new Error('Davet bu e-posta için değil.');
+        e.code = 'email'; e.human = 'Bu davet farklı bir e-posta adresine tanımlanmış.';
+        throw e;
+      }
+
+      const memberRef = homeMembersRef().doc(homeMemberId(inv.home_id, uid));
+      const memberSnap = await tx.get(memberRef);
+      if (memberSnap.exists) {
+        const e = new Error('Zaten üye.');
+        e.code = 'exists'; e.human = 'Bu evin zaten bir üyesisiniz.';
+        throw e;
+      }
+
+      const now = firebase.firestore.FieldValue.serverTimestamp();
+      tx.set(memberRef, {
+        home_id: inv.home_id,
+        uid: uid,
+        role: inv.role,
+        email: String(email || '').toLowerCase(),
+        display_name: String(displayName || '').slice(0, 80),
+        added_by: inv.created_by || null,
+        added_at: now,
+        updated_at: now,
+        invite_code: code
+      });
+      tx.update(invRef, {
+        used: true,
+        used_by: uid,
+        used_at: now
+      });
+      return inv;
+    });
+
+    return result;
+  }
+
+  async function listHomeBindings(homeId) {
+    if (!homeId) return [];
+    ensureFirebase();
+    const snap = await bindingsRef().where('home_id', '==', String(homeId)).get();
+    return snap.docs.map(d => d.data());
+  }
+
+  async function updateBindingHome(deviceId, homeId, homeName) {
+    ensureFirebase();
+    const data = {
+      home_id: homeId ? String(homeId) : firebase.firestore.FieldValue.delete(),
+      home_name: homeName ? String(homeName).slice(0, 80) : firebase.firestore.FieldValue.delete()
+    };
+    await bindingsRef().doc(String(deviceId)).update(data);
+    return true;
+  }
+
+  async function listAlarmEventsForHomes(homeIds, limit) {
+    ensureFirebase();
+    const ids = (homeIds || []).filter(Boolean);
+    if (!ids.length) return [];
+    const out = [];
+    const seen = {};
+    for (const homeId of ids) {
+      try {
+        const snap = await eventsRef()
+          .where('home_id', '==', String(homeId))
+          .orderBy('at', 'desc')
+          .limit(limit || 200)
+          .get();
+        snap.docs.forEach(function (d) {
+          if (seen[d.id]) return;
+          seen[d.id] = true;
+          out.push(Object.assign({ id: d.id }, d.data()));
+        });
+      } catch (e) {
+        if (e.code !== 'failed-precondition' && e.code !== 'permission-denied') throw e;
+      }
+    }
+    out.sort(function (a, b) { return Number(b.at || 0) - Number(a.at || 0); });
+    return out.slice(0, limit || 300);
+  }
+
   // Baglantiyi kesme talebi (sahibi) -> admin onayina duser.
   async function requestRelease(deviceId, byUid) {
     await bindingsRef().doc(deviceId).update({
@@ -660,6 +949,7 @@
     ev = ev || {};
     const ref = await eventsRef().add({
       owner_id: ev.owner_id || null,
+      home_id: ev.home_id || '',
       dev: ev.dev || '',
       type: ev.type || 'system',
       severity: ev.severity || 'info',
@@ -1267,6 +1557,80 @@
       try { return await listOwnBindings(uid); } catch (e) { throw toError(e); }
     },
 
+    /* ------------------------------------------------ Ev / aile ---------- */
+    listHomeMemberships: async function (uid) {
+      ensureFirebase();
+      try { return await listHomeMemberships(uid); } catch (e) { throw toError(e); }
+    },
+
+    getHome: async function (homeId) {
+      ensureFirebase();
+      try { return await getHome(homeId); } catch (e) { throw toError(e); }
+    },
+
+    createHome: async function (name, uid, email, displayName) {
+      ensureFirebase();
+      try { return await createHome(name, uid, email, displayName); } catch (e) { throw toError(e); }
+    },
+
+    updateHomeName: async function (homeId, name) {
+      ensureFirebase();
+      try { return await updateHomeName(homeId, name); } catch (e) { throw toError(e); }
+    },
+
+    listHomeMembers: async function (homeId) {
+      ensureFirebase();
+      try { return await listHomeMembers(homeId); } catch (e) { throw toError(e); }
+    },
+
+    updateHomeMemberRole: async function (homeId, uid, role) {
+      ensureFirebase();
+      try { return await updateHomeMemberRole(homeId, uid, role); } catch (e) { throw toError(e); }
+    },
+
+    removeHomeMember: async function (homeId, uid) {
+      ensureFirebase();
+      try { return await removeHomeMember(homeId, uid); } catch (e) { throw toError(e); }
+    },
+
+    listHomeInvites: async function (homeId) {
+      ensureFirebase();
+      try { return await listHomeInvites(homeId); } catch (e) { throw toError(e); }
+    },
+
+    createHomeInvite: async function (homeId, homeName, role, email, createdBy) {
+      ensureFirebase();
+      try { return await createHomeInvite(homeId, homeName, role, email, createdBy); } catch (e) { throw toError(e); }
+    },
+
+    verifyHomeInvite: async function (code) {
+      ensureFirebase();
+      try { return await verifyHomeInvite(code); } catch (e) { return null; }
+    },
+
+    revokeHomeInvite: async function (code) {
+      ensureFirebase();
+      try { return await revokeHomeInvite(code); } catch (e) { throw toError(e); }
+    },
+
+    joinHomeByInvite: async function (code, uid, email, displayName) {
+      ensureFirebase();
+      try { return await joinHomeByInvite(code, uid, email, displayName); } catch (e) {
+        if (e && e.code && e.human) throw e;
+        throw toError(e);
+      }
+    },
+
+    listHomeBindings: async function (homeId) {
+      ensureFirebase();
+      try { return await listHomeBindings(homeId); } catch (e) { throw toError(e); }
+    },
+
+    updateBindingHome: async function (deviceId, homeId, homeName) {
+      ensureFirebase();
+      try { return await updateBindingHome(deviceId, homeId, homeName); } catch (e) { throw toError(e); }
+    },
+
     getBinding: async function (deviceId) {
       ensureFirebase();
       try { return await getBinding(deviceId); } catch (e) { throw toError(e); }
@@ -1406,6 +1770,12 @@
     listAllAlarmEvents: async function (limit) {
       ensureFirebase();
       try { return await listAllAlarmEvents(limit); }
+      catch (e) { throw toError(e); }
+    },
+
+    listAlarmEventsForHomes: async function (homeIds, limit) {
+      ensureFirebase();
+      try { return await listAlarmEventsForHomes(homeIds, limit); }
       catch (e) { throw toError(e); }
     },
 

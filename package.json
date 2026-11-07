@@ -20,6 +20,8 @@
     "fw:legacy": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/build-firmware.ps1 -Target legacy",
     "fw:ota": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/build-firmware.ps1 -Target mqtt -UploadNetwork",
     "fw:ota:legacy": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/build-firmware.ps1 -Target legacy -UploadNetwork",
+    "fw:bin": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/build-firmware.ps1 -Target mqtt -ExportBin",
+    "ota:publish": "node tools/publish-ota.js",
     "android:icons": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/android-icons.ps1",
     "android:keystore": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/android-keystore.ps1",
     "android:apk": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/build-android.ps1 -Target apk",

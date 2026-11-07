@@ -45,6 +45,14 @@
         { "fieldPath": "dev", "order": "ASCENDING" },
         { "fieldPath": "at", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "alarm_events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "home_id", "order": "ASCENDING" },
+        { "fieldPath": "at", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

@@ -18,7 +18,7 @@
    ========================================================================== */
 
 const VERSION = '2.23.0';
-const CACHE = 'deneyap-pwa-v' + VERSION + '-r1';
+const CACHE = 'deneyap-pwa-v' + VERSION + '-r2';
 const SHELL = './index.html';
 const NETWORK_TIMEOUT = 4000;   // cihaz yanıt vermezse cache'e düş (ms)
 
@@ -27,9 +27,11 @@ const PRECACHE = [
   SHELL,
   './settings.html',
   './privacy.html',
+  './earthquake.html',
   './css/style.css',
   './css/mobile-app.css',
   './css/redesign.css',
+  './css/earthquake.css',
   './fonts/dm-sans-latin.woff2',
   './fonts/dm-sans-latin-ext.woff2',
   './fonts/fraunces-latin.woff2',
@@ -44,6 +46,9 @@ const PRECACHE = [
   './js/vendor/ScrollTrigger.min.js',
   './js/vendor/lenis.min.js',
   './js/api.js',
+  './js/homes.js',
+  './js/ota.js',
+  './js/earthquake.js',
   './js/mqtt.js',
   './js/notify.js',
   './js/devices.js',

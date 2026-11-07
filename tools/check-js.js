@@ -165,7 +165,7 @@ if (swJs) {
 /* ------------------------------------------------- 4. HTML yerel referansları */
 
 console.log('\n[4/6] HTML dosya referansları');
-['pwa/index.html', 'pwa/settings.html'].forEach(function (rel) {
+['pwa/index.html', 'pwa/settings.html', 'pwa/earthquake.html'].forEach(function (rel) {
   const src = oku(rel);
   if (!src) { basarisiz(rel + ' yok'); return; }
   const refs = [];

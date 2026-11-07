@@ -126,6 +126,19 @@
 
   /* -------------------------------------------------------- genel arayüz */
 
+  function roleBlock(device) {
+    if (!App.Auth || !App.Auth.signedIn || !App.Auth.signedIn()) return null;
+    if (!device) return null;
+    if (App.Auth.canManageDevice && App.Auth.canManageDevice(device)) return null;
+    const role = App.Auth.deviceRole ? App.Auth.deviceRole(device) : null;
+    const e = new Error('Bu işlem için yetkiniz yok.');
+    e.code = 'role-denied';
+    e.human = role === 'viewer'
+      ? 'İzleyici rolündesiniz; bu evde yalnızca görüntüleme yapabilirsiniz.'
+      : 'Bu cihazı yönetme yetkiniz yok. Ev yöneticisinden rolünüzü güncellemesini isteyin.';
+    return e;
+  }
+
   App.api = {
     url: buildUrl,
 
@@ -135,6 +148,8 @@
     },
 
     control: function (device, action, value) {
+      const blocked = roleBlock(device);
+      if (blocked) return Promise.reject(blocked);
       const lockKey = String(device) + ':' + String(action) + ':' + (value !== undefined ? String(value) : '');
       const existing = inFlightControls.get(lockKey);
       const now = Date.now();
@@ -165,6 +180,11 @@
     },
 
     saveSettings: function (payload) {
+      const dev = (App.Devices && App.Devices.currentId)
+        ? App.Devices.currentId()
+        : (App.settings ? App.settings().activeDeviceId : '');
+      const blocked = roleBlock(dev);
+      if (blocked) return Promise.reject(blocked);
       if (usingMqtt()) return App.mqtt.saveSettings(payload);
       return httpRequest('/api/settings', {
         method: 'POST',

@@ -783,8 +783,12 @@
     const locked = lastData && lastData.dev &&
                    App.Auth && App.Auth.bindingOf &&
                    !App.Auth.canControl(lastData.dev);
+    const role = lastData && lastData.dev && App.Auth && App.Auth.deviceRole
+      ? App.Auth.deviceRole(lastData.dev) : null;
     hint.textContent = locked
-      ? 'Bu cihaz başka bir hesaba bağlı — kumanda kilitli (Ayarlar → Hesap).'
+      ? (role === 'viewer'
+        ? 'İzleyici rolündesiniz — bu evde yalnızca görüntüleme yapabilirsiniz.'
+        : 'Bu cihaz başka bir hesaba bağlı — kumanda kilitli (Ayarlar → Hesap).')
       : '';
   }
 

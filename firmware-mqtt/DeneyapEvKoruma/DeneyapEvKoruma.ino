@@ -39,6 +39,8 @@
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
 #include <ArduinoOTA.h>   /* kablosuz guncelleme - ESP32 cekirdegiyle gelir */
+#include <Update.h>
+#include <mbedtls/sha256.h>
 #include <driver/i2s.h>
 
 #include "config.h"
@@ -173,6 +175,15 @@ uint32_t          wifiRetryAt     = 0;
 uint32_t          mqttRetryAt     = 0;
 uint32_t          rebootAtMs      = 0;
 
+/* Bulut OTA durumu (panel /status içinde görür) */
+bool              otaAuto         = true;
+bool              otaForceCheck   = false;
+bool              otaBusy         = false;
+String            otaState        = "bekliyor";
+String            otaLast         = "";
+uint32_t          otaNextAt       = 0;
+uint32_t          otaRetryMs      = OTA_RETRY_MIN_MS;
+
 /* MQTT broker yedekleme + yeniden bağlanma durumu */
 bool              brokerFallback    = false;            // şu an yedek broker kullanılıyor mu
 uint8_t           mqttFailStreak    = 0;                // üst üste başarısız deneme sayısı
@@ -218,6 +229,7 @@ static void loadSettings() {
   tgEnabled    = prefs.getBool("tgEnabled", TG_ENABLED_DEFAULT);
   tgToken      = prefs.getString("tgToken", "");
   tgChatId     = prefs.getString("tgChat", "");
+  otaAuto      = prefs.getBool("otaAuto", true);
   prefs.end();
 
   if (gasWarnPpm <= 0) gasWarnPpm = GAS_WARN_PPM;
@@ -252,6 +264,7 @@ static void saveSettings() {
   prefs.putBool("tgEnabled", tgEnabled);
   prefs.putString("tgToken", tgToken);
   prefs.putString("tgChat", tgChatId);
+  prefs.putBool("otaAuto", otaAuto);
   prefs.end();
   Serial.println(F("[nvs] ayarlar kaydedildi"));
 }
@@ -327,6 +340,26 @@ static String jsonEscape(const String &s) {
   }
   return o;
 }
+
+/* ESP32 çekirdeğiyle gelen kök sertifika demeti. Arduino core 3.x'te
+   NetworkClientSecure::setCACertBundle(bundle, size) kullanılabilir.
+   Eski 2.x çekirdeklerinde sembol bulunmayabilir; orada eski davranış korunur. */
+#if defined(ESP_ARDUINO_VERSION_MAJOR) && ESP_ARDUINO_VERSION_MAJOR >= 3
+extern const uint8_t rootca_crt_bundle_start[] asm("_binary_x509_crt_bundle_start");
+extern const uint8_t rootca_crt_bundle_end[]   asm("_binary_x509_crt_bundle_end");
+static void secureTlsBegin(WiFiClientSecure &sec) {
+  size_t n = (size_t)(rootca_crt_bundle_end - rootca_crt_bundle_start);
+  if (n > 0) {
+    sec.setCACertBundle(rootca_crt_bundle_start, n);
+    return;
+  }
+  sec.setInsecure();
+}
+#else
+static void secureTlsBegin(WiFiClientSecure &sec) {
+  sec.setInsecure();   // core 2.x: sertifika demeti API'si yok
+}
+#endif
 
 /* ============================================================ SES MOTORU ==
    I2S amplifikatör (MAX98357A) üzerinden siren/ton üretimi. Ayrı bir FreeRTOS
@@ -813,7 +846,7 @@ static bool tgSend(const String &text, bool force) {
   if (!force && !tgEnabled) return false;
   if (tgToken.length() == 0 || tgChatId.length() == 0) return false;
   if (WiFi.status() != WL_CONNECTED) return false;
-  WiFiClientSecure sec; sec.setInsecure();
+  WiFiClientSecure sec; secureTlsBegin(sec);
   HTTPClient http;
   http.setConnectTimeout(8000);
   http.setTimeout(8000);
@@ -854,7 +887,7 @@ static bool pushNotify(const char *kind) {
   pushLastMs[idx] = now;
   pushLastTryMs = now;
 
-  WiFiClientSecure sec; sec.setInsecure();      // kök sertifika yüklenmez (pin sınırı)
+  WiFiClientSecure sec; secureTlsBegin(sec);      // kök sertifika yüklenmez (pin sınırı)
   HTTPClient http;
   http.setConnectTimeout(PUSH_HTTP_TIMEOUT_MS);
   http.setTimeout(PUSH_HTTP_TIMEOUT_MS);
@@ -884,6 +917,300 @@ static bool pushNotify(const char *kind) {
 }
 
 /* --------------------------------------------------------------- geçmiş */
+/* ----------------------------------------------------------- bulut OTA */
+/* ArduinoOTA yalnızca yerel ağdan elle güncelleme içindir. Bu bölüm ise
+   Vercel'deki yayın manifestini denetler ve yeni sürümü arka planda indirir.
+   İndirme sırasında SHA-256 hesaplanır; özet tutmazsa Update.abort() çağrılır
+   ve çalışan bölüm değişmez. */
+static void publishStatus();   // aşağıda tanımlı
+
+static int otaVersionPart(const char *&p) {
+  while (*p && (*p < '0' || *p > '9')) p++;
+  long v = 0;
+  while (*p >= '0' && *p <= '9') { v = v * 10 + (*p - '0'); p++; }
+  if (*p == '.') p++;
+  return (int)v;
+}
+
+static int otaVersionCompare(const String &a, const String &b) {
+  const char *pa = a.c_str();
+  const char *pb = b.c_str();
+  for (int i = 0; i < 3; i++) {
+    int x = otaVersionPart(pa);
+    int y = otaVersionPart(pb);
+    if (x != y) return x > y ? 1 : -1;
+  }
+  return 0;
+}
+
+static String otaShaHex(const uint8_t *d) {
+  static const char *hex = "0123456789abcdef";
+  char out[65];
+  for (int i = 0; i < 32; i++) {
+    out[i * 2]     = hex[(d[i] >> 4) & 0x0F];
+    out[i * 2 + 1] = hex[d[i] & 0x0F];
+  }
+  out[64] = '\0';
+  return String(out);
+}
+
+static void otaScheduleRetry(const String &why) {
+  otaLast = why.substring(0, 90);
+  otaNextAt = millis() + otaRetryMs;
+  if (otaRetryMs < OTA_RETRY_MAX_MS) {
+    otaRetryMs *= 2;
+    if (otaRetryMs > OTA_RETRY_MAX_MS) otaRetryMs = OTA_RETRY_MAX_MS;
+  }
+}
+
+static void cloudOtaBegin() {
+  otaNextAt = millis() + OTA_BOOT_DELAY_MS;
+  otaRetryMs = OTA_RETRY_MIN_MS;
+  otaBusy = false;
+  otaForceCheck = false;
+#if CLOUD_OTA_ENABLED
+  otaState = OTA_MANIFEST_URL[0] ? "bekliyor" : "kapali";
+  if (!OTA_MANIFEST_URL[0]) otaAuto = false;
+  Serial.printf("[ota] bulut denetimi %s, kanal=%s, sonraki=%lus\n",
+                otaAuto ? "acik" : "kapali", OTA_CHANNEL,
+                (unsigned long)(OTA_BOOT_DELAY_MS / 1000UL));
+#else
+  otaAuto = false;
+  otaState = "kapali";
+#endif
+}
+
+/* true: manifest okundu (güncelleme olsun/olmasın), false: ağ/manifest hatası */
+static bool cloudOtaCheck(bool manual) {
+#if !CLOUD_OTA_ENABLED
+  (void)manual;
+  return false;
+#else
+  if (!wifiStaOk || WiFi.status() != WL_CONNECTED) return false;
+  if (otaBusy) return false;
+  if (!OTA_MANIFEST_URL[0]) return false;
+
+  otaBusy = true;
+  otaForceCheck = false;
+  otaState = "denetleniyor";
+  otaLast = "";
+  publishStatus();
+
+  String url = String(OTA_MANIFEST_URL);
+  url += (url.indexOf('?') >= 0) ? '&' : '?';
+  url += "device=" + String(deviceId);
+  url += "&current=" FW_VERSION;
+  url += "&channel=" OTA_CHANNEL;
+
+  WiFiClientSecure sec;
+  secureTlsBegin(sec);
+  HTTPClient http;
+  http.setConnectTimeout(OTA_HTTP_TIMEOUT_MS);
+  http.setTimeout(OTA_HTTP_TIMEOUT_MS);
+  http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
+
+  if (!http.begin(sec, url)) {
+    otaState = "hata";
+    otaScheduleRetry(F("manifest baglantisi kurulamadi"));
+    Serial.println(F("[ota] manifest baglantisi kurulamadi"));
+    otaBusy = false;
+    return false;
+  }
+  int code = http.GET();
+  if (code != 200) {
+    http.end();
+    otaState = "hata";
+    otaScheduleRetry(String(F("manifest HTTP ")) + code);
+    Serial.printf("[ota] manifest HTTP %d\n", code);
+    otaBusy = false;
+    return false;
+  }
+  String body = http.getString();
+  http.end();
+  if (body.length() > 8192) body = body.substring(0, 8192);
+
+  String remoteVersion, remoteUrl, remoteSha;
+  long remoteSize = 0;
+  bool mandatory = false;
+  if (!jsonGetStr(body, "version", remoteVersion)
+      || !jsonGetStr(body, "url", remoteUrl)
+      || !jsonGetStr(body, "sha256", remoteSha)
+      || !jsonGetNum(body, "size", remoteSize)) {
+    otaState = "hata";
+    otaScheduleRetry(F("manifest alanlari eksik"));
+    Serial.println(F("[ota] manifest alanlari eksik"));
+    otaBusy = false;
+    return false;
+  }
+  jsonGetBool(body, "mandatory", mandatory);
+  remoteSha.trim();
+  remoteUrl.trim();
+
+  if (otaVersionCompare(remoteVersion, FW_VERSION) <= 0) {
+    otaState = "guncel";
+    otaLast = remoteVersion + F(" guncel");
+    otaNextAt = millis() + OTA_CHECK_INTERVAL_MS;
+    otaRetryMs = OTA_RETRY_MIN_MS;
+    Serial.printf("[ota] guncel: %s\n", remoteVersion.c_str());
+    otaBusy = false;
+    return true;
+  }
+  if (!remoteUrl.startsWith("https://")) {
+    otaState = "hata";
+    otaScheduleRetry(F("guvenli olmayan indirme adresi"));
+    otaBusy = false;
+    return false;
+  }
+  if (remoteSize < 10000 || (unsigned long)remoteSize > OTA_MAX_BYTES) {
+    otaState = "hata";
+    otaScheduleRetry(F("firmware boyutu gecersiz"));
+    otaBusy = false;
+    return false;
+  }
+  if (remoteSha.length() != 64) {
+    otaState = "hata";
+    otaScheduleRetry(F("SHA-256 ozeti gecersiz"));
+    otaBusy = false;
+    return false;
+  }
+
+  Serial.printf("[ota] yeni surum %s (%ld bayt) indiriliyor\n",
+                remoteVersion.c_str(), remoteSize);
+  otaState = "indiriliyor";
+  otaLast = remoteVersion;
+  publishStatus();
+
+  WiFiClientSecure dsec;
+  secureTlsBegin(dsec);
+  HTTPClient dh;
+  dh.setConnectTimeout(OTA_HTTP_TIMEOUT_MS);
+  dh.setTimeout(OTA_HTTP_TIMEOUT_MS);
+  dh.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
+  if (!dh.begin(dsec, remoteUrl)) {
+    otaState = "hata";
+    otaScheduleRetry(F("indirme baglantisi kurulamadi"));
+    otaBusy = false;
+    return false;
+  }
+  int dcode = dh.GET();
+  if (dcode != 200) {
+    dh.end();
+    otaState = "hata";
+    otaScheduleRetry(String(F("indirme HTTP ")) + dcode);
+    Serial.printf("[ota] indirme HTTP %d\n", dcode);
+    otaBusy = false;
+    return false;
+  }
+
+  size_t total = (size_t)remoteSize;
+  if (!Update.begin(total, U_FLASH)) {
+    dh.end();
+    Update.printError(Serial);
+    otaState = "hata";
+    otaScheduleRetry(F("OTA bolumu ayrilamadi"));
+    otaBusy = false;
+    return false;
+  }
+
+  mbedtls_sha256_context ctx;
+  mbedtls_sha256_init(&ctx);
+  mbedtls_sha256_starts(&ctx, 0);
+
+  uint8_t buf[1024];
+  size_t written = 0;
+  bool writeOk = true;
+  int lastPct = -1;
+  uint32_t startedMs = millis();
+  WiFiClient *stream = dh.getStreamPtr();
+  while (written < total) {
+    if (timeReached(millis(), startedMs, OTA_HTTP_TIMEOUT_MS * 20UL)) {
+      writeOk = false;
+      break;
+    }
+    size_t want = total - written;
+    if (want > sizeof(buf)) want = sizeof(buf);
+    int n = stream->readBytes(buf, want);
+    if (n <= 0) {
+      if (!dh.connected()) break;
+      delay(20);
+      continue;
+    }
+    if (Update.write(buf, (size_t)n) != (size_t)n) {
+      writeOk = false;
+      break;
+    }
+    mbedtls_sha256_update(&ctx, buf, (size_t)n);
+    written += (size_t)n;
+
+    int pct = (int)((written * 100ULL) / (total ? total : 1));
+    if (pct >= lastPct + 10) {
+      lastPct = pct;
+      Serial.printf("[ota] indirme %d%%\n", pct);
+    }
+  }
+  dh.end();
+
+  uint8_t digest[32];
+  mbedtls_sha256_finish(&ctx, digest);
+  mbedtls_sha256_free(&ctx);
+  String gotSha = otaShaHex(digest);
+
+  if (!writeOk || written != total) {
+    Update.abort();
+    otaState = "hata";
+    otaScheduleRetry(F("indirme tamamlanmadi"));
+    Serial.printf("[ota] eksik indirme: %lu/%lu\n",
+                  (unsigned long)written, (unsigned long)total);
+    otaBusy = false;
+    return false;
+  }
+  if (!gotSha.equalsIgnoreCase(remoteSha)) {
+    Update.abort();   // özet tutmadı: çalışan bölüm ASLA değişmez
+    otaState = "ozet-hatasi";
+    otaScheduleRetry(F("SHA-256 uyusmadi"));
+    Serial.printf("[ota] SHA-256 uyusmadi: %s != %s\n",
+                  gotSha.c_str(), remoteSha.c_str());
+    otaBusy = false;
+    return false;
+  }
+  if (!Update.end(true)) {
+    Update.printError(Serial);
+    otaState = "yazma-hatasi";
+    otaScheduleRetry(F("OTA yazma dogrulanamadi"));
+    otaBusy = false;
+    return false;
+  }
+
+  otaState = "yeniden-baslatiliyor";
+  otaLast = remoteVersion + F(" kuruldu");
+  Serial.printf("[ota] %s kuruldu, yeniden baslatiliyor\n", remoteVersion.c_str());
+  publishStatus();
+  delay(1200);
+  ESP.restart();
+  otaBusy = false;
+  return true;
+#endif
+}
+
+static void cloudOtaLoop() {
+#if CLOUD_OTA_ENABLED
+  if (!wifiStaOk || WiFi.status() != WL_CONNECTED) return;
+  if (otaBusy) return;
+  if (!otaAuto && !otaForceCheck) return;
+  uint32_t now = millis();
+  if ((int32_t)(now - otaNextAt) < 0) return;
+
+  /* Alarm sırasında sensör döngüsünü uzun süre bloke etme. */
+  if (gasState == GAS_DANGER || floodActive || vibActive || flameActive
+      || alarmSimUntilMs != 0) {
+    otaNextAt = now + 300000UL;
+    return;
+  }
+  cloudOtaCheck(otaForceCheck);
+#endif
+}
+
+
 static int histIndex(int i) {
   int start = ((int)histHead - (int)histCount + HISTORY_MAX) % HISTORY_MAX;
   return (start + i) % HISTORY_MAX;
@@ -956,6 +1283,8 @@ static String buildStatus() {
   }
   int clients = apActive ? (int)WiFi.softAPgetStationNum() : (wifiStaOk ? 1 : 0);
   String err = lastCmdErr;
+  uint32_t otaLeft = 0;
+  if ((int32_t)(otaNextAt - now) > 0) otaLeft = otaNextAt - now;
 
   String j; j.reserve(1600);
   j += "{\"ok\":true,\"fw\":\""; j += FW_VERSION;
@@ -1035,6 +1364,11 @@ static String buildStatus() {
   j += ",\"tgOn\":"; j += (tgEnabled ? "true" : "false");
   j += ",\"tgTok\":"; j += (tgToken.length() ? "true" : "false");
   j += ",\"tgChat\":"; j += (tgChatId.length() ? "true" : "false");
+  j += ",\"otaAuto\":"; j += (otaAuto ? "true" : "false");
+  j += ",\"otaState\":\""; j += jsonEscape(otaState); j += "\"";
+  j += ",\"otaLast\":\""; j += jsonEscape(otaLast); j += "\"";
+  j += ",\"otaNext\":"; j += (unsigned long)otaLeft;
+  j += ",\"otaChannel\":\"" OTA_CHANNEL "\"";
   j += ",\"fs\":false,\"fsUsed\":0,\"fsTotal\":0}";
   return j;
 }
@@ -1166,6 +1500,20 @@ static String applyCommand(const String &device, const String &action, long valu
       runAutomation();
       Serial.println(F("[test] 5 saniyelik alarm simulasyonu"));
     } else return "bilinmeyen test aksiyonu";
+
+  } else if (device == "ota" || device == "firmware") {
+    if (action == "check") {
+      otaForceCheck = true;
+      otaNextAt = millis();
+      Serial.println(F("[ota] panelden denetim istendi"));
+    } else if (action == "on" || action == "auto") {
+      otaAuto = true;
+      otaNextAt = millis() + 5000UL;
+      saveSettings();
+    } else if (action == "off" || action == "manual") {
+      otaAuto = false;
+      saveSettings();
+    } else return "gecersiz ota komutu";
 
   } else if (device == "reboot") {
     rebootAtMs = millis() + 400;
@@ -1544,6 +1892,7 @@ void setup() {
 
   loadSettings();
   makeDeviceId();
+  cloudOtaBegin();
 
   pinMode(PIN_RELAY_FAN, OUTPUT);  digitalWrite(PIN_RELAY_FAN, LOW);
   pinMode(PIN_RELAY_PUMP, OUTPUT); digitalWrite(PIN_RELAY_PUMP, LOW);
@@ -1640,6 +1989,9 @@ void loop() {
   }
 
   server.handleClient();
+
+  /* Bulut OTA: yalnızca güvenli/boşta anda, periyodik olarak denetlenir. */
+  cloudOtaLoop();
 
   /* Sensör + otomasyon */
   if (timeReached(now, lastSensorMs, SENSOR_INTERVAL_MS)) {

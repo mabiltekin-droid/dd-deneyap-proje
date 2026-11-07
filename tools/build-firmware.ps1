@@ -65,7 +65,11 @@ param(
   [int]$OtaPort = 0,
 
   # Ayrintili derleme ciktisi (uyarilar dahil)
-  [switch]$ShowWarnings
+  [switch]$ShowWarnings,
+
+  # .bin dosyasini build/ota/ altina kopyala (bulut OTA yayini icin).
+  #   npm run fw:bin
+  [switch]$ExportBin
 )
 
 $ErrorActionPreference = 'Stop'
@@ -223,8 +227,8 @@ foreach ($s in $sketches) {
 
   # OTA'da .bin dosyasi gerekiyor: derleme ciktisini bilinen bir klasore al.
   $buildPath = ''
-  if ($UploadNetwork) {
-    $buildPath = Join-Path $env:TEMP ('dd-fw-ota-' + ($s.Fqbn -replace '[:]', '-'))
+  if ($UploadNetwork -or $ExportBin) {
+    $buildPath = Join-Path $env:TEMP ('dd-fw-build-' + ($s.Fqbn -replace '[:]', '-'))
     if (Test-Path $buildPath) { Remove-Item $buildPath -Recurse -Force }
     New-Item -ItemType Directory -Force $buildPath | Out-Null
     $cliArgs += @('--build-path', $buildPath)
@@ -248,6 +252,26 @@ foreach ($s in $sketches) {
   Write-Host "  OK: derlendi" -ForegroundColor Green
 
   if ($Upload) { Write-Host "  OK: yuklendi ($Port)" -ForegroundColor Green }
+
+  # Bulut OTA icin .bin kopyasi
+  if ($ExportBin) {
+    $binAdi = (Split-Path $s.Path -Leaf) + '.ino.bin'
+    $bin = Join-Path $buildPath $binAdi
+    if (-not (Test-Path $bin)) {
+      Write-Host ("  ! .bin bulunamadi: " + $bin) -ForegroundColor Red
+      $failed++
+      continue
+    }
+    $fwVer = Get-OtaField -ConfigPath $s.Config -Key 'FW_VERSION'
+    if (-not $fwVer) { $fwVer = 'surum-bilinmiyor' }
+    $prefix = if ($s.Fqbn -eq $FqbnMqtt) { 'deneyap-ev-koruma' } else { 'legacy-deneyap-ev-koruma' }
+    $outDir = Join-Path $root 'build\ota'
+    New-Item -ItemType Directory -Force $outDir | Out-Null
+    $outBin = Join-Path $outDir ($prefix + '-' + $fwVer + '.bin')
+    Copy-Item $bin $outBin -Force
+    Write-Host ("  BIN: " + $outBin) -ForegroundColor Cyan
+    Write-Host ("       npm run ota:publish -- --file `"build/ota/" + (Split-Path $outBin -Leaf) + "`" --version " + $fwVer) -ForegroundColor DarkGray
+  }
 
   # OTA
   if ($UploadNetwork) {

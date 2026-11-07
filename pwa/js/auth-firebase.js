@@ -24,7 +24,11 @@
     session: null,
     profile: null,
     bindings: null,
+    homes: [],          // [{ id, name, owner_id, role, ... }]
+    homesLoaded: false,
+    homeMembers: {},    // homeId -> üye listesi (UI yükledikçe)
     deviceAccess: {},   // deviceId -> 'free' | 'granted' | 'denied' | 'anon'
+    deviceRoles: {},    // deviceId -> 'admin' | 'maintainer' | 'viewer'
     deviceInfo: null,   // son checkDevice sonucu
     setupRequired: false,
     error: null
@@ -136,6 +140,7 @@
   // Oturum değişince cihaz erişim önbelleğini geçersiz kıl.
   function resetDeviceAccess() {
     state.deviceAccess = {};
+    state.deviceRoles = {};
     state.deviceInfo = null;
   }
 
@@ -307,12 +312,81 @@
     return state.profile;
   }
 
+  /* ======================================================= EV / AİLE =====
+     homes + home_members kayıtlarını okur. Her ev kaydına kullanıcının
+     rolü (`admin` | `maintainer` | `viewer`) eklenir. Platform admin'i
+     olmayan kullanıcı yalnızca üyesi olduğu evleri görür. */
+  async function loadHomes() {
+    const me = state.session && state.session.user;
+    state.homeMembers = state.homeMembers || {};
+    resetDeviceAccess();
+    if (!me) {
+      state.homes = [];
+      state.homesLoaded = true;
+      return [];
+    }
+    try {
+      const memberships = await FB().listHomeMemberships(me.id);
+      const rows = await Promise.all((memberships || []).map(async function (m) {
+        try {
+          const h = await FB().getHome(m.home_id);
+          if (!h) return null;
+          return Object.assign({}, h, {
+            id: h.id || m.home_id,
+            role: m.role || 'viewer',
+            member_id: m.id,
+            owner: h.owner_id === me.id
+          });
+        } catch (e) {
+          return null;
+        }
+      }));
+      state.homes = rows.filter(Boolean).sort(function (a, b) {
+        if (a.owner !== b.owner) return a.owner ? -1 : 1;
+        return String(a.name || '').localeCompare(String(b.name || ''), 'tr');
+      });
+    } catch (e) {
+      if (!isPermDenied(e)) console.warn('[auth] evler okunamadı', e);
+      state.homes = [];
+    }
+    state.homesLoaded = true;
+    return state.homes;
+  }
+
+  function homeById(homeId) {
+    if (!homeId) return null;
+    const rows = state.homes || [];
+    for (let i = 0; i < rows.length; i++) {
+      if (rows[i].id === homeId || rows[i].home_id === homeId) return rows[i];
+    }
+    return null;
+  }
+
+  function homeRole(homeId) {
+    const h = homeById(homeId);
+    return h ? h.role : null;
+  }
+
+  function roleForBinding(binding) {
+    if (!binding) return null;
+    const me = state.session && state.session.user;
+    if (!me) return null;
+    if (App.Auth.isAdmin()) return 'admin';
+    if (binding.home_id) {
+      const r = homeRole(binding.home_id);
+      if (r) return r;
+    }
+    if (binding.owner_id === me.id) return 'admin';
+    return null;
+  }
+
   async function init() {
     try {
       state.session = await FB().ensureSession();
     } catch (e) { state.session = null; }
     resetDeviceAccess();
     await refreshProfile();
+    await loadHomes();
     if (!state.session) {
       try { state.setupRequired = !(await FB().probeSetup()); }
       catch (e) { state.setupRequired = false; }
@@ -344,6 +418,7 @@
     }
 
     await refreshProfile();
+    await loadHomes();
     state.ready = true;
     emit();
     startIdleWatch();
@@ -369,7 +444,8 @@
         isAdmin: !!(state.profile && state.profile.role === 'admin'),
         setupRequired: state.setupRequired,
         error: state.error,
-        bindings: state.bindings
+        bindings: state.bindings,
+        homes: (state.homes || []).slice()
       };
     },
 
@@ -428,6 +504,7 @@
       state.session = s;
       resetDeviceAccess();
       await refreshProfile();
+      await loadHomes();
       state.ready = true;
       emit();
       startIdleWatch();
@@ -483,6 +560,7 @@
       }
       state.session = r;
       await refreshProfile();
+      await loadHomes();
       emit();
       return App.Auth.snapshot();
     },
@@ -500,6 +578,9 @@
       state.session = null;
       state.profile = null;
       state.bindings = null;
+      state.homes = [];
+      state.homesLoaded = false;
+      state.homeMembers = {};
       resetDeviceAccess();
       stopIdleWatch();
       state.ready = true;
@@ -510,6 +591,7 @@
     reload: async function () {
       try { state.session = await FB().ensureSession(); } catch (e) { state.session = null; }
       await refreshProfile();
+      await loadHomes();
       emit();
       return App.Auth.snapshot();
     },
@@ -550,6 +632,9 @@
       state.session = null;
       state.profile = null;
       state.bindings = null;
+      state.homes = [];
+      state.homesLoaded = false;
+      state.homeMembers = {};
       resetDeviceAccess();
       stopIdleWatch();
       state.ready = true;
@@ -634,14 +719,32 @@
       const me = state.session && state.session.user;
       if (!me) return null;
       if (ev && ev.dev && !App.Auth.canView(ev.dev)) return null;
-      return FB().addAlarmEvent(Object.assign({}, ev, { owner_id: me.id }));
+      const home = ev && ev.dev ? App.Auth.homeForDevice(ev.dev) : null;
+      return FB().addAlarmEvent(Object.assign({}, ev, {
+        owner_id: me.id,
+        home_id: (ev && ev.home_id) || (home ? home.id : '')
+      }));
     },
 
-    // Kendi olaylarım (bulut).
+    // Kendi olaylarım + üyesi olduğum evlerin olayları (bulut).
     listMyEvents: async function (limit) {
       const me = state.session && state.session.user;
       if (!me) return [];
-      return FB().listAlarmEvents(me.id, limit);
+      const own = await FB().listAlarmEvents(me.id, limit);
+      const homeIds = (state.homes || []).map(function (h) { return h.id; });
+      let homeRows = [];
+      if (homeIds.length) {
+        try { homeRows = await FB().listAlarmEventsForHomes(homeIds, limit); } catch (e) { homeRows = []; }
+      }
+      const seen = {};
+      const out = [];
+      (own || []).concat(homeRows || []).forEach(function (r) {
+        if (!r || !r.id || seen[r.id]) return;
+        seen[r.id] = true;
+        out.push(r);
+      });
+      out.sort(function (a, b) { return Number(b.at || 0) - Number(a.at || 0); });
+      return out.slice(0, limit || 300);
     },
 
     // Admin: tüm cihazların olayları.
@@ -669,10 +772,27 @@
     listBindings: async function () {
       const me = state.session && state.session.user;
       try {
-        let rows;
-        if (!me) rows = [];
-        else if (App.Auth.isAdmin()) rows = await FB().listBindings();
-        else rows = await FB().listOwnBindings(me.id);
+        let rows = [];
+        if (!me) {
+          rows = [];
+        } else if (App.Auth.isAdmin()) {
+          rows = await FB().listBindings();
+        } else {
+          rows = await FB().listOwnBindings(me.id);
+          if (!state.homesLoaded) await loadHomes();
+          const seen = {};
+          (rows || []).forEach(function (r) { if (r && r.device_id) seen[r.device_id] = true; });
+          for (const h of (state.homes || [])) {
+            try {
+              const more = await FB().listHomeBindings(h.id);
+              (more || []).forEach(function (r) {
+                if (!r || !r.device_id || seen[r.device_id]) return;
+                seen[r.device_id] = true;
+                rows.push(r);
+              });
+            } catch (e) { /* tek ev okunamazsa diğerleri sürsün */ }
+          }
+        }
         rows = (rows || []).slice().sort(function (a, b) {
           return millis(b.bound_at) - millis(a.bound_at);
         });
@@ -720,21 +840,31 @@
         try {
           const b = await FB().getBinding(deviceId);
           const admin = App.Auth.isAdmin();
+          if (b && b.home_id && !homeRole(b.home_id) && !state.homesLoaded) {
+            await loadHomes();
+          }
+          const bRole = b ? roleForBinding(b) : null;
           if (!b) {
             // Cihaz gerçekten boşta → eski yerel kaydı temizle.
             if (local && local.uid === me.id) forgetOwner(deviceId);
             res = { state: 'free' };
-          } else if (b.owner_id === me.id) {
-            // Sahibiyiz → yerel hafızayı tazele.
+          } else if (b.owner_id === me.id || bRole) {
+            // Sahibiyiz veya bağlı olduğu evin üyesiyiz.
             rememberOwner(deviceId, me.id, me.email, b.label);
-            res = { state: b.status === 'release_pending' ? 'mine_pending' : 'mine', binding: b };
+            state.deviceRoles[deviceId] = bRole || (admin ? 'admin' : null);
+            res = {
+              state: b.status === 'release_pending' ? 'mine_pending' : 'mine',
+              binding: b,
+              role: state.deviceRoles[deviceId]
+            };
           } else {
             // Sunucu başka bir sahip diyor → yerel kayıt bayat (admin yeniden
             // atamış olabilir) → temizle; sahiplik yerelden DEVRALINMAZ.
             if (local && local.uid === me.id) forgetOwner(deviceId);
             res = admin
-              ? { state: b.status === 'release_pending' ? 'pending_other' : 'other', binding: b }
+              ? { state: b.status === 'release_pending' ? 'pending_other' : 'other', binding: b, role: 'admin' }
               : { state: 'hidden' };
+            if (admin) state.deviceRoles[deviceId] = 'admin';
           }
         } catch (e) {
           if (isPermDenied(e)) {
@@ -787,16 +917,34 @@
       return !(state.deviceAccess && state.deviceAccess[deviceId]);
     },
 
+    // Cihazdaki rol: 'admin' | 'maintainer' | 'viewer' | null
+    deviceRole: function (deviceId) {
+      if (!deviceId) return null;
+      if (state.deviceRoles && state.deviceRoles[deviceId]) return state.deviceRoles[deviceId];
+      const b = App.Auth.bindingOf(deviceId);
+      return b ? roleForBinding(b) : null;
+    },
+
     // Cihaza kumanda edilebilir mi? (app.js her karede çağırır → senkron)
     canControl: function (deviceId) {
       const a = state.deviceAccess && state.deviceAccess[deviceId];
-      if (a === 'granted') return true;
+      const role = App.Auth.deviceRole(deviceId);
+      if (role === 'viewer') return false;   // izleyici: salt okunur
+      if (a === 'granted') return role !== 'viewer';
       // Boşta (bağlanmamış) ya da başkasına bağlı → kumanda yok.
       if (a === 'free' || a === 'denied') return false;
       // Henüz doğrulanmadı
       const me = state.session && state.session.user;
       if (!me) return true;   // oturum yok: eski davranış korunur
-      return false;           // oturum var ama doğrulanmadı: güvenli tarafta kal
+      // Bağlantı listesinden rol çıkarılabiliyorsa (settings gibi doğrudan
+      // çağrılarda) güvenli tarafta kalmadan karar ver.
+      if (role === 'admin' || role === 'maintainer') return true;
+      return false;
+    },
+
+    // Ayar/eşik yazmaları da kumanda ile aynı yetkiye tabidir.
+    canManageDevice: function (deviceId) {
+      return App.Auth.canControl(deviceId);
     },
 
     // Cihaz bu kullanıcıya GÖRÜNÜR mü?
@@ -814,6 +962,200 @@
     canClaim: function (deviceId) {
       if (!state.session) return false;
       return (state.deviceAccess && state.deviceAccess[deviceId]) === 'free';
+    },
+
+    /* ============================================== EV / AİLE ============ */
+
+    listHomes: async function () {
+      if (!state.homesLoaded) await loadHomes();
+      return (state.homes || []).slice();
+    },
+
+    homeRoleFor: function (homeId) { return homeRole(homeId); },
+
+    homeForDevice: function (deviceId) {
+      const b = App.Auth.bindingOf(deviceId);
+      return b && b.home_id ? homeById(b.home_id) : null;
+    },
+
+    canViewHome: function (homeId) {
+      if (!state.session) return false;
+      if (App.Auth.isAdmin()) return true;
+      return !!homeRole(homeId);
+    },
+
+    canManageHome: function (homeId) {
+      if (!state.session) return false;
+      if (App.Auth.isAdmin()) return true;
+      const h = homeById(homeId);
+      return !!(h && (h.owner || h.role === 'admin'));
+    },
+
+    createHome: async function (name) {
+      const me = state.session && state.session.user;
+      if (!me) throw err('Giriş yapmalısınız.', 'Ev oluşturmak için giriş yapmalısınız.');
+      requireFresh(STEP_UP_MIN, 'ev oluşturma');
+      requireVerified('ev oluşturma');
+      const home = await FB().createHome(name, me.id, me.email, me.displayName);
+      await loadHomes();
+      emit();
+      return home;
+    },
+
+    renameHome: async function (homeId, name) {
+      if (!App.Auth.canManageHome(homeId)) throw err('Yetki yok.', 'Bu evi yalnızca yöneticisi yeniden adlandırabilir.');
+      requireFresh(STEP_UP_MIN, 'ev adı değiştirme');
+      await FB().updateHomeName(homeId, name);
+      await loadHomes();
+      emit();
+    },
+
+    listHomeMembers: async function (homeId) {
+      if (!App.Auth.canViewHome(homeId)) throw err('Yetki yok.', 'Bu evin üyelerini göremezsiniz.');
+      const rows = await FB().listHomeMembers(homeId);
+      state.homeMembers[homeId] = rows;
+      return rows;
+    },
+
+    updateHomeMemberRole: async function (homeId, uid, role) {
+      const me = state.session && state.session.user;
+      if (!App.Auth.canManageHome(homeId)) throw err('Yetki yok.', 'Üye rolünü yalnızca ev yöneticisi değiştirebilir.');
+      requireFresh(STEP_UP_MIN, 'üye rolü değiştirme');
+      const home = homeById(homeId);
+      if (home && uid === home.owner_id) throw err('Korunan üye.', 'Ev sahibinin rolü değiştirilemez.');
+      if (me && uid === me.id && role !== 'admin') {
+        throw err('Kendi rolünüz.', 'Kendi yönetici rolünüzü düşüremezsiniz; başka bir yönetici yapmalı.');
+      }
+      await FB().updateHomeMemberRole(homeId, uid, role);
+      try { await FB().addAuditLog('home_member_role', homeId, { uid: uid, role: role }); } catch (e) { /* yoksay */ }
+      await App.Auth.listHomeMembers(homeId);
+      emit();
+    },
+
+    removeHomeMember: async function (homeId, uid) {
+      if (!App.Auth.canManageHome(homeId)) throw err('Yetki yok.', 'Üyeyi yalnızca ev yöneticisi çıkarabilir.');
+      requireFresh(STEP_UP_MIN, 'üye çıkarma');
+      const home = homeById(homeId);
+      if (home && uid === home.owner_id) throw err('Korunan üye.', 'Ev sahibi evden çıkarılamaz.');
+      await FB().removeHomeMember(homeId, uid);
+      try { await FB().addAuditLog('home_member_remove', homeId, { uid: uid }); } catch (e) { /* yoksay */ }
+      await App.Auth.listHomeMembers(homeId);
+      await App.Auth.listBindings();
+      emit();
+    },
+
+    leaveHome: async function (homeId) {
+      const me = state.session && state.session.user;
+      if (!me) throw err('Giriş yapmalısınız.', 'Giriş yapmalısınız.');
+      requireFresh(RECENT_MIN, 'evden ayrılma');
+      const home = homeById(homeId);
+      if (home && home.owner_id === me.id) {
+        throw err('Ev sahibi.', 'Ev sahibi evden ayrılamaz; önce evi silmeyi/başka yöneticiyi deneyin.');
+      }
+      await FB().removeHomeMember(homeId, me.id);
+      await loadHomes();
+      await App.Auth.listBindings();
+      resetDeviceAccess();
+      emit();
+    },
+
+    listHomeInvites: async function (homeId) {
+      if (!App.Auth.canManageHome(homeId)) throw err('Yetki yok.', 'Davetleri yalnızca ev yöneticisi görebilir.');
+      return FB().listHomeInvites(homeId);
+    },
+
+    createHomeInvite: async function (homeId, role, email) {
+      const me = state.session && state.session.user;
+      if (!App.Auth.canManageHome(homeId)) throw err('Yetki yok.', 'Davet oluşturmayı yalnızca ev yöneticisi yapabilir.');
+      requireFresh(STEP_UP_MIN, 'ev daveti oluşturma');
+      const home = homeById(homeId);
+      if (!home) throw err('Ev bulunamadı.', 'Ev bulunamadı.');
+      const inv = await FB().createHomeInvite(homeId, home.name, role, email, me && me.id);
+      try { await FB().addAuditLog('home_invite_create', homeId, { role: role, email: email || '' }); } catch (e) { /* yoksay */ }
+      return inv;
+    },
+
+    verifyHomeInvite: async function (code) {
+      return FB().verifyHomeInvite(code);
+    },
+
+    revokeHomeInvite: async function (homeId, code) {
+      if (!App.Auth.canManageHome(homeId)) throw err('Yetki yok.', 'Daveti yalnızca ev yöneticisi iptal edebilir.');
+      requireFresh(STEP_UP_MIN, 'ev daveti iptali');
+      await FB().revokeHomeInvite(code);
+      emit();
+    },
+
+    joinHomeByCode: async function (code) {
+      const me = state.session && state.session.user;
+      if (!me) throw err('Giriş yapmalısınız.', 'Eve katılmak için giriş yapmalısınız.');
+      requireFresh(RECENT_MIN, 'eve katılma');
+      requireVerified('eve katılma');
+      const inv = await FB().joinHomeByInvite(code, me.id, me.email, me.displayName);
+      await loadHomes();
+      await App.Auth.listBindings();
+      resetDeviceAccess();
+      try { await FB().addAuditLog('home_join', inv.home_id, { code: String(code).toUpperCase() }); } catch (e) { /* yoksay */ }
+      emit();
+      return inv;
+    },
+
+    assignDeviceToHome: async function (deviceId, homeId) {
+      const me = state.session && state.session.user;
+      if (!me) throw err('Giriş yapmalısınız.', 'Giriş yapmalısınız.');
+      requireFresh(RECENT_MIN, 'cihazı eve bağlama');
+      if (!App.Auth.canManageHome(homeId)) throw err('Yetki yok.', 'Cihazı yalnızca ev yöneticisi eve bağlayabilir.');
+      const home = homeById(homeId);
+      if (!home) throw err('Ev bulunamadı.', 'Ev bulunamadı.');
+      const b = App.Auth.bindingOf(deviceId) || await FB().getBinding(deviceId);
+      if (!b) throw err('Cihaz bulunamadı.', 'Cihaz bağlantısı bulunamadı.');
+      if (b.owner_id !== me.id && !App.Auth.isAdmin()) {
+        throw err('Yetki yok.', 'Bu cihazın sahibi değilsiniz.');
+      }
+      await FB().updateBindingHome(deviceId, homeId, home.name);
+      await App.Auth.listBindings();
+      await App.Auth.checkDevice(deviceId);
+      try { await FB().addAuditLog('home_device_attach', deviceId, { home_id: homeId }); } catch (e) { /* yoksay */ }
+      emit();
+    },
+
+    detachDeviceFromHome: async function (deviceId) {
+      const me = state.session && state.session.user;
+      if (!me) throw err('Giriş yapmalısınız.', 'Giriş yapmalısınız.');
+      requireFresh(RECENT_MIN, 'cihazı evden ayırma');
+      const b = App.Auth.bindingOf(deviceId) || await FB().getBinding(deviceId);
+      if (!b || !b.home_id) return;
+      if (b.owner_id !== me.id && !App.Auth.canManageHome(b.home_id) && !App.Auth.isAdmin()) {
+        throw err('Yetki yok.', 'Bu cihazı evden ayırma yetkiniz yok.');
+      }
+      await FB().updateBindingHome(deviceId, '', '');
+      await App.Auth.listBindings();
+      await App.Auth.checkDevice(deviceId);
+      try { await FB().addAuditLog('home_device_detach', deviceId, { home_id: b.home_id }); } catch (e) { /* yoksay */ }
+      emit();
+    },
+
+    // Ev oluşturduktan sonra eski (home_id'siz) cihazları tek tıkla taşı.
+    migrateOwnedDevices: async function (homeId) {
+      const me = state.session && state.session.user;
+      if (!me) throw err('Giriş yapmalısınız.', 'Giriş yapmalısınız.');
+      requireFresh(RECENT_MIN, 'cihazları eve taşıma');
+      if (!App.Auth.canManageHome(homeId)) throw err('Yetki yok.', 'Bu eve cihaz taşıma yetkiniz yok.');
+      const home = homeById(homeId);
+      if (!home) throw err('Ev bulunamadı.', 'Ev bulunamadı.');
+      const rows = await App.Auth.listBindings();
+      let count = 0;
+      for (const b of rows) {
+        if (!b || !b.device_id || b.owner_id !== me.id || b.home_id) continue;
+        try {
+          await FB().updateBindingHome(b.device_id, homeId, home.name);
+          count += 1;
+        } catch (e) { /* tek cihaz hatası diğerlerini durdurmasın */ }
+      }
+      await App.Auth.listBindings();
+      resetDeviceAccess();
+      emit();
+      return count;
     },
 
     // Cihazı kendi hesabıma bağla (boşta ise) veya admin olarak yeniden ata.
