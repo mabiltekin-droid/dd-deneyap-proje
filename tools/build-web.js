@@ -114,9 +114,10 @@ if (swJs) {
       listelenen.push(shellM[1]);
     }
 
+    /* sw.js ve yalnızca mobil önizlemede kullanılan geçici dosya cache'e girmez */
     const yerel = walk(PWA)
       .map(function (f) { return './' + path.relative(PWA, f).replace(/\\/g, '/'); })
-      .filter(function (p) { return p !== './sw.js'; });
+      .filter(function (p) { return p !== './sw.js' && p !== './_mobile-preview.html'; });
 
     const eksik = yerel.filter(function (p) { return listelenen.indexOf(p) === -1; });
     const olmayan = listelenen.filter(function (p) {
