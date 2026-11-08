@@ -3,6 +3,7 @@
   "buildCommand": "npm run build",
   "outputDirectory": "public",
   "installCommand": "npm install",
+  "cleanUrls": true,
   "crons": [
     {
       "path": "/api/digest",
