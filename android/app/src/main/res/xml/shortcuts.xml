@@ -55,6 +55,23 @@
     <shortcut
         android:enabled="true"
         android:icon="@mipmap/ic_launcher"
+        android:shortcutId="earthquake"
+        android:shortcutLongLabel="@string/shortcut_earthquake_long"
+        android:shortcutShortLabel="@string/shortcut_earthquake_short">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="com.mabiltekin.deneyapevkoruma.MainActivity"
+            android:targetPackage="com.mabiltekin.deneyapevkoruma">
+            <extra
+                android:name="shortcut"
+                android:value="earthquake" />
+        </intent>
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+
+    <shortcut
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
         android:shortcutId="settings"
         android:shortcutLongLabel="@string/shortcut_settings_long"
         android:shortcutShortLabel="@string/shortcut_settings_short">
@@ -65,23 +82,6 @@
             <extra
                 android:name="shortcut"
                 android:value="settings" />
-        </intent>
-        <categories android:name="android.shortcut.conversation" />
-    </shortcut>
-
-    <shortcut
-        android:enabled="true"
-        android:icon="@mipmap/ic_launcher"
-        android:shortcutId="chrome"
-        android:shortcutLongLabel="@string/shortcut_chrome_long"
-        android:shortcutShortLabel="@string/shortcut_chrome_short">
-        <intent
-            android:action="android.intent.action.VIEW"
-            android:targetClass="com.mabiltekin.deneyapevkoruma.MainActivity"
-            android:targetPackage="com.mabiltekin.deneyapevkoruma">
-            <extra
-                android:name="shortcut"
-                android:value="chrome" />
         </intent>
         <categories android:name="android.shortcut.conversation" />
     </shortcut>

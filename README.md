@@ -1,7 +1,7 @@
-# Deneyap Ev Koruma
+# DD Ev Koruma
 
 <p align="center">
-  <img src="android/play/icon-512.png" width="120" alt="Deneyap Ev Koruma uygulama ikonu">
+  <img src="pwa/icons/icon-512.png" width="160" alt="DD Ev Koruma logosu">
 </p>
 
 **ESP32 tabanlı ev güvenlik sistemi:** MQTT firmware + PWA kontrol paneli + Vercel

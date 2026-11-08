@@ -33,10 +33,12 @@ import androidx.core.app.NotificationManagerCompat;
 public final class AppNotifications {
 
     public static final String CH_ALARM = "dd_alarm_v1";
+    public static final String CH_EARTHQUAKE = "dd_earthquake_v1";
     public static final String CH_STATUS = "dd_status_v1";
 
     public static final int STATUS_ID = 4101;
     public static final int ALARM_ID = 4200;
+    public static final int EARTHQUAKE_ID = 4300;
 
     public static final String PREFS = "deneyap_native";
     public static final String KEY_STATUS_ENABLED = "status_notification_enabled";
@@ -86,6 +88,26 @@ public final class AppNotifications {
             // Ses ayarlanamazsa kanal varsayılan sesi kullanır.
         }
         nm.createNotificationChannel(alarm);
+
+        NotificationChannel quake = new NotificationChannel(
+                CH_EARTHQUAKE, "Deprem ve Afet Uyarıları", NotificationManager.IMPORTANCE_HIGH);
+        quake.setDescription("Kandilli ve AFAD acil deprem bildirimleri.");
+        quake.enableVibration(true);
+        quake.setVibrationPattern(new long[]{0, 500, 200, 500, 200, 800, 200, 800});
+        quake.enableLights(true);
+        quake.setLightColor(Color.rgb(249, 115, 22));
+        quake.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
+        quake.setShowBadge(true);
+        try {
+            AudioAttributes audio = new AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_NOTIFICATION_EVENT)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build();
+            quake.setSound(Settings.System.DEFAULT_NOTIFICATION_URI, audio);
+        } catch (Throwable ignored) {
+            // Ses ayarlanamazsa kanal varsayılan sesi kullanır.
+        }
+        nm.createNotificationChannel(quake);
     }
 
     public static boolean hasPermission(Context c) {
@@ -187,6 +209,35 @@ public final class AppNotifications {
 
         try {
             NotificationManagerCompat.from(c).notify(tag.hashCode(), b.build());
+        } catch (SecurityException ignored) {
+            // yoksay
+        }
+    }
+
+    /** Deprem bildirimi gösterir (Kandilli / AFAD). */
+    public static void showEarthquake(Context c, String title, String body, String url) {
+        ensureChannels(c);
+        if (!hasPermission(c)) return;
+
+        String targetUrl = (url == null || url.trim().isEmpty())
+                ? (c.getString(R.string.start_url) + "earthquake.html")
+                : url;
+
+        NotificationCompat.Builder b = new NotificationCompat.Builder(c, CH_EARTHQUAKE)
+                .setSmallIcon(R.drawable.ic_stat_deneyap)
+                .setColor(0xFFF97316)
+                .setContentTitle(safe(title, "Deprem Uyarısı"))
+                .setContentText(safe(body, "Bölgenizde deprem tespit edildi."))
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(safe(body, "")))
+                .setContentIntent(openIntent(c, targetUrl, 3))
+                .setAutoCancel(true)
+                .setCategory(NotificationCompat.CATEGORY_ALARM)
+                .setPriority(NotificationCompat.PRIORITY_MAX)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                .setDefaults(NotificationCompat.DEFAULT_ALL);
+
+        try {
+            NotificationManagerCompat.from(c).notify(EARTHQUAKE_ID, b.build());
         } catch (SecurityException ignored) {
             // yoksay
         }

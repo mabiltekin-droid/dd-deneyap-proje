@@ -37,6 +37,11 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.biometric.BiometricManager;
+import androidx.biometric.BiometricPrompt;
+import androidx.core.content.ContextCompat;
+import androidx.fragment.app.FragmentActivity;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
@@ -48,6 +53,7 @@ import com.google.firebase.messaging.FirebaseMessaging;
 import org.json.JSONObject;
 
 import java.lang.ref.WeakReference;
+import java.util.concurrent.Executor;
 
 /**
  * Yerel uygulama kabuğu.
@@ -56,7 +62,7 @@ import java.lang.ref.WeakReference;
  * yerel menü, aşağı çekerek yenileme, çift geri tuşu ve Android kısayolları
  * bu sınıfta yönetilir.</p>
  */
-public class WebViewActivity extends Activity {
+public class WebViewActivity extends FragmentActivity {
 
     public static final String EXTRA_URL = "url";
     public static final String EXTRA_FROM_SHORTCUT = "from_shortcut";
@@ -64,6 +70,7 @@ public class WebViewActivity extends Activity {
 
     private static final int FILE_CHOOSER_REQUEST = 1001;
     private static final int NOTIFICATION_PERMISSION_REQUEST = 1002;
+    private static final int LOCATION_PERMISSION_REQUEST = 1003;
     private static final String BRIDGE_NAME = "AndroidApp";
 
     /** FCM token'ı sayfaya iletmek için açık WebView'a zayıf referans. */
@@ -75,6 +82,8 @@ public class WebViewActivity extends Activity {
     private LinearLayout errorView;
     private TextView errorText;
     private ValueCallback<Uri[]> filePathCallback;
+    private GeolocationPermissions.Callback pendingGeoCallback;
+    private String pendingGeoOrigin;
     private String startUrl;
     private long lastBackPress = 0L;
 
@@ -122,6 +131,10 @@ public class WebViewActivity extends Activity {
         webView = new WebView(this);
         webView.setBackgroundColor(Color.parseColor("#0A0D14"));
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+        webView.setNestedScrollingEnabled(true);
+        webView.setVerticalScrollBarEnabled(false);
+        webView.setHorizontalScrollBarEnabled(false);
         swipeRefresh.addView(webView, new SwipeRefreshLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
@@ -130,6 +143,7 @@ public class WebViewActivity extends Activity {
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
         settings.setDatabaseEnabled(true);
+        settings.setOffscreenPreRaster(true);
         settings.setLoadWithOverviewMode(true);
         settings.setUseWideViewPort(true);
         settings.setSupportZoom(false);
@@ -137,13 +151,17 @@ public class WebViewActivity extends Activity {
         settings.setDisplayZoomControls(false);
         settings.setMediaPlaybackRequiresUserGesture(false);
         settings.setJavaScriptCanOpenWindowsAutomatically(true);
+        settings.setLoadsImagesAutomatically(true);
+        settings.setBlockNetworkImage(false);
+        settings.setSafeBrowsingEnabled(true);
         settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(true);
         settings.setAllowFileAccessFromFileURLs(false);
         settings.setAllowUniversalAccessFromFileURLs(false);
         settings.setGeolocationEnabled(true);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
-        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+        settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
+        webView.clearCache(true);
         settings.setUserAgentString(settings.getUserAgentString()
                 + " DeneyapEvKoruma/" + appVersion());
 
@@ -195,6 +213,12 @@ public class WebViewActivity extends Activity {
                 if (errorView.getVisibility() != View.VISIBLE) {
                     webView.setVisibility(View.VISIBLE);
                 }
+                view.evaluateJavascript(
+                        "var style = document.createElement('style');" +
+                        "style.innerHTML = '.quake-radar { display: grid !important; width: 130px !important; height: 130px !important; margin: 0.8rem auto 0.4rem !important; } .quake-map { display: inline-flex !important; } svg { max-width: 100%; height: auto; } .quake-btn svg, .quake-disclaimer svg, .quake-item-meta svg, .quake-map svg { width: 16px !important; height: 16px !important; flex: 0 0 auto !important; } .quake-empty svg { width: 32px !important; height: 32px !important; flex: 0 0 auto !important; }';" +
+                        "document.head.appendChild(style);",
+                        null
+                );
             }
 
             @Override
@@ -248,7 +272,17 @@ public class WebViewActivity extends Activity {
             @Override
             public void onGeolocationPermissionsShowPrompt(String origin,
                                                            GeolocationPermissions.Callback callback) {
-                callback.invoke(origin, true, false);
+                if (Build.VERSION.SDK_INT >= 23 && checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
+                        != PackageManager.PERMISSION_GRANTED) {
+                    pendingGeoCallback = callback;
+                    pendingGeoOrigin = origin;
+                    requestPermissions(new String[]{
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION
+                    }, LOCATION_PERMISSION_REQUEST);
+                } else {
+                    callback.invoke(origin, true, false);
+                }
             }
         });
 
@@ -396,7 +430,7 @@ public class WebViewActivity extends Activity {
 
     private void showAboutDialog() {
         new AlertDialog.Builder(this)
-                .setTitle("Deneyap Ev Koruma")
+                .setTitle("DD Ev Koruma")
                 .setMessage("Sürüm " + appVersion()
                         + "\n\nCanlı panel: " + startUrl
                         + "\n\nYerel uygulama; veriler hesabınızda ve Deneyap Kart cihazınızda kalır.")
@@ -498,6 +532,24 @@ public class WebViewActivity extends Activity {
                 startActivity(new Intent(Intent.ACTION_VIEW, uri));
             } catch (ActivityNotFoundException e) {
                 Toast.makeText(this, "Bağlantı açılamadı", Toast.LENGTH_SHORT).show();
+            }
+            return true;
+        }
+
+        if (scheme.equals("tel")) {
+            try {
+                startActivity(new Intent(Intent.ACTION_DIAL, uri));
+            } catch (ActivityNotFoundException e) {
+                Toast.makeText(this, "Arama uygulaması bulunamadı", Toast.LENGTH_SHORT).show();
+            }
+            return true;
+        }
+
+        if (scheme.equals("mailto")) {
+            try {
+                startActivity(new Intent(Intent.ACTION_SENDTO, uri));
+            } catch (ActivityNotFoundException e) {
+                Toast.makeText(this, "E-posta uygulaması bulunamadı", Toast.LENGTH_SHORT).show();
             }
             return true;
         }
@@ -643,6 +695,82 @@ public class WebViewActivity extends Activity {
         public void openNotificationSettings() {
             runOnUiThread(() -> AppNotifications.openChannelSettings(WebViewActivity.this));
         }
+
+        /** 112 Acil Yardım veya belirtilen numarayı arama ekranında açar. */
+        @JavascriptInterface
+        public void callEmergency(String number) {
+            final String target = (number == null || number.trim().isEmpty()) ? "112" : number.trim();
+            runOnUiThread(() -> {
+                try {
+                    Intent intent = new Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + target));
+                    startActivity(intent);
+                } catch (Throwable t) {
+                    Toast.makeText(WebViewActivity.this, "Arama açılamadı: " + target, Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+
+        /** Cihazda biyometrik kilit (parmak izi/yüz tanıma) kullanılabilir mi? */
+        @JavascriptInterface
+        public boolean canAuthenticateBiometric() {
+            try {
+                BiometricManager bm = BiometricManager.from(WebViewActivity.this);
+                return bm.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG
+                        | BiometricManager.Authenticators.BIOMETRIC_WEAK
+                        | BiometricManager.Authenticators.DEVICE_CREDENTIAL) == BiometricManager.BIOMETRIC_SUCCESS;
+            } catch (Throwable t) {
+                return false;
+            }
+        }
+
+        /** Biyometrik kimlik doğrulamayı başlatır. */
+        @JavascriptInterface
+        public void authenticateBiometric(String title, String subtitle) {
+            final String promptTitle = (title == null || title.trim().isEmpty()) ? "Kimlik Doğrulama" : title;
+            final String promptSub = (subtitle == null) ? "İşleme devam etmek için doğrulayın" : subtitle;
+            runOnUiThread(() -> showBiometricPrompt(promptTitle, promptSub));
+        }
+    }
+
+    private void showBiometricPrompt(String title, String subtitle) {
+        try {
+            Executor executor = ContextCompat.getMainExecutor(this);
+            BiometricPrompt prompt = new BiometricPrompt(this, executor,
+                    new BiometricPrompt.AuthenticationCallback() {
+                        @Override
+                        public void onAuthenticationSucceeded(@NonNull BiometricPrompt.AuthenticationResult result) {
+                            super.onAuthenticationSucceeded(result);
+                            evaluateJs("window.DeneyapNative&&window.DeneyapNative.onBiometricResult&&"
+                                    + "window.DeneyapNative.onBiometricResult(true, null);");
+                        }
+
+                        @Override
+                        public void onAuthenticationError(int errorCode, @NonNull CharSequence errString) {
+                            super.onAuthenticationError(errorCode, errString);
+                            evaluateJs("window.DeneyapNative&&window.DeneyapNative.onBiometricResult&&"
+                                    + "window.DeneyapNative.onBiometricResult(false, "
+                                    + JSONObject.quote(errString.toString()) + ");");
+                        }
+
+                        @Override
+                        public void onAuthenticationFailed() {
+                            super.onAuthenticationFailed();
+                        }
+                    });
+
+            BiometricPrompt.PromptInfo promptInfo = new BiometricPrompt.PromptInfo.Builder()
+                    .setTitle(title)
+                    .setSubtitle(subtitle)
+                    .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG
+                            | BiometricManager.Authenticators.DEVICE_CREDENTIAL)
+                    .build();
+
+            prompt.authenticate(promptInfo);
+        } catch (Throwable t) {
+            evaluateJs("window.DeneyapNative&&window.DeneyapNative.onBiometricResult&&"
+                    + "window.DeneyapNative.onBiometricResult(false, "
+                    + JSONObject.quote("Biyometrik doğrulama başlatılamadı: " + t.getMessage()) + ");");
+        }
     }
 
     @Override
@@ -684,6 +812,14 @@ public class WebViewActivity extends Activity {
             evaluateJs("window.DeneyapNative&&window.DeneyapNative.onPermission&&"
                     + "window.DeneyapNative.onPermission("
                     + JSONObject.quote(permissionState()) + ");");
+        } else if (requestCode == LOCATION_PERMISSION_REQUEST) {
+            boolean granted = grantResults.length > 0
+                    && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+            if (pendingGeoCallback != null) {
+                pendingGeoCallback.invoke(pendingGeoOrigin, granted, false);
+                pendingGeoCallback = null;
+                pendingGeoOrigin = null;
+            }
         }
     }
 

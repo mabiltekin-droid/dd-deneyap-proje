@@ -18,7 +18,7 @@
    ========================================================================== */
 
 const VERSION = '2.23.0';
-const CACHE = 'deneyap-pwa-v' + VERSION + '-r2';
+const CACHE = 'deneyap-pwa-v' + VERSION + '-r3';
 const SHELL = './index.html';
 const NETWORK_TIMEOUT = 4000;   // cihaz yanıt vermezse cache'e düş (ms)
 
@@ -73,6 +73,8 @@ const PRECACHE = [
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/maskable-512.png',
+  './icons/logo-mark.svg',
+  './icons/logo-symbol.svg',
   './sw.js'
 ];
 
@@ -157,7 +159,7 @@ self.addEventListener('push', function (event) {
   } catch (e) {
     data = { body: event.data ? event.data.text() : '' };
   }
-  const title = data.title || 'Deneyap Ev Koruma';
+  const title = data.title || 'DD Ev Koruma';
   const body = data.body || 'Yeni bir uyarı var.';
   event.waitUntil(
     self.registration.showNotification(title, {
@@ -193,8 +195,24 @@ function staleWhileRevalidate(request) {
       }).catch(function () {
         return cached;
       });
-
       return cached || fetchPromise;
+    });
+  });
+}
+
+/* Sayfa geçişlerinde ağ öncelikli: taze HTML al, çevrimdışıysa önbelleğe dön. */
+function networkFirst(request) {
+  return fetch(request).then(function (res) {
+    if (res && res.ok && res.type === 'basic') {
+      const clone = res.clone();
+      caches.open(CACHE).then(function (cache) {
+        cache.put(request, clone);
+      });
+    }
+    return res;
+  }).catch(function () {
+    return caches.match(request).then(function (cached) {
+      return cached || caches.match(SHELL);
     });
   });
 }
@@ -207,7 +225,7 @@ self.addEventListener('fetch', function (event) {
 
   const url = new URL(request.url);
 
-  /* Başka bir kaynak (geliştirme sırasında farklı port vs.) — dokunma */
+  /* Başka bir kaynak — dokunma */
   if (url.origin !== self.location.origin) return;
 
   /* Cihaz API'si asla cache'e girmez — her zaman anlık canlı veri */
@@ -216,27 +234,13 @@ self.addEventListener('fetch', function (event) {
   /* Service Worker'ın kendisi de cache'e girmez */
   if (url.pathname === '/sw.js') return;
 
-  /* Sayfalar arası geçiş: anında önbellekten ver, arka planda tazele (sıfır gecikme) */
+  /* Sayfa geçişi: taze HTML dene, çevrimdışıysa önbellekten aç */
   if (request.mode === 'navigate') {
-    event.respondWith(
-      caches.open(CACHE).then(function (cache) {
-        return cache.match(request).then(function (cached) {
-          const fetchPromise = fetch(request).then(function (res) {
-            if (res && res.ok && res.type === 'basic') {
-              cache.put(request, res.clone());
-            }
-            return res;
-          }).catch(function () {
-            return cached || cache.match(SHELL);
-          });
-          return cached || fetchPromise;
-        });
-      })
-    );
+    event.respondWith(networkFirst(request));
     return;
   }
 
-  /* Yerel statik kaynaklar: önce önbellekten anında sun */
+  /* Statik kaynaklar: önce önbellekten anında sun, arkada tazele */
   event.respondWith(staleWhileRevalidate(request));
 });
 

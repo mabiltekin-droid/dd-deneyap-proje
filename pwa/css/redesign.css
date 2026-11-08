@@ -263,11 +263,20 @@ body {
   display: grid;
   place-items: center;
   border-radius: 13px;
-  background: var(--primary);
-  color: var(--paper);
-  border: 1px solid color-mix(in srgb, var(--primary) 75%, #000);
+  background: #f7f2e4;
+  color: var(--primary);
+  border: 1px solid #ded5c3;
   box-shadow: 0 6px 16px -10px rgba(27, 40, 34, 0.55);
+  overflow: hidden;
   animation: none !important;
+}
+
+.brand-icon img {
+  width: 100%;
+  height: 100%;
+  padding: 3px;
+  object-fit: contain;
+  display: block;
 }
 
 .brand-icon svg {

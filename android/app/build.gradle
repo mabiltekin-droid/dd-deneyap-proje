@@ -73,4 +73,6 @@ dependencies {
     implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
     // Firebase Cloud Messaging (uygulama kapalıyken alarm bildirimi).
     implementation 'com.google.firebase:firebase-messaging:24.1.2'
+    // Biyometrik kimlik doğrulama (parmak izi / yüz tanıma).
+    implementation 'androidx.biometric:biometric:1.1.0'
 }

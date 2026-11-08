@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="202 120 580 730" role="img" aria-label="DD Ev Koruma">
+  <title>DD Ev Koruma</title>
+  <g fill="none" stroke="#2f5b47" stroke-width="20" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M512 160 L242 378 L242 586 C242 690 362 756 512 810 C662 756 782 690 782 586 L782 393 L700 393 L700 318 L630 318 L630 352 Z"/>
+    <path d="M500 270 L500 336 L452 384 L410 384"/>
+    <path d="M360 445 L430 445 L464 411"/>
+    <path d="M512 366 L512 416"/>
+    <path d="M646 552 L600 552 L570 582 L570 612"/>
+    <path d="M688 634 L630 634 L600 664"/>
+    <path d="M512 675 L512 735"/>
+    <path d="M548 278 L592 322 L592 386 L624 418"/>
+    <rect x="446" y="505" width="132" height="112" rx="18" fill="#b96b49" stroke="none"/>
+    <path d="M472 505 L472 471 A40 40 0 0 1 552 471 L552 505" stroke="#b96b49" stroke-width="24"/>
+    <circle cx="512" cy="548" r="13" fill="#f7f2e4" stroke="none"/>
+    <path d="M512 559 L512 587" stroke="#f7f2e4" stroke-width="11"/>
+  </g>
+  <g fill="#2f5b47">
+    <circle cx="500" cy="256" r="13"/>
+    <circle cx="398" cy="384" r="12"/>
+    <circle cx="478" cy="398" r="12"/>
+  </g>
+  <g fill="#b96b49">
+    <circle cx="635" cy="428" r="12"/>
+    <circle cx="570" cy="624" r="12"/>
+    <circle cx="588" cy="675" r="12"/>
+  </g>
+</svg>

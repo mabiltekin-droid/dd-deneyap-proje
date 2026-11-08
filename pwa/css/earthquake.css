@@ -102,9 +102,9 @@
 }
 
 .quake-disclaimer svg {
-  flex: 0 0 auto;
-  width: 16px;
-  height: 16px;
+  flex: 0 0 auto !important;
+  width: 16px !important;
+  height: 16px !important;
   margin-top: 0.12rem;
   color: var(--warn);
 }
@@ -329,8 +329,9 @@
 }
 
 .quake-btn svg {
-  width: 16px;
-  height: 16px;
+  flex: 0 0 auto !important;
+  width: 16px !important;
+  height: 16px !important;
 }
 
 .quake-btn[disabled] {
@@ -572,8 +573,9 @@
 }
 
 .quake-item-meta svg {
-  width: 12px;
-  height: 12px;
+  flex: 0 0 auto !important;
+  width: 12px !important;
+  height: 12px !important;
   opacity: 0.75;
 }
 
@@ -621,7 +623,11 @@
   color: var(--primary);
 }
 
-.quake-map svg { width: 16px; height: 16px; }
+.quake-map svg {
+  flex: 0 0 auto !important;
+  width: 16px !important;
+  height: 16px !important;
+}
 
 .quake-empty {
   display: flex;
@@ -634,8 +640,9 @@
 }
 
 .quake-empty svg {
-  width: 32px;
-  height: 32px;
+  flex: 0 0 auto !important;
+  width: 32px !important;
+  height: 32px !important;
   color: var(--border-bright);
 }
 
@@ -727,7 +734,10 @@
   }
 
   .quake-radar {
-    display: none;
+    display: grid !important;
+    width: 130px !important;
+    height: 130px !important;
+    margin: 0.8rem auto 0.4rem !important;
   }
 
   .quake-toolbar {
@@ -759,7 +769,7 @@
     padding: 0.9rem 1rem;
   }
 
-  .quake-map { display: none; }
+  .quake-map { display: inline-flex !important; }
 }
 
 @media (max-width: 420px) {

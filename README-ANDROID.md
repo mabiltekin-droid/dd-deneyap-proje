@@ -13,7 +13,7 @@ değişince yeniden üretilir.
 - **Paket adı:** `com.mabiltekin.deneyapevkoruma`
 - **Uygulama adı:** Deneyap Ev Koruma
 - **Web adresi:** https://ddproje.vercel.app/
-- **Sürüm:** 2.23.0 — `versionCode 4`
+- **Sürüm:** 2.24.0 — `versionCode 5`
 - **minSdk:** 24 (Android 7.0+) · **targetSdk / compileSdk:** 36 (Android 16)
 - **Mimari:** Tek, evrensel APK. Telefon/tablet için ayrı APK gerekmez; PWA responsive'dir.
 
@@ -23,17 +23,17 @@ Derleme sonrası:
 
 | Dosya | Kullanım |
 |---|---|
-| `android/dist/DeneyapEvKoruma-2.23.0-release.apk` | Telefona doğrudan kurulum / test |
-| `android/dist/DeneyapEvKoruma-2.23.0-release.aab` | **Google Play'e yükleme** |
+| `android/dist/DeneyapEvKoruma-2.24.0-release.apk` | Telefona doğrudan kurulum / test |
+| `android/dist/DeneyapEvKoruma-2.24.0-release.aab` | **Google Play'e yükleme** |
 | `android/play/icon-512.png` | Play Store uygulama ikonu |
 | `android/play/feature-graphic-1024x500.png` | Play Store öne çıkan görsel |
-| `android/play/screenshots/` | 2.22.0 mobil kabuk telefon ekran görüntüleri (1080×1920) |
+| `android/play/screenshots/` | Mobil kabuk telefon ekran görüntüleri (1080×1920) |
 
 Bu derlemenin SHA-256 özetleri:
 
 ```
-APK: 9575D10CD9C3A000B1AEC02E70D734EDAC1FC921CE1D6E165889460DCAFAE2DD
-AAB: 4C83ACBF518DD87BEECD0F641F16D083CB94BC4A8834123C858EB760A871E693
+APK: A13A0BA6079DC3F1FBED3CE129BCFE875265ADF084A88FF04D71F54CC9A9582D
+AAB: 2F6D8E558F4623CB694BDC0B33A06088FA32EEB0EA22F1D8E47B30E9E8526FF2
 ```
 
 > Yeniden derlemede bu özetler değişir. Play Store'a her yüklemede `appVersionCode`

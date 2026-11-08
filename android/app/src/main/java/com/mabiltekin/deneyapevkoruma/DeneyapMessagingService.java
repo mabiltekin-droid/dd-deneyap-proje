@@ -57,6 +57,13 @@ public class DeneyapMessagingService extends FirebaseMessagingService {
         if (title == null && n != null) title = n.getTitle();
         if (body == null && n != null) body = n.getBody();
 
+        if ("earthquake".equals(kind) || "deprem".equals(kind)) {
+            if (title == null) title = "Deprem Uyarısı";
+            if (body == null) body = "Yakın bölgede deprem tespit edildi.";
+            AppNotifications.showEarthquake(this, title, body, value(data, "url", null));
+            return;
+        }
+
         if (title == null) title = "Güvenlik alarmı";
         if (body == null) body = "Evdeki durumu kontrol edin.";
 

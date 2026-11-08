@@ -12,9 +12,9 @@ metinleri, veri güvenliği cevaplarını ve yayın öncesi kontrolleri toplar.
 |---|---|
 | Uygulama adı | Deneyap Ev Koruma |
 | Paket adı | `com.mabiltekin.deneyapevkoruma` |
-| Sürüm | 2.23.0 (`versionCode 4`) |
+| Sürüm | 2.24.0 (`versionCode 5`) |
 | Kategori | House & Home (yoksa Tools) |
-| Etiketler | Akıllı ev, güvenlik, IoT |
+| Etiketler | Akıllı ev, güvenlik, IoT, deprem, afet |
 | Ücret | Ücretsiz |
 | Reklam | Yok |
 | Uygulama içi satın alma | Yok |
@@ -30,63 +30,68 @@ ekleyin.
 
 ## 2. Mağaza metinleri
 
-### Kısa açıklama (67 karakter)
+### Kısa açıklama (78 karakter)
 
 ```
-ESP32 ev güvenlik paneli: sensörler, cihaz kontrolü ve bildirimler.
+ESP32 akıllı ev güvenlik paneli, afet & deprem takibi, bildirimler ve kontrol.
 ```
 
 ### Tam açıklama
 
 ```
-Deneyap Ev Koruma, ESP32 tabanlı ev güvenlik sisteminizi telefondan ve tabletten
-yönetmenizi sağlayan bir kontrol panelidir.
+Deneyap Ev Koruma, ESP32 ve Deneyap Kart tabanlı ev güvenlik sisteminizi telefondan
+ve tabletten yönetmenizi sağlayan gelişmiş bir kontrol panelidir.
 
-Canlı telemetri:
-• Sıcaklık, nem, gaz, duman, hareket ve yağmur sensörlerini tek ekranda izleyin.
+Canlı telemetri & sensörler:
+• Sıcaklık, nem, gaz, duman, alev, hareket ve yağmur sensörlerini tek ekranda izleyin.
 • Bağlantı durumu, sinyal kalitesi ve cihaz sağlığını görün.
-• Grafikler ve olay geçmişiyle değişimleri takip edin.
+• Grafikler ve olay geçmişiyle sensör değişimlerini takip edin.
+
+Deprem & afet takibi:
+• Kandilli Rasathanesi ve AFAD anlık deprem verileriyle canlı deprem haritası ve listesi.
+• GPS konumuyla deprem merkez üssüne olan kuş uçuşu mesafe ve tahmini S dalgası varış süresi.
+• Yüksek öncelikli acil deprem bildirim kanalı ve afet simülasyonu.
+• 1-dokunuşla 112 Acil Yardım arama ekranı ve SOS yönlendirmesi.
 
 Kontrol ve otomasyon:
 • Röle, fan, ışık ve alarm çıkışlarını yönetin.
+• Çoklu ev ve oda yönetimi; cihazları odalara ve evlere göre organize edin.
 • Zamanlama ve sensör eşiklerine göre otomatik kurallar oluşturun.
-• Gece, tatil ve izleme modları arasında geçiş yapın.
+• Gece, tatil, evde ve izleme modları arasında hızlı geçiş yapın.
+• Cihaz yazılımını uzaktan (OTA) güvenle güncelleyin.
 
-Güvenlik:
-• E-posta doğrulamalı hesap, rol tabanlı yetkilendirme ve davet sistemi.
+Güvenlik & biyometri:
+• E-posta doğrulamalı hesap, rol tabanlı yetkilendirme ve güvenli davet sistemi.
 • Cihaz sahipliği doğrulaması; her kullanıcı yalnızca kendi cihazını görür.
-• Kritik işlemlerde yeniden doğrulama ve denetim kayıtları.
+• Kritik komutlarda ve ayarlarda biyometrik kilit (parmak izi / yüz tanıma) koruması.
+• Denetim kayıtları ve ayrıntılı olay günlüğü.
 
-Bildirimler ve çevrimdışı kullanım:
-• Gaz, alev, su, sarsıntı ve bağlantı kopması alarmları; uygulama kapalıyken bile
+Bildirimler ve yerel kabuk:
+• Gaz, alev, su, sarsıntı ve deprem alarmları; uygulama kapalıyken bile FCM ile
   Android bildirimi olarak gelir.
-• Bildirim panelinde sessiz "son durum" satırı: gaz durumu, aktif mod ve son güncelleme.
-• Ana ekran widget'ı son bilinen durumu gösterir; tek dokunuşla panele veya Savunma
-  sekmesine gider.
+• Bildirim panelinde sessiz canlı durum satırı ve ana ekran durum widget'ı.
 • Son telemetri önbelleğe alınır; internet yokken görüntülenebilir ve "Yeniden dene"
   ile bağlantı kurulabilir.
-• Olay günlüğünü A4 PDF veya CSV olarak dışa aktarın; Android paylaşım sayfasıyla
-  e-posta, mesaj veya bulut uygulamasına gönderin.
-• Android uygulaması canlı paneli tam ekran, adres çubuksuz açar; web güncellemeleri
-  anında gelir.
-• Beş sekmeli mobil gezinme, hızlı mod şeridi, canlı kokpit, aşağı çekerek yenileme
-  ve ana ekran kısayolları.
+• Olay günlüğünü A4 PDF veya CSV olarak dışa aktarma ve Android paylaşımı.
+• Android uygulama simgesine basılı tutulduğunda hızlı kısayollar (Panel, Sensörler,
+  Savunma, Deprem Takibi, Ayarlar).
 
 Not: Uygulama, Deneyap Kart tabanlı bir donanım ve Firebase/MQTT altyapısıyla birlikte
-çalışır. Cihaz bağlanmadan da hesap ve panel ekranları görüntülenebilir; sensör verileri
-için donanım bağlantısı gerekir.
+çalışır. Cihaz bağlanmadan da hesap, deprem ve panel ekranları görüntülenebilir; sensör
+verileri için donanım bağlantısı gerekir.
 ```
 
-### Sürüm notu (ilk yayın)
+### Sürüm notu (2.24.0)
 
 ```
-Deneyap Ev Koruma 2.23.0:
-• Gaz, alev, su ve sarsıntı alarmları artık uygulama kapalıyken de Android bildirimi
-  olarak gelir.
-• Bildirim panelinde sessiz canlı durum satırı ve ana ekran durum widget'ı.
-• İnternet yokken son telemetri önbellekten görüntülenir; "Yeniden dene" ile bağlanır.
-• Olay günlüğünü A4 PDF veya CSV olarak dışa aktarma ve Android paylaşımı.
-• Beş sekmeli mobil gezinme, canlı kokpit, hızlı mod şeridi ve ana ekran kısayolları.
+Deneyap Ev Koruma 2.24.0:
+• Kandilli Rasathanesi & AFAD canlı deprem izleme ekranı, mesafe ve S-dalgası varış süresi hesabı.
+• Tek dokunuşla 112 Acil Yardım / SOS arama ekranı entegrasyonu.
+• Ana ekran uygulama simgesine doğrudan "Deprem Takibi" hızlı kısayolu.
+• Yüksek öncelikli acil deprem ve afet bildirim kanalı.
+• Çoklu ev/oda yönetimi ve uzaktan cihaz yazılımı güncelleme (OTA) desteği.
+• Kritik komutlar için biyometrik kilit (parmak izi / yüz tanıma) köprüsü.
+• Hata düzeltmeleri, güncel Android 16 (API 36) derlemesi ve performans iyileştirmeleri.
 ```
 
 ## 3. Görseller

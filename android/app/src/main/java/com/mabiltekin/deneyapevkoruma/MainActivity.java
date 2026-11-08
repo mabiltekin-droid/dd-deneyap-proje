@@ -54,6 +54,8 @@ public class MainActivity extends Activity {
                 return withFragment(base, "command-center");
             case "analytics":
                 return withFragment(base, "analytics");
+            case "earthquake":
+                return earthquakeUrl(base);
             case "settings":
                 return settingsUrl(base);
             case "overview":
@@ -64,6 +66,15 @@ public class MainActivity extends Activity {
 
     private static String withFragment(String base, String fragment) {
         return Uri.parse(base).buildUpon().fragment(fragment).build().toString();
+    }
+
+    private static String earthquakeUrl(String base) {
+        Uri uri = Uri.parse(base);
+        String path = uri.getPath();
+        if (path == null || path.isEmpty()) path = "/";
+        if (!path.endsWith("/")) path = path + "/";
+        path = path + "earthquake.html";
+        return uri.buildUpon().path(path).fragment(null).build().toString();
     }
 
     private static String settingsUrl(String base) {

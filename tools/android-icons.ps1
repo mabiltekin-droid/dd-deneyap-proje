@@ -95,31 +95,31 @@ try {
     $rect = New-Object System.Drawing.Rectangle(0, 0, 1024, 500)
     $bg = New-Object System.Drawing.Drawing2D.LinearGradientBrush(
         $rect,
-        [System.Drawing.Color]::FromArgb(255, 8, 14, 26),
-        [System.Drawing.Color]::FromArgb(255, 10, 40, 48),
+        [System.Drawing.Color]::FromArgb(255, 250, 248, 242),
+        [System.Drawing.Color]::FromArgb(255, 235, 242, 235),
         [System.Drawing.Drawing2D.LinearGradientMode]::ForwardDiagonal)
     try { $g.FillRectangle($bg, $rect) } finally { $bg.Dispose() }
 
-    $accent = New-Object System.Drawing.Pen([System.Drawing.Color]::FromArgb(255, 16, 185, 129), 3)
+    $accent = New-Object System.Drawing.Pen([System.Drawing.Color]::FromArgb(255, 185, 107, 73), 3)
     try { $g.DrawLine($accent, 80, 372, 944, 372) } finally { $accent.Dispose() }
 
     $icon = [System.Drawing.Image]::FromFile((Join-Path $play 'icon-512.png'))
     try {
-        $g.DrawImage($icon, 80, 100, 300, 300)
+        $g.DrawImage($icon, 80, 94, 310, 310)
     } finally { $icon.Dispose() }
 
     $font1 = New-Object System.Drawing.Font('Segoe UI', 58, [System.Drawing.FontStyle]::Bold)
     $font2 = New-Object System.Drawing.Font('Segoe UI', 40, [System.Drawing.FontStyle]::Bold)
     $font3 = New-Object System.Drawing.Font('Segoe UI', 22, [System.Drawing.FontStyle]::Regular)
-    $white = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(255, 240, 246, 255))
-    $muted = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(255, 148, 163, 184))
+    $forest = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(255, 47, 91, 71))
+    $muted = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(255, 91, 106, 98))
     try {
-        $g.DrawString('DENEYAP', $font1, $white, 410, 128)
-        $g.DrawString('EV KORUMA', $font2, $white, 414, 224)
-        $g.DrawString('ESP32 TABANLI AKILLI EV KORUMA SİSTEMİ', $font3, $muted, 416, 304)
+        $g.DrawString('DD EV', $font1, $forest, 420, 120)
+        $g.DrawString('KORUMA', $font2, $forest, 424, 216)
+        $g.DrawString('ESP32 TABANLI AKILLI EV KORUMA SISTEMI', $font3, $muted, 426, 300)
     } finally {
         $font1.Dispose(); $font2.Dispose(); $font3.Dispose()
-        $white.Dispose(); $muted.Dispose()
+        $forest.Dispose(); $muted.Dispose()
     }
     $fg.Save((Join-Path $play 'feature-graphic-1024x500.png'), [System.Drawing.Imaging.ImageFormat]::Png)
 } finally {

@@ -253,7 +253,7 @@
     if (!state.events.length) {
       list.innerHTML =
         '<div class="quake-empty">' +
-          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+          '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
             '<path d="M2 12h4l2-7 4 14 2-7h8"/>' +
           '</svg>' +
           '<strong>Bu aralıkta kayıt yok</strong>' +
@@ -278,7 +278,7 @@
         '<div class="quake-item-main">' +
           '<div class="quake-item-title" title="' + esc(event.location) + '">' + esc(event.location) + '</div>' +
           '<div class="quake-item-meta">' +
-            '<span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>' +
+            '<span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>' +
               esc(fmtDate(event.origin_ms)) + updated + '</span>' +
             '<span>Derinlik ' + esc(Number(event.depth_km).toFixed(1)) + ' km</span>' +
             (distance != null ? '<span>Size ' + esc(fmtDistance(distance)) + '</span>' : '') +
@@ -286,7 +286,7 @@
           (eta ? '<span class="quake-eta ' + eta.cls + '">' + esc(eta.text) + '</span>' : '') +
         '</div>' +
         '<a class="quake-map" href="' + mapUrl + '" target="_blank" rel="noopener noreferrer" aria-label="Haritada aç" title="Haritada aç">' +
-          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-5.2 7-11a7 7 0 1 0-14 0c0 5.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>' +
+          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-5.2 7-11a7 7 0 1 0-14 0c0 5.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>' +
         '</a>' +
       '</article>';
     }).join('');
