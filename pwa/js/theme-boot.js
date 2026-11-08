@@ -13,11 +13,23 @@
   try {
     var s = JSON.parse(localStorage.getItem('deneyap.settings.v2') || '{}');
     var t = s.theme || 'light';
-    var dark = t === 'dark' || t === 'amoled' ||
-               (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    var resolved = (t === 'system') ? (dark ? 'dark' : 'light') : t;
-    document.documentElement.setAttribute('data-theme', resolved);
-    document.documentElement.setAttribute('data-color-scheme', dark ? 'dark' : 'light');
+    var applyTheme = function (theme) {
+      var dark = theme === 'dark' || theme === 'amoled' ||
+                 (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      var resolved = (theme === 'system') ? (dark ? 'dark' : 'light') : theme;
+      document.documentElement.setAttribute('data-theme', resolved);
+      document.documentElement.setAttribute('data-color-scheme', dark ? 'dark' : 'light');
+    };
+    applyTheme(t);
+
+    if (window.matchMedia) {
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () {
+        var sNow = JSON.parse(localStorage.getItem('deneyap.settings.v2') || '{}');
+        if ((sNow.theme || 'light') === 'system') {
+          applyTheme('system');
+        }
+      });
+    }
   } catch (e) {
     document.documentElement.setAttribute('data-theme', 'light');
   }

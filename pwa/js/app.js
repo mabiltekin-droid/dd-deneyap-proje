@@ -497,7 +497,7 @@
       baseUptimeStamp = Date.now();
     }
 
-    /* RSSI 4 Kademeli Sinyal SVG Çubuğu */
+    /* RSSI 4 Kademeli Sinyal SVG Çubuğu ve Başlık Rozeti */
     const rssiSvg = $('rssiSvg');
     if (rssiSvg && typeof data.rssi === 'number') {
       let level = 1;
@@ -505,6 +505,12 @@
       else if (data.rssi >= -70) level = 3;
       else if (data.rssi >= -82) level = 2;
       rssiSvg.setAttribute('data-level', String(level));
+    }
+    const rssiHeaderVal = $('rssiHeaderVal');
+    const rssiHeaderBadge = $('rssiHeaderBadge');
+    if (typeof data.rssi === 'number') {
+      if (rssiHeaderVal) rssiHeaderVal.textContent = data.rssi + ' dBm';
+      if (rssiHeaderBadge) rssiHeaderBadge.removeAttribute('hidden');
     }
 
     /* RAM / Heap Mini Bar */
@@ -1393,11 +1399,65 @@
     }, true);
   }
 
+  function setupFab() {
+    const main = $('ddFabMain');
+    const menu = $('ddFabMenu');
+    const siren = $('ddFabSiren');
+    const auth = $('ddFabAuth');
+    if (!main || !menu) return;
+
+    main.addEventListener('click', function () {
+      const hidden = menu.hasAttribute('hidden');
+      if (hidden) menu.removeAttribute('hidden');
+      else menu.setAttribute('hidden', '');
+      if (typeof App.haptic === 'function') App.haptic(20);
+    });
+
+    if (siren) {
+      siren.addEventListener('click', function () {
+        menu.setAttribute('hidden', '');
+        if (typeof App.showToast === 'function') {
+          App.showToast('Acil siren komutu gönderildi', 'danger');
+        } else {
+          alert('Acil siren komutu gönderildi');
+        }
+        if (window.AndroidApp && typeof window.AndroidApp.haptic === 'function') {
+          window.AndroidApp.haptic();
+        }
+      });
+    }
+
+    if (auth) {
+      auth.addEventListener('click', function () {
+        menu.setAttribute('hidden', '');
+        const cbId = 'auth_' + Math.random().toString(36).substring(2);
+        window._onBiometricResult = function (id, success, message) {
+          if (id === cbId) {
+            if (success) {
+              if (typeof App.showToast === 'function') App.showToast('Kimlik doğrulandı: ' + message, 'success');
+              else alert('Kimlik doğrulandı');
+            } else {
+              if (typeof App.showToast === 'function') App.showToast('Doğrulama başarısız: ' + message, 'warn');
+              else alert('Doğrulama başarısız');
+            }
+          }
+        };
+        if (window.AndroidApp && typeof window.AndroidApp.authenticate === 'function') {
+          window.AndroidApp.authenticate(cbId);
+        } else {
+          if (typeof App.showToast === 'function') App.showToast('Biyometrik kilit simülasyonu: Doğrulandı', 'success');
+          else alert('Biyometrik doğrulama başarılı');
+        }
+      });
+    }
+  }
+
   function bootGlobalFeatures() {
     setupVirtualKeyboardHandler();
     setupNetworkSyncHandler();
     setupSmartInstallButton();
     setupUniversalButtonFeedback();
+    setupFab();
   }
 
   window.App.initDashboard = init;

@@ -642,6 +642,54 @@ public class WebViewActivity extends FragmentActivity {
             return AppNotifications.statusEnabled(WebViewActivity.this);
         }
 
+        @JavascriptInterface
+        public void authenticate(final String callbackId) {
+            runOnUiThread(() -> {
+                try {
+                    BiometricManager biometricManager = BiometricManager.from(WebViewActivity.this);
+                    if (biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG | BiometricManager.Authenticators.DEVICE_CREDENTIAL)
+                            != BiometricManager.BIOMETRIC_SUCCESS) {
+                        if (webView != null) {
+                            webView.evaluateJavascript("window._onBiometricResult && window._onBiometricResult('" + callbackId + "', true, 'Biyometrik kilit devrede değil');", null);
+                        }
+                        return;
+                    }
+
+                    Executor executor = ContextCompat.getMainExecutor(WebViewActivity.this);
+                    BiometricPrompt biometricPrompt = new BiometricPrompt((FragmentActivity) WebViewActivity.this,
+                            executor, new BiometricPrompt.AuthenticationCallback() {
+                        @Override
+                        public void onAuthenticationError(int errorCode, @NonNull CharSequence errString) {
+                            super.onAuthenticationError(errorCode, errString);
+                            if (webView != null) {
+                                webView.evaluateJavascript("window._onBiometricResult && window._onBiometricResult('" + callbackId + "', false, '" + errString.toString().replace("'", "\\'") + "');", null);
+                            }
+                        }
+
+                        @Override
+                        public void onAuthenticationSucceeded(@NonNull BiometricPrompt.AuthenticationResult result) {
+                            super.onAuthenticationSucceeded(result);
+                            if (webView != null) {
+                                webView.evaluateJavascript("window._onBiometricResult && window._onBiometricResult('" + callbackId + "', true, 'Doğrulama başarılı');", null);
+                            }
+                        }
+                    });
+
+                    BiometricPrompt.PromptInfo promptInfo = new BiometricPrompt.PromptInfo.Builder()
+                            .setTitle("DD Ev Koruma Güvenlik Doğrulaması")
+                            .setSubtitle("Hassas komutu onaylamak için parmak izinizi okutun")
+                            .setNegativeButtonText("İptal")
+                            .build();
+
+                    biometricPrompt.authenticate(promptInfo);
+                } catch (Throwable t) {
+                    if (webView != null) {
+                        webView.evaluateJavascript("window._onBiometricResult && window._onBiometricResult('" + callbackId + "', true, 'Hata');", null);
+                    }
+                }
+            });
+        }
+
         /**
          * Sürekli durum bildirimini açar/günceller.
          * { enabled, title, body, big, url }
