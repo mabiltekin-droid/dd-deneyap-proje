@@ -23,7 +23,7 @@
   let lastSig = '';
 
   const ROLE = {
-    admin: 'Yönetici',
+    admin: 'Ev Yöneticisi (Sahip)',
     maintainer: 'Bakımcı',
     viewer: 'İzleyici'
   };

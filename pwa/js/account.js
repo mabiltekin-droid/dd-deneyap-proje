@@ -55,7 +55,7 @@
 
     if (snap.signedIn) {
       $('authUserEmail').textContent = (snap.user && snap.user.email) || '—';
-      $('authUserRole').textContent = snap.isAdmin ? 'Yönetici (tam yetki)' : 'Kullanıcı';
+      $('authUserRole').textContent = snap.isAdmin ? 'Sistem Yöneticisi (Platform Admin)' : 'Kullanıcı';
       $('authUserSince').textContent =
         fmtDate(snap.profile && snap.profile.created_at) ||
         fmtDate(snap.user && snap.user.created_at);

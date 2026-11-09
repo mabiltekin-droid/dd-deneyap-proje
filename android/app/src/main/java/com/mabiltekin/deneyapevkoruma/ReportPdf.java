@@ -55,7 +55,7 @@ public final class ReportPdf {
             Intent send = new Intent(Intent.ACTION_SEND);
             send.setType("application/pdf");
             send.putExtra(Intent.EXTRA_STREAM, uri);
-            send.putExtra(Intent.EXTRA_SUBJECT, "Deneyap Ev Koruma — Olay Raporu");
+            send.putExtra(Intent.EXTRA_SUBJECT, "DD Ev Koruma — Olay Raporu");
             send.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
             activity.startActivity(Intent.createChooser(send, "Raporu paylaş"));
@@ -68,7 +68,7 @@ public final class ReportPdf {
     private static File build(Activity activity, String json) throws Exception {
         JSONObject root = new JSONObject(json == null ? "{}" : json);
 
-        String title = opt(root, "title", "Deneyap Ev Koruma — Olay Raporu");
+        String title = opt(root, "title", "DD Ev Koruma — Olay Raporu");
         String range = opt(root, "range", "");
         String generated = opt(root, "generated", now());
         JSONArray summary = root.optJSONArray("summary");
