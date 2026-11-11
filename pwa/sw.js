@@ -18,7 +18,7 @@
    ========================================================================== */
 
 const VERSION = '2.31.0';
-const CACHE = 'deneyap-pwa-v' + VERSION + '-r7';
+const CACHE = 'deneyap-pwa-v' + VERSION + '-r8';
 const SHELL = './index.html';
 
 const PRECACHE = [
@@ -209,8 +209,9 @@ function networkFirst(request) {
     }
     return res;
   }).catch(function () {
-    return caches.match(request).then(function (cached) {
-      return cached || caches.match(SHELL);
+    /* HTML'deki ?v=... sürüm anahtarı çevrimdışı eşleşmeyi engellemesin. */
+    return caches.match(request, { ignoreSearch: true }).then(function (cached) {
+      return cached || caches.match(SHELL, { ignoreSearch: true });
     });
   });
 }

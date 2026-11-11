@@ -6,12 +6,14 @@
      1. Sürüm tutarlılığı denetimi (package.json = config.js = sw.js)
      2. sw.js PRECACHE listesi doğrulaması
      3. pwa/ dosyalarını public/ klasörüne kopyalama
+     4. HTML içindeki CSS/JS bağlantılarına içerik hash'i ekleme
    ========================================================================== */
 
 'use strict';
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const ROOT = path.join(__dirname, '..');
 const PWA = path.join(ROOT, 'pwa');
@@ -153,8 +155,38 @@ try {
   }
   fs.mkdirSync(PUBLIC, { recursive: true });
   copyRecursiveSync(PWA, PUBLIC);
-  console.log('  ✓ Web yayını hazır: public/ oluşturuldu');
 } catch (err) {
   console.error('  HATA: public/ klasörüne kopyalama başarısız: ' + err.message);
   process.exit(1);
 }
+
+/* 4. CSS/JS bağlantılarına içerik hash'i ekle.
+   Eski Service Worker'lar bu adresleri cache'te bulamaz ve doğrudan ağdan
+   yeni dosyayı alır; böylece eski arayüz ilk açılışta görünmez. */
+const hash = crypto.createHash('sha256');
+walk(PWA)
+  .filter(function (f) {
+    return /\.(css|js)$/i.test(f) && path.basename(f) !== 'sw.js';
+  })
+  .sort()
+  .forEach(function (f) {
+    hash.update(path.relative(PWA, f).replace(/\\/g, '/'));
+    hash.update('\0');
+    hash.update(fs.readFileSync(f));
+    hash.update('\0');
+  });
+const ASSET_VERSION = surumler.sw + '-' + hash.digest('hex').slice(0, 10);
+const ASSET_RE = /((?:src|href)=")(\.\/(?:css|js)\/[^"?#]+)(?:\?[^"#]*)?(")/g;
+
+walk(PUBLIC)
+  .filter(function (f) { return /\.html$/i.test(f); })
+  .forEach(function (f) {
+    const before = fs.readFileSync(f, 'utf8');
+    const after = before.replace(ASSET_RE, function (_, pre, url, post) {
+      return pre + url + '?v=' + ASSET_VERSION + post;
+    });
+    if (after !== before) fs.writeFileSync(f, after, 'utf8');
+  });
+
+console.log('  ✓ Web yayını hazır: public/ oluşturuldu');
+console.log('  ✓ Varlık sürümü: ' + ASSET_VERSION + ' (CSS/JS önbellek anahtarı)');
