@@ -317,17 +317,6 @@
 
 .quake-btn:active { transform: scale(0.97); }
 
-.quake-btn.primary {
-  border-color: var(--primary);
-  background: var(--primary);
-  color: #fff;
-}
-
-.quake-btn.primary:hover {
-  background: var(--accent);
-  border-color: var(--accent);
-}
-
 .quake-btn svg {
   flex: 0 0 auto !important;
   width: 16px !important;

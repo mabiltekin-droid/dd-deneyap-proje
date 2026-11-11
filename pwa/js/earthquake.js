@@ -541,12 +541,10 @@
 
   /* ---------------------------------------------------------------- veri */
 
-  async function poll(manual) {
+  async function poll() {
     if (state.loading) return;
     state.loading = true;
 
-    const refresh = $('quakeRefresh');
-    if (refresh) refresh.disabled = true;
     setLive('loading', 'Güncelleniyor');
 
     const controller = new AbortController();
@@ -591,7 +589,7 @@
 
       setLive('online', 'Canlı');
       setStatus('AFAD’dan ' + events.length + ' kayıt alındı · ' +
-        fmtClock(state.lastFetch) + (manual ? ' · elle yenilendi' : ''), 'ok');
+        fmtClock(state.lastFetch), 'ok');
     } catch (err) {
       setLive('error', 'Bağlantı yok');
       const aborted = err && err.name === 'AbortError';
@@ -602,7 +600,6 @@
     } finally {
       clearTimeout(timeout);
       state.loading = false;
-      if (refresh) refresh.disabled = false;
     }
   }
 
@@ -614,7 +611,7 @@
       mag.addEventListener('change', function () {
         state.minMag = Number(mag.value) || 2.5;
         saveStore();
-        poll(true);
+        poll();
       });
     }
 
@@ -623,12 +620,9 @@
       hours.addEventListener('change', function () {
         state.hours = Number(hours.value) || 24;
         saveStore();
-        poll(true);
+        poll();
       });
     }
-
-    const refresh = $('quakeRefresh');
-    if (refresh) refresh.addEventListener('click', function () { poll(true); });
 
     const locBtn = $('quakeLocBtn');
     if (locBtn) locBtn.addEventListener('click', onLocation);
@@ -641,7 +635,7 @@
 
     window.addEventListener('online', function () {
       setStatus('İnternet bağlantısı geri geldi, akış yenileniyor…');
-      poll(false);
+      poll();
     });
 
     window.addEventListener('offline', function () {
@@ -651,7 +645,7 @@
 
     document.addEventListener('visibilitychange', function () {
       if (document.visibilityState === 'visible' && Date.now() - state.lastFetch > 15000) {
-        poll(false);
+        poll();
       }
     });
   }
@@ -663,9 +657,9 @@
     bindEvents();
     render();
 
-    poll(false);
+    poll();
     pollTimer = setInterval(function () {
-      if (document.visibilityState === 'visible') poll(false);
+      if (document.visibilityState === 'visible') poll();
     }, POLL_MS);
 
     tickTimer = setInterval(updateCountdown, 250);

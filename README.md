@@ -166,7 +166,7 @@ Bu README’deki bilgiler aşağıdaki dosyalarla çapraz kontrol edilmiştir:
 | Alan | Değer |
 |---|---|
 | Web/PWA sürümü | `2.31.0` |
-| Service Worker önbelleği | `deneyap-pwa-v2.31.0-r6` |
+| Service Worker önbelleği | `deneyap-pwa-v2.31.0-r7` |
 | Android sürümü | `2.24.0` / `versionCode 5` |
 | Android paket adı | `com.mabiltekin.deneyapevkoruma` |
 | minSdk / targetSdk | `24` (Android 7.0+) / `36` (Android 16) |
@@ -821,7 +821,7 @@ bildirim izni çalışmaz.
 
 ### 7.11. PWA önbelleği
 
-- `sw.js` sürümü `2.31.0`; önbellek `deneyap-pwa-v2.31.0-r6`.
+- `sw.js` sürümü `2.31.0`; önbellek `deneyap-pwa-v2.31.0-r7`.
 - `PRECACHE` listesinde HTML, CSS, fontlar, JS modülleri, manifest ve ikonlar vardır.
 - Eski önbellekler `activate` sırasında tamamen silinir.
 - Yeni sürüm `skipWaiting` ile hemen etkinleşir; açık sayfalar otomatik yenilenir.
@@ -1617,7 +1617,7 @@ kuralları ve Auth ile sağlanır. Yine de üretimde App Check önerilir.
 ### 15.1. Panelde eski arayüz görünüyor
 
 - Yeni sürüm otomatik etkinleşir; sayfa kendiliğinden yenilenir.
-- Service Worker önbellek anahtarını kontrol edin: `deneyap-pwa-v2.31.0-r6`.
+- Service Worker önbellek anahtarını kontrol edin: `deneyap-pwa-v2.31.0-r7`.
 - Geliştirici araçları → Application → Service Workers → Update.
 - Gerekirse site verilerini temizleyin; ardından yeniden yükleyin.
 
