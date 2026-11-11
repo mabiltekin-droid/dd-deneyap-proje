@@ -14,8 +14,8 @@ sunucusuz API + Firebase/Firestore + Android WebView kabuğu.
 [Tasarım notları](DESIGN.md) ·
 [Sorun bildir](https://github.com/mabiltekin-droid/dd-deneyap-proje/issues)
 
-> **Sürümler:** PWA `2.23.0` · Android `2.23.0` (`versionCode 4`) · MQTT firmware
-> `3.4.0` · Legacy HTTP/AP firmware `2.23.0`.
+> **Sürümler:** PWA `2.31.0` · Android `2.24.0` (`versionCode 5`) · MQTT firmware
+> `3.5.0` · Legacy HTTP/AP firmware `2.31.0`.
 >
 > Bu README, hem insan okuyucular hem de yapay zekâ ajanları için yapılandırılmıştır.
 > Dosya yolları, komutlar, portlar, koleksiyon adları ve sürümler kaynak koddan
@@ -165,13 +165,13 @@ Bu README’deki bilgiler aşağıdaki dosyalarla çapraz kontrol edilmiştir:
 
 | Alan | Değer |
 |---|---|
-| Web/PWA sürümü | `2.23.0` |
-| Service Worker önbelleği | `deneyap-pwa-v2.23.0-r1` |
-| Android sürümü | `2.23.0` / `versionCode 4` |
+| Web/PWA sürümü | `2.31.0` |
+| Service Worker önbelleği | `deneyap-pwa-v2.31.0-r6` |
+| Android sürümü | `2.24.0` / `versionCode 5` |
 | Android paket adı | `com.mabiltekin.deneyapevkoruma` |
 | minSdk / targetSdk | `24` (Android 7.0+) / `36` (Android 16) |
-| MQTT firmware | `3.4.0` |
-| Legacy HTTP/AP firmware | `2.23.0` |
+| MQTT firmware | `3.5.0` |
+| Legacy HTTP/AP firmware | `2.31.0` |
 | Firebase projesi | `ddproje-9f594` |
 | Vercel projesi | `mustafas-projects-d10af73b/ddproje` |
 | Üretim adresi | `https://ddproje.vercel.app/` |
@@ -472,7 +472,7 @@ firmware’in pin haritası aynı değildir; karıştırılırsa gaz okuması ya
 <a id="firmware"></a>
 ## 6. Firmware
 
-### 6.1. Aktif firmware: MQTT sürümü `3.4.0`
+### 6.1. Aktif firmware: MQTT sürümü `3.5.0`
 
 `firmware-mqtt/DeneyapEvKoruma/` altındaki firmware, panelin varsayılan MQTT
 taşımasıyla çalışır. Öne çıkan özellikler:
@@ -778,8 +778,8 @@ bildirim izni çalışmaz.
 
 ### 7.7. Çevrimdışı davranış
 
-- Service Worker **network-first** çalışır; 4 saniye içinde ağ yanıtı gelmezse
-  önbellekten son iyi sürümü sunar.
+- Service Worker **network-first** çalışır; ağ yoksa önbellekten son iyi sürümü
+  sunar. Çevrimiçiyken HTML, CSS, JS ve ikonlar her açılışta tazelenir.
 - `/api/*` istekleri asla önbelleğe alınmaz.
 - Son telemetri `dd.cache.telemetry.v1` altında 5 saniyede bir yazılır.
 - Ağ yokken önbellek gösterilir; altta “Bağlantı yok · son veri 14:32” şeridi ve
@@ -821,11 +821,11 @@ bildirim izni çalışmaz.
 
 ### 7.11. PWA önbelleği
 
-- `sw.js` sürümü `2.23.0`; önbellek `deneyap-pwa-v2.23.0-r1`.
+- `sw.js` sürümü `2.31.0`; önbellek `deneyap-pwa-v2.31.0-r6`.
 - `PRECACHE` listesinde HTML, CSS, fontlar, JS modülleri, manifest ve ikonlar vardır.
-- Eski önbellekler `activate` sırasında silinir.
-- Yeni sürüm açık sayfayı zorla yenilemez; panel “Yenile” bildirimi gösterir.
-- Eski arayüz görünüyorsa sayfayı iki kez yenileyin veya uygulamayı kapatıp açın.
+- Eski önbellekler `activate` sırasında tamamen silinir.
+- Yeni sürüm `skipWaiting` ile hemen etkinleşir; açık sayfalar otomatik yenilenir.
+- “Yenile” bildirimi yoktur; site açılırken güncel sürüm yüklenir.
 
 ---
 
@@ -1616,8 +1616,8 @@ kuralları ve Auth ile sağlanır. Yine de üretimde App Check önerilir.
 
 ### 15.1. Panelde eski arayüz görünüyor
 
-- Sayfayı iki kez yenileyin veya uygulamayı kapatıp açın.
-- Service Worker önbellek anahtarını kontrol edin: `deneyap-pwa-v2.23.0-r1`.
+- Yeni sürüm otomatik etkinleşir; sayfa kendiliğinden yenilenir.
+- Service Worker önbellek anahtarını kontrol edin: `deneyap-pwa-v2.31.0-r6`.
 - Geliştirici araçları → Application → Service Workers → Update.
 - Gerekirse site verilerini temizleyin; ardından yeniden yükleyin.
 

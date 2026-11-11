@@ -1159,17 +1159,7 @@
   /* ------------------------------------------------- Service Worker Akışı */
 
   function setupServiceWorker() {
-    App.onUpdateReady = function (reg) {
-      App.toast('Konsolun yeni sürümü hazır', {
-        kind: 'ok',
-        sticky: true,
-        actionLabel: 'Yenile',
-        onAction: function () {
-          App.reloadOnControllerChange();
-          App.activateUpdate(reg);
-        }
-      });
-    };
+    /* Yeni sürüm otomatik etkinleşir; "Yenile" bildirimi gösterilmez. */
     App.registerServiceWorker();
   }
 

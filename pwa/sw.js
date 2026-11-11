@@ -13,14 +13,13 @@
        cache'ten sunulur, böylece panel çalışmaya devam eder.
      • /api/* istekleri ASLA cache'lenmez — sensör verisi her seferinde
        cihazdan alınır.
-     • activate sırasında eski cache'ler silinir (sürüm artışı temizliği).
-     • Yeni sürüm sayfayı zorla değiştirmez; panel "Yenile" bildirimi gösterir.
+     • Yeni sürüm beklemeden etkinleşir; açık sayfalar otomatik yenilenir.
+     • Eski cache'ler activate sırasında tamamen silinir.
    ========================================================================== */
 
 const VERSION = '2.31.0';
-const CACHE = 'deneyap-pwa-v' + VERSION + '-r3';
+const CACHE = 'deneyap-pwa-v' + VERSION + '-r6';
 const SHELL = './index.html';
-const NETWORK_TIMEOUT = 4000;   // cihaz yanıt vermezse cache'e düş (ms)
 
 const PRECACHE = [
   './',
@@ -80,7 +79,11 @@ const PRECACHE = [
 
 /* ------------------------------------------------------------------ install */
 
+/* Güncelleme mi, ilk kurulum mu? İlk kurulumda sayfayı gereksiz yenileme. */
+let isUpdate = false;
+
 self.addEventListener('install', function (event) {
+  isUpdate = !!(self.registration.active || self.registration.waiting);
   event.waitUntil(
     caches.open(CACHE).then(function (cache) {
       /* Tek tek ekle: bir dosya 404 olursa kurulumun tamamı başarısız olmasın */
@@ -89,10 +92,11 @@ self.addEventListener('install', function (event) {
           console.warn('[sw] önbelleğe alınamadı:', url, err && err.message);
         });
       }));
+    }).then(function () {
+      /* Yeni sürüm beklemeden devreye girsin. */
+      return self.skipWaiting();
     })
   );
-  /* skipWaiting bilerek çağrılmıyor: açık sayfaların durumunu bozmamak için
-     yeni sürüm "waiting" durumunda bekler, panel onaylayınca etkinleşir. */
 });
 
 /* ----------------------------------------------------------------- activate */
@@ -115,6 +119,17 @@ self.addEventListener('activate', function (event) {
       return null;
     }).then(function () {
       return self.clients.claim();
+    }).then(function () {
+      if (!isUpdate) return null;
+      /* Eski sürümü açık tutan sekmeleri de yeni sürüme geçir. */
+      return self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+        .then(function (clients) {
+          clients.forEach(function (client) {
+            if (client && client.url && typeof client.navigate === 'function') {
+              client.navigate(client.url).catch(function () {});
+            }
+          });
+        });
     })
   );
 });
@@ -183,26 +198,9 @@ self.addEventListener('pushsubscriptionchange', function (event) {
 
 /* -------------------------------------------------------------------- fetch */
 
-/* Hızlı Uygulama Kabuğu (HTML/JS/CSS/İkon): önce anında önbellekten ver (0 ms), arkada tazele */
-function staleWhileRevalidate(request) {
-  return caches.open(CACHE).then(function (cache) {
-    return cache.match(request).then(function (cached) {
-      const fetchPromise = fetch(request).then(function (res) {
-        if (res && res.ok && res.type === 'basic') {
-          cache.put(request, res.clone());
-        }
-        return res;
-      }).catch(function () {
-        return cached;
-      });
-      return cached || fetchPromise;
-    });
-  });
-}
-
-/* Sayfa geçişlerinde ağ öncelikli: taze HTML al, çevrimdışıysa önbelleğe dön. */
+/* Her zaman ağdan taze dosya al; çevrimdışıysa son iyi sürümü cache'ten sun. */
 function networkFirst(request) {
-  return fetch(request).then(function (res) {
+  return fetch(request, { cache: 'no-cache' }).then(function (res) {
     if (res && res.ok && res.type === 'basic') {
       const clone = res.clone();
       caches.open(CACHE).then(function (cache) {
@@ -234,13 +232,7 @@ self.addEventListener('fetch', function (event) {
   /* Service Worker'ın kendisi de cache'e girmez */
   if (url.pathname === '/sw.js') return;
 
-  /* Sayfa geçişi: taze HTML dene, çevrimdışıysa önbellekten aç */
-  if (request.mode === 'navigate') {
-    event.respondWith(networkFirst(request));
-    return;
-  }
-
-  /* Statik kaynaklar: önce önbellekten anında sun, arkada tazele */
-  event.respondWith(staleWhileRevalidate(request));
+  /* HTML, JS, CSS, ikon ve fontlar: ağ öncelikli, çevrimdışı cache yedeği. */
+  event.respondWith(networkFirst(request));
 });
 

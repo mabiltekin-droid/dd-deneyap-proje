@@ -857,10 +857,9 @@
       await reg.update();
       if (reg.waiting) {
         setResult(out, 'Yeni sürüm bulundu, etkinleştiriliyor…', 'ok');
-        App.reloadOnControllerChange();
         App.activateUpdate(reg);
       } else if (reg.installing) {
-        setResult(out, 'Sürüm indiriliyor…', 'ok');
+        setResult(out, 'Sürüm indiriliyor, otomatik etkinleştirilecek…', 'ok');
       } else {
         setResult(out, 'Uygulama zaten en son sürümde.', 'ok');
       }
@@ -1211,11 +1210,6 @@
       if (radio) radio.checked = true;
     });
 
-    App.onUpdateReady = function () {
-      $('maintResult').className = 'result ok';
-      $('maintResult').textContent = 'Yeni sürüm indirildi.';
-      $('updateBtn').textContent = 'Yeni Sürümü Etkinleştir';
-    };
     App.registerServiceWorker().then(function (r) { reg = r; });
     App.setupPwaInstall();
     if (window.App && typeof window.App.initAccount === 'function') {

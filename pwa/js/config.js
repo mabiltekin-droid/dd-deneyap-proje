@@ -663,24 +663,33 @@
 
   /* ------------------------------------------------------- Service Worker */
 
-  App.onUpdateReady = null;
-
   App.registerServiceWorker = function () {
     if (!('serviceWorker' in navigator)) {
       return Promise.resolve(null);
     }
-    return navigator.serviceWorker.register('./sw.js', { scope: './' })
+
+    /* Güncelleme denetimini sayfa açılışında ve görünür olduğunda yap. */
+    function checkForUpdate(reg) {
+      if (!reg || document.visibilityState !== 'visible') return;
+      reg.update().catch(function (err) {
+        console.warn('[sw] güncelleme denetlenemedi:', err && err.message);
+      });
+    }
+
+    return navigator.serviceWorker.register('./sw.js', {
+      scope: './',
+      updateViaCache: 'none'
+    })
       .then(function (reg) {
-        reg.addEventListener('updatefound', function () {
-          const sw = reg.installing;
-          if (!sw) return;
-          sw.addEventListener('statechange', function () {
-            if (sw.state === 'installed' && navigator.serviceWorker.controller &&
-                typeof App.onUpdateReady === 'function') {
-              App.onUpdateReady(reg, sw);
-            }
+        checkForUpdate(reg);
+        if (App._swCheckTimer) clearInterval(App._swCheckTimer);
+        App._swCheckTimer = setInterval(function () { checkForUpdate(reg); }, 5 * 60 * 1000);
+        if (!App._swVisibilityBound) {
+          App._swVisibilityBound = true;
+          document.addEventListener('visibilitychange', function () {
+            checkForUpdate(reg);
           });
-        });
+        }
         return reg;
       })
       .catch(function (err) {
@@ -695,16 +704,6 @@
     if (!waiting) return false;
     waiting.postMessage({ type: 'SKIP_WAITING' });
     return true;
-  };
-
-  App.reloadOnControllerChange = function () {
-    if (!('serviceWorker' in navigator)) { location.reload(); return; }
-    let done = false;
-    navigator.serviceWorker.addEventListener('controllerchange', function () {
-      if (done) return;
-      done = true;
-      location.reload();
-    });
   };
 
   /* ----------------------------------------------------------- biçimlendirme */
