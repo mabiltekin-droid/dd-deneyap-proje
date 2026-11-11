@@ -213,6 +213,12 @@
   };
 
   async function doSocialSignIn(provider) {
+    if (window.AndroidApp && typeof window.AndroidApp.openInChrome === 'function') {
+      if (confirm('Google ile güvenli izin ve giriş yapmak için tarayıcı açılacak. Devam edilsin mi?')) {
+        window.AndroidApp.openInChrome();
+      }
+      return;
+    }
     const def = SOCIAL_BTN[provider] || { id: '', label: provider };
     const btn = def.id ? $(def.id) : null;
     busy = true;
