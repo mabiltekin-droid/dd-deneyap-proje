@@ -14,6 +14,7 @@ değişince yeniden üretilir.
 - **Uygulama adı:** Deneyap Ev Koruma
 - **Web adresi:** https://ddproje.vercel.app/
 - **Sürüm:** 2.24.0 — `versionCode 5`
+- **Play durumu:** 🟡 Kapalı test (herkese açık değil)
 - **minSdk:** 24 (Android 7.0+) · **targetSdk / compileSdk:** 36 (Android 16)
 - **Mimari:** Tek, evrensel APK. Telefon/tablet için ayrı APK gerekmez; PWA responsive'dir.
 
@@ -24,7 +25,7 @@ Derleme sonrası:
 | Dosya | Kullanım |
 |---|---|
 | `android/dist/DeneyapEvKoruma-2.24.0-release.apk` | Telefona doğrudan kurulum / test |
-| `android/dist/DeneyapEvKoruma-2.24.0-release.aab` | **Google Play'e yükleme** |
+| `android/dist/DeneyapEvKoruma-2.24.0-release.aab` | **Google Play kapalı test yüklemesi** |
 | `android/play/icon-512.png` | Play Store uygulama ikonu |
 | `android/play/feature-graphic-1024x500.png` | Play Store öne çıkan görsel |
 | `android/play/screenshots/` | Mobil kabuk telefon ekran görüntüleri (1080×1920) |
@@ -228,6 +229,9 @@ Upload anahtarı SHA-256:
 
 ## Play Store'a yükleme akışı
 
+> **Mevcut durum:** Uygulama Play Console'da **kapalı test** track'inde; herkese açık
+> mağaza sayfası yoktur. Aşağıdaki adımlar ilk kurulum ve sonraki yüklemeler içindir.
+
 1. Play Console'da **Create app**:
    - App name: `Deneyap Ev Koruma`
    - Default language: Türkçe
@@ -237,11 +241,12 @@ Upload anahtarı SHA-256:
    değiştirilemez. Paket adı değişecekse `android/gradle.properties` → `twaPackage` ve
    Java kaynaklarındaki `package` satırları birlikte güncellenmelidir; aksi hâlde uygulama
    açılmaz. Mevcut paket adını korumanız önerilir.
-3. **Internal testing** track'ine `DeneyapEvKoruma-2.23.0-release.aab` yükleyin.
+3. **Closed testing** track'ine AAB yükleyin (repodaki son sürüm:
+   `DeneyapEvKoruma-2.24.0-release.aab`, `versionCode 5`).
 4. Play App Signing'i etkinleştirin. **Mevcut WebView mimarisi için Play App Signing
    SHA-256'sını `assetlinks.json`'a eklemek gerekmez.** Bu dosya yalnızca ileride TWA'ya
    dönülürse gerekir.
-5. Internal testing bağlantısıyla telefona kurun; aşağıdakileri test edin:
+5. Closed testing opt-in bağlantısıyla telefona kurun; aşağıdakileri test edin:
    - Uygulama doğrudan tam ekran WebView'de açılıyor; adres çubuğu görünmüyor.
    - Yerel ⋮ menü: Yenile, Chrome'da aç, bağlantı paylaş, hakkında.
    - Ana ekran kısayolları doğru sayfayı açıyor.
@@ -329,7 +334,7 @@ yapılandırmasından kalmıştır; mevcut uygulamada sırasıyla **başlangıç
 - Normalde beklenen davranış değildir. Yalnızca yerel ⋮ menüden veya “Chrome'da aç”
   kısayolundan Chrome'a geçilirse adres çubuğu görünür.
 - Sürekli Chrome açılıyorsa eski (2.21.x veya TWA) sürüm kurulu olabilir. Eski uygulamayı
-  kaldırıp `DeneyapEvKoruma-2.23.0-release.apk` dosyasını temiz kurun.
+  kaldırıp `DeneyapEvKoruma-2.24.0-release.apk` dosyasını temiz kurun.
 
 **Uygulama tam ekran WebView'de açılıyor**
 - Beklenen davranış budur. Adres çubuğu yoktur; site yerel uygulama gibi çalışır.
@@ -387,7 +392,7 @@ PDF rapor modeli ve çevrimdışı şerit test edildi. `npm run check`, `npm run
 Bağlı gerçek Android cihaz/emülatör olmadığından şunlar bu makinede **doğrulanamadı**:
 FCM bildirim teslimi, Android 13+ izin akışı, canlı durum bildirimi, ana ekran widget'ı,
 PDF paylaşım sayfası, önbellekli soğuk açılış, klavye ve döndürme. Yayın öncesi en az bir
-gerçek telefonda internal testing ile bu liste test edilmelidir.
+gerçek telefonda **kapalı test** üzerinden bu liste test edilmelidir.
 
 ## İlgili dosyalar
 

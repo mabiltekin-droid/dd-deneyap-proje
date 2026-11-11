@@ -12,7 +12,8 @@ metinleri, veri güvenliği cevaplarını ve yayın öncesi kontrolleri toplar.
 |---|---|
 | Uygulama adı | Deneyap Ev Koruma |
 | Paket adı | `com.mabiltekin.deneyapevkoruma` |
-| Sürüm | 2.24.0 (`versionCode 5`) |
+| Sürüm | 2.24.0 (`versionCode 5`) — Play Console’daki yükleme sürümünü doğrulayın |
+| Yayın durumu | 🟡 Kapalı test (herkese açık değil) |
 | Kategori | House & Home (yoksa Tools) |
 | Etiketler | Akıllı ev, güvenlik, IoT, deprem, afet |
 | Ücret | Ücretsiz |
@@ -236,11 +237,32 @@ Bu bağlantı `privacy.html#hesap-silme` sayfasını açar. Kullanıcı oradan G
 Play Console'da **Account deletion** bölümüne aynı URL'yi girin. Otomatik silme
 istenirse, ileride Firestore `deletion_requests` + Cloud Function akışı eklenebilir.
 
-## 9. Yayın öncesi kontrol listesi
+## 9. Kapalı test ve yayın öncesi kontrol listesi
 
-- [ ] Play Console'da uygulama oluşturuldu; paket adı doğru.
-- [ ] `DeneyapEvKoruma-2.23.0-release.aab` internal testing'e yüklendi.
-- [ ] Telefonda internal testing kurulumu; uygulama tam ekran WebView'de açılıyor.
+### 9.1. Kapalı test durumu
+
+- [x] Play Console'da uygulama oluşturuldu; paket adı doğru.
+- [x] AAB kapalı test track'ine yüklendi (repodaki son AAB: `2.24.0`, `versionCode 5`;
+  Play Console'daki yükleme sürümünü doğrulayın).
+- [ ] Kapalı test kullanıcıları davet edildi; opt-in linki paylaşıldı.
+- [ ] Hedeflenen test kullanıcısı sayısına ulaşıldı.
+- [ ] En az bir gerçek telefonda opt-in linkiyle kurulum yapıldı.
+- [ ] Uygulama tam ekran WebView'de açılıyor; yerel ⋮ menü ve kısayollar çalışıyor.
+- [ ] Aşağı çekerek yenileme ve çift geri tuşuyla çıkış çalışıyor.
+- [ ] Giriş, cihaz, telemetri, komut ve çevrimdışı akışları test edildi.
+- [ ] Android 13+ bildirim izni akışı ve test bildirimi doğrulandı.
+- [ ] Uygulama kapalıyken alarm/FCM bildirimi geldi (force-stop değil).
+- [ ] Canlı durum bildirimi ve ana ekran widget'ı güncelleniyor.
+- [ ] PDF/CSV paylaşım sayfası açılıyor.
+- [ ] Klavye, çentik, döndürme ve çevrimdışı soğuk açılış test edildi.
+- [ ] Play Console → Closed testing → Feedback ve ön yükleme raporu incelendi.
+- [ ] Bulunan kritik hatalar düzeltildi ve yeni `versionCode` ile tekrar yüklendi.
+- [ ] Data Safety, content rating, App access ve mağaza listesi güncel.
+- [ ] Play Console'un üretim erişimi / open testing koşulları tamamlandı.
+
+### 9.2. Yayın öncesi kontrol listesi
+
+- [ ] Telefonda kapalı test kurulumu; uygulama tam ekran WebView'de açılıyor.
 - [ ] Yerel ⋮ menü, kısayollar, aşağı çekerek yenileme ve çift geri tuşu çalışıyor.
 - [ ] Giriş, cihaz, telemetri, komut, çevrimdışı testleri geçti.
 - [ ] Android 13+ bildirim izni, bildirimler açılırken istendi; test bildirimi geldi.

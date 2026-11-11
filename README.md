@@ -135,8 +135,8 @@ yeniden üretilir.
 | Test e-postası | ✅ Doğrulandı | Brevo sağlayıcısıyla başarılı |
 | Android FCM kodu | ✅ Hazır | Uçtan uca teslim gerçek token ile doğrulanmalı |
 | Gerçek alarm e-postası | ⏳ Bekliyor | Cihaz bağlama + firmware `PUSH_SECRET` gerekir |
-| Android APK/AAB | ✅ Derlendi ve imzalandı | Play yüklemesi bekliyor |
-| Play Store yayını | ⏳ Bekliyor | Play Console hesabı ve mağaza girişi gerekir |
+| Android APK/AAB | ✅ Derlendi ve imzalandı | Play kapalı test track’ine yüklendi |
+| Play Store yayını | 🟡 Kapalı testte | Herkese açık değil; test kullanıcıları opt-in linkiyle kurar |
 | MQTT firmware | ✅ Derlendi | Son sürüm fiziksel karta yüklenmedi |
 | Donanım montajı | ⏳ Bekliyor | Bu geliştirme ortamında kart bağlı değil |
 | WebView içinde Google girişi | ⚠️ Doğrulanmadı | Chrome’da aç yedeği mevcut |
@@ -1246,15 +1246,21 @@ kopyada yapılır. Çıktılar `android/dist/` altına kopyalanır; git’e girm
 
 ### 10.8. Play Store
 
+**Mevcut durum:** Uygulama Play Console’da **kapalı test** track’inde. Herkese açık
+mağaza sayfası yoktur; yalnızca opt-in linkine sahip test kullanıcıları kurabilir.
+
 1. Play Console → Create app.
 2. App name: `Deneyap Ev Koruma`; default language: Türkçe; Free.
 3. Package name: `com.mabiltekin.deneyapevkoruma` (ilk yüklemeden sonra değişmez).
-4. Internal testing track’ine AAB yükle.
+4. Closed testing track’ine AAB yükle.
 5. Play App Signing’i etkinleştir.
-6. Internal testing bağlantısıyla telefona kur ve test et.
+6. Closed testing opt-in bağlantısıyla telefona kur ve test et.
 7. Mağaza metinleri, data safety, content rating ve gizlilik politikası için
    `PLAY-STORE.md` kullan.
-8. Her yüklemede `appVersionCode` değerini artır.
+8. Kapalı test geri bildirimlerini ve ön yükleme raporunu incele.
+9. Her yeni Android yüklemesinde `appVersionCode` değerini artır.
+
+Kapalı test kontrol listesi: `PLAY-STORE.md` → **9.1. Kapalı test durumu**.
 
 Gizlilik politikası: `https://ddproje.vercel.app/privacy.html`
 Hesap silme: `https://ddproje.vercel.app/privacy.html#hesap-silme`
@@ -1279,7 +1285,7 @@ Bağlı gerçek Android cihaz/emülatör olmadığından şunlar **doğrulanamad
 - Önbellekli soğuk açılış
 - Klavye ve döndürme
 
-Yayın öncesi en az bir gerçek telefonda internal testing ile bu liste test
+Yayın öncesi en az bir gerçek telefonda **kapalı test** üzerinden bu liste test
 edilmelidir.
 
 ---
@@ -1348,7 +1354,7 @@ Vercel Hobby planında cron günde birden sık çalışamaz; haftalık ifade uyg
 1. JDK 17 ve Android SDK 36’yı kur.
 2. `android/keystore.properties` ve upload keystore’u hazırla.
 3. `npm run android:all` ile APK + AAB üret.
-4. APK’yı telefona kur; AAB’yi Play internal testing’e yükle.
+4. APK’yı telefona kur; AAB’yi Play kapalı test track’ine yükle.
 5. FCM için `android/app/google-services.json` dosyasının doğru Firebase
    projesine ait olduğunu kontrol et.
 6. Android 13+ bildirim iznini ver.
@@ -1489,12 +1495,12 @@ Koşullar:
 - Fiziksel sensör/röle/servo testleri (kart bağlı değil)
 - Android widget, canlı durum bildirimi, PDF paylaşım sayfası
 - Soğuk açılış, klavye, döndürme
-- Play Store yüklemesi ve incelemesi
+- Kapalı test geri bildirimleri ve üretim incelemesi
 - WebView içinde Google girişi
 
 ### 13.5. Manuel yayın öncesi test listesi
 
-- [ ] Gerçek telefonda internal testing kurulumu
+- [ ] Gerçek telefonda kapalı test kurulumu
 - [ ] Bildirim izni ve FCM testi
 - [ ] Uygulama kapalıyken alarm bildirimi
 - [ ] Widget güncellemesi
@@ -1728,7 +1734,7 @@ kuralları ve Auth ile sağlanır. Yine de üretimde App Check önerilir.
 | Gerçek FCM testi yok | Teslim gecikmesi/kanal davranışı belirsiz | Gerçek telefon + token ile test |
 | Gerçek alarm e-postası testi yok | Uçtan uca e-posta doğrulanmadı | Bağlama + `PUSH_SECRET` tamamlanmalı |
 | Firmware karta yüklenmedi | Fiziksel doğrulama yok | Kart bağlanınca USB/OTA yükle |
-| Play Store yayını yok | Mağazadan kurulum yok | Play Console hesabı gerekir |
+| Play Store herkese açık değil | Mağazadan genel kurulum yok | Kapalı testte; üretim yayını bekliyor |
 | WebView Google girişi | Bazı cihazlarda sorun | Chrome’da aç yedeği |
 | Telefon/SMS girişi yok | SMS doğrulaması yok | Kapsam dışı |
 | Gerçek MFA yok | Yalnızca step-up | Identity Platform/Blaze gerekir |
@@ -1744,7 +1750,7 @@ kuralları ve Auth ile sağlanır. Yine de üretimde App Check önerilir.
 ### 16.1. Planlanan / isteğe bağlı geliştirmeler
 
 - Gerçek cihazda FCM ve alarm e-postası uçtan uca testi.
-- Play Store internal testing ve üretim yayını.
+- Kapalı test geri bildirimleri ve üretim yayını.
 - Özel MQTT broker + TLS.
 - Hesap bazlı haftalık özet.
 - Otomatik veri saklama/temizleme.
