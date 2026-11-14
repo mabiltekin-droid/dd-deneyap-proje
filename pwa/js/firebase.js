@@ -1223,7 +1223,7 @@
     return human(err);
   }
 
-  async function signInWithProvider(name) {
+  async function signInWithProvider(name, googleIdToken) {
     ensureFirebase();
     const def = SOCIAL[name];
     if (!def) {
@@ -1232,17 +1232,17 @@
       e.human = 'Bilinmeyen giriş yöntemi.';
       throw e;
     }
-    const provider = def.make();
-
     let cred = null;
     try {
-      cred = await auth.signInWithPopup(provider);
+      cred = name === 'google' && googleIdToken
+        ? await auth.signInWithCredential(firebase.auth.GoogleAuthProvider.credential(googleIdToken))
+        : await auth.signInWithPopup(def.make());
     } catch (e) {
       const code = e && e.code;
-      if (code === 'auth/popup-blocked' ||
-          code === 'auth/operation-not-supported-in-this-environment') {
+      if (!googleIdToken && (code === 'auth/popup-blocked' ||
+          code === 'auth/operation-not-supported-in-this-environment')) {
         // Açılır pencere engellendi/desteklenmiyor → tam sayfa yönlendirme.
-        await auth.signInWithRedirect(provider);
+        await auth.signInWithRedirect(def.make());
         return { redirect: true };
       }
       const err = new Error((e && e.message) || def.label + ' girişi başarısız.');

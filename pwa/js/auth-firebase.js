@@ -519,9 +519,9 @@
     },
 
     // Sosyal giriş: 'google' | 'github' | 'apple'
-    signInWithProvider: async function (provider) {
+    signInWithProvider: async function (provider, googleIdToken) {
       state.error = null;
-      const r = await FB().signInWithProvider(provider);
+      const r = await FB().signInWithProvider(provider, googleIdToken);
       if (r && r.redirect) return { redirect: true };
       state.session = r;
       resetDeviceAccess();
