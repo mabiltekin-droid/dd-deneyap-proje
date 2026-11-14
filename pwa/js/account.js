@@ -183,6 +183,37 @@
     }
   }
 
+  async function requestAccountDeletion() {
+    if (busy) return;
+    const trigger = $('accountDeleteRequestBtn');
+    busy = true;
+    trigger.disabled = true;
+    setResult('Silme talebi gönderiliyor…');
+    try {
+      const token = await App.FB.token();
+      if (!token) {
+        setResult('Talep göndermek için hesabınıza yeniden giriş yapın.', 'err');
+        return;
+      }
+      const response = await fetch('/api/account-deletion', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + token }
+      });
+      if (response.status === 401 || response.status === 403) {
+        setResult('Doğrulanmış hesabınıza yeniden giriş yapıp tekrar deneyin.', 'err');
+      } else if (response.status === 202) {
+        setResult('Silme talebiniz alındı. En geç 30 gün içinde sonuç e-postayla bildirilir.', 'ok');
+      } else {
+        throw new Error('Talep kaydedilemedi');
+      }
+    } catch (e) {
+      setResult('Talep gönderilemedi. Daha sonra tekrar deneyin.', 'err');
+    } finally {
+      busy = false;
+      trigger.disabled = false;
+    }
+  }
+
   async function doSignUp() {
     const email = $('authEmail').value.trim();
     const pass = $('authPass').value;
@@ -738,6 +769,18 @@
       if ($(id)) $(id).addEventListener('click', function () { doSocialSignIn(p); });
     });
     $('authSignOutBtn').addEventListener('click', doSignOut);
+    const deletionDialog = $('accountDeletionDialog');
+    const deletionButton = $('accountDeleteRequestBtn');
+    if (deletionDialog && deletionButton) {
+      deletionButton.addEventListener('click', function () {
+        if (busy) return;
+        deletionDialog.returnValue = 'cancel';
+        deletionDialog.showModal();
+      });
+      deletionDialog.addEventListener('close', function () {
+        if (deletionDialog.returnValue === 'request') requestAccountDeletion();
+      });
+    }
     $('forgotPasswordBtn').addEventListener('click', doForgotPassword);
     $('createUserBtn').addEventListener('click', doCreateUser);
     $('claimBtn').addEventListener('click', doClaim);

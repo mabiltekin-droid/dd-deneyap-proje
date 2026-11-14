@@ -456,3 +456,13 @@ Komut önce derler, sonra ESP32 çekirdeğindeki `espota.exe` ile kablosuz yükl
 - **Doğrulama** — `npm run check` (6/6), `npm run verify` (20 + 14 + 15 + 17
   test) ve `npm run build`. Service worker `PRECACHE` listesine
   `./js/studio-nav.js` eklendi; sürüm 6 noktada `2.20.1`.
+
+### Hesap silme talepleri
+
+Ayarlar → Hesap ve Roller → Hesap Silme Talebi, doğrulanmış hesaptan gelen isteği
+Firebase'de özel `account_deletion_requests` koleksiyonuna yazar. İstemci
+koleksiyonu okuyamaz. Üretim sorumlusu talepleri Firebase Console'da en geç 30 gün
+içinde işler ve tamamlandığını kayıtlı e-posta adresine bildirir. Silmeden önce
+paylaşılan ev ve cihazların sahipliğini kontrol edin, kişisel verileri kaldırın
+ve yasal olarak tutulması gereken güvenlik kayıtlarını anonimleştirin. Bildirim
+tamamlandığında talep kaydındaki e-posta adresini de kaldırın.

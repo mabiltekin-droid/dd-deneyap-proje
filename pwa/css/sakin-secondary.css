@@ -605,3 +605,18 @@
     padding-inline: 0.65rem;
   }
 }
+
+#accountDeletionDialog {
+  width: min(30rem, calc(100% - 2rem));
+  max-height: calc(100% - 2rem);
+  overflow: auto;
+  padding: 1.25rem;
+  border: 1px solid currentColor;
+  border-radius: 1rem;
+  color: CanvasText;
+  background: Canvas;
+}
+
+#accountDeletionDialog::backdrop {
+  background: rgb(0 0 0 / 55%);
+}

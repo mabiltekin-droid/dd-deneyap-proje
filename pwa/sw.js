@@ -1,6 +1,6 @@
 /* HTML stays network-first. Versioned static assets are cached for reuse. */
 const VERSION = '2.31.0';
-const CACHE = 'deneyap-pwa-v' + VERSION + '-r16';
+const CACHE = 'deneyap-pwa-v' + VERSION + '-r17';
 const SHELL = './index.html';
 const ASSET_VERSION = '';
 

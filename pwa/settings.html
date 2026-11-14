@@ -288,7 +288,7 @@
               </svg>
               <span>Çıkış Yap</span>
             </button>
-            <a class="btn ghost danger-hover" href="./privacy.html#hesap-silme" id="accountDeleteRequestLink">
+            <button class="btn ghost danger-hover" type="button" id="accountDeleteRequestBtn">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <polyline points="3 6 5 6 21 6"/>
                 <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
@@ -296,9 +296,21 @@
                 <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
               </svg>
               <span>Hesap Silme Talebi</span>
-            </a>
+            </button>
           </div>
         </div>
+
+        <dialog id="accountDeletionDialog" aria-labelledby="accountDeletionTitle">
+          <form method="dialog">
+            <h3 id="accountDeletionTitle">Hesabınızı silmek istiyor musunuz?</h3>
+            <p>Hesabınız, cihaz bağlantılarınız ve ilişkili kişisel verileriniz silinir. Talep 30 gün içinde işlenir ve sonuç e-posta adresinize bildirilir.</p>
+            <p><a href="./privacy.html#hesap-silme">Hesap silme hakkında bilgi</a></p>
+            <div class="btn-row">
+              <button class="btn ghost" value="cancel" autofocus>Vazgeç</button>
+              <button class="btn danger-hover" value="request">Silme talebini gönder</button>
+            </div>
+          </form>
+        </dialog>
 
         <p class="result" id="authResult" role="status" aria-live="polite"></p>
 
