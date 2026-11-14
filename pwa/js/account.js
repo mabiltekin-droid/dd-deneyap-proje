@@ -25,13 +25,16 @@
     });
   }
 
-  function fmtDate(iso) {
-    if (!iso) return '—';
-    try {
-      return new Date(iso).toLocaleDateString('tr-TR', {
-        day: '2-digit', month: '2-digit', year: 'numeric'
-      });
-    } catch (e) { return '—'; }
+  function fmtDate(timestamp) {
+    if (timestamp == null || timestamp === '') return '';
+    const value = typeof timestamp.toDate === 'function' ? timestamp.toDate()
+      : typeof timestamp.seconds === 'number' ? timestamp.seconds * 1000
+      : timestamp;
+    const date = new Date(value);
+    if (!Number.isFinite(date.getTime())) return '';
+    return date.toLocaleDateString('tr-TR', {
+      day: '2-digit', month: '2-digit', year: 'numeric'
+    });
   }
 
   /* ------------------------------------------------------ görünüm -------- */
@@ -58,7 +61,7 @@
       $('authUserRole').textContent = snap.isAdmin ? 'Sistem Yöneticisi (Platform Admin)' : 'Kullanıcı';
       $('authUserSince').textContent =
         fmtDate(snap.profile && snap.profile.created_at) ||
-        fmtDate(snap.user && snap.user.created_at);
+        fmtDate(snap.user && snap.user.created_at) || '—';
     }
 
     if (snap.isAdmin && !setup) loadUsers().catch(function (e) {
@@ -112,7 +115,7 @@
           '<option value="user"' + (u.role === 'user' ? ' selected' : '') + '>Kullanıcı</option>' +
           '<option value="admin"' + (u.role === 'admin' ? ' selected' : '') + '>Yönetici</option>' +
         '</select></td>' +
-        '<td class="u-date">' + esc(fmtDate(u.created_at)) + '</td>' +
+        '<td class="u-date">' + esc(fmtDate(u.created_at) || '—') + '</td>' +
         '<td class="u-act"><button type="button" class="btn sm ghost u-del"' +
           (self ? ' disabled title="Kendi hesabınızı silemezsiniz"' : '') + '>Engelle</button></td>' +
         '</tr>';
