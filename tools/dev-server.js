@@ -312,7 +312,7 @@ const server = http.createServer(function (req, res) {
     return;
   }
 
-  /* Deprem sayfası yerelde de gerçek AFAD verisiyle denenebilsin: Vercel
+  /* Deprem sayfası yerelde de gerçek EMSC verisiyle denenebilsin: Vercel
      fonksiyonunu küçük bir uyarlayıcıyla çalıştır. */
   if (p === '/api/earthquakes' && req.method === 'GET') {
     let code = 200;

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Deprem · DD Ev Koruma</title>
-  <meta name="description" content="AFAD son depremleri, konumunuza göre tahmini S dalgası varış süresi ve canlı deprem uyarıları.">
+  <meta name="description" content="EMSC son depremleri, konumunuza göre tahmini S dalgası varış süresi ve canlı deprem uyarıları.">
   <meta name="theme-color" content="#faf4e9" id="metaThemeColor">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Ev Koruma">
@@ -40,7 +40,7 @@
         <h1>Deprem</h1>
         <p class="conn" id="quakeConn" data-state="connecting">
           <span class="dot" aria-hidden="true"></span>
-          <span id="quakeConnText">AFAD akışına bağlanıyor…</span>
+          <span id="quakeConnText">EMSC akışına bağlanıyor…</span>
         </p>
       </div>
     </div>
@@ -96,17 +96,17 @@
   <main id="main" class="quake-page">
     <section class="quake-hero" aria-labelledby="quakeTitle">
       <div>
-        <span class="quake-eyebrow"><span class="quake-pulse" aria-hidden="true"></span>AFAD canlı akış</span>
+        <span class="quake-eyebrow"><span class="quake-pulse" aria-hidden="true"></span>EMSC canlı akış</span>
         <h2 id="quakeTitle">Son depremler</h2>
         <p class="quake-lead">
-          AFAD kayıtlarını görün. Konumunuzu açarsanız depremin merkezine olan uzaklığı ve tahmini S dalgası varış süresini görebilirsiniz.
+          Türkiye ve çevresindeki son deprem kayıtlarını görün. Konumunuzu açarsanız depremin merkezine olan uzaklığı ve tahmini S dalgası varış süresini görebilirsiniz.
         </p>
         <div class="quake-disclaimer">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
           </svg>
           <span>
-            AFAD kayıtları gecikmeli ulaşabilir. Hesaplanan süre bir tahmindir ve önceden uyarı garantisi vermez.
+            EMSC kayıtları gecikmeli ulaşabilir. Hesaplanan süre bir tahmindir ve önceden uyarı garantisi vermez.
           </span>
         </div>
       </div>
@@ -181,8 +181,8 @@
     <section class="quake-feed" aria-labelledby="quakeFeedTitle">
       <div class="quake-feed-head">
         <div>
-          <h3 id="quakeFeedTitle">AFAD kayıtları</h3>
-          <p id="quakeFeedCount">AFAD kayıtları yükleniyor…</p>
+          <h3 id="quakeFeedTitle">EMSC kayıtları</h3>
+          <p id="quakeFeedCount">EMSC kayıtları yükleniyor…</p>
         </div>
         <span class="quake-live-chip" id="quakeLive" data-state="loading">Bağlanıyor</span>
       </div>
@@ -195,8 +195,9 @@
     </section>
 
     <div class="quake-footnote">
-      <span>Kaynak: AFAD. Veriler yaklaşık 30 saniyelik önbellekle yenilenir.</span>
-      <a href="https://deprem.afad.gov.tr/" target="_blank" rel="noopener noreferrer">AFAD deprem sayfası ↗</a>
+      <span>Veriler Türkiye ve çevresiyle sınırlandırılmış ve görüntüleme için biçimlendirilmiştir.</span>
+      <a href="https://www.seismicportal.eu/fdsn-wsevent.html" target="_blank" rel="noopener noreferrer">Kaynak: EMSC-CSEM SeismicPortal ↗</a>
+      <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0 lisansı ↗</a>
     </div>
   </main>
 

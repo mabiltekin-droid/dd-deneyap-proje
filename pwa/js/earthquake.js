@@ -1,9 +1,9 @@
 /* ==========================================================================
    earthquake.js — Canlı deprem akışı ve konuma göre S dalgası geri sayımı
    --------------------------------------------------------------------------
-   • Veri: /api/earthquakes (AFAD son depremler, Vercel üzerinden önbellekli).
+   • Veri: /api/earthquakes (EMSC son depremler, Vercel üzerinden önbellekli).
    • Konum yalnızca bu cihazda saklanır; sunucuya gönderilmez.
-   • Uyarı, AFAD kaydı geldikten SONRA dalga varışına kalan süreyi gösterir.
+   • Uyarı, EMSC kaydı geldikten SONRA dalga varışına kalan süreyi gösterir.
      Deprem tahmini değildir ve 30 saniye garantisi yoktur.
    ========================================================================== */
 
@@ -11,6 +11,7 @@
   'use strict';
 
   const API = './api/earthquakes';
+  const SOURCE = 'EMSC';
   const STORE_KEY = 'deneyap.quake.v1';
   const S_WAVE_KMS = 3.5;
   const POLL_MS = 30000;
@@ -31,6 +32,7 @@
     seen: [],
     seenSet: new Set(),
     initialized: false,
+    needsSourceBaseline: false,
     events: [],
     lastFetch: 0,
     loading: false,
@@ -81,6 +83,11 @@
       : [];
     state.seenSet = new Set(state.seen);
     state.initialized = raw.initialized === true;
+    state.needsSourceBaseline = state.initialized && raw.source !== SOURCE;
+    if (state.needsSourceBaseline) {
+      state.seen = [];
+      state.seenSet.clear();
+    }
   }
 
   function saveStore() {
@@ -93,6 +100,7 @@
         minMag: state.minMag,
         hours: state.hours,
         seen: state.seen.slice(-MAX_SEEN),
+        source: state.needsSourceBaseline ? null : SOURCE,
         initialized: state.initialized
       }));
     } catch (e) {
@@ -136,9 +144,9 @@
         kind === 'online' ? 'live' : kind === 'error' ? 'offline' : 'connecting');
     }
     if (connText) {
-      if (kind === 'online') connText.textContent = 'AFAD akışı canlı';
-      else if (kind === 'loading') connText.textContent = 'AFAD akışı güncelleniyor…';
-      else connText.textContent = 'AFAD akışına ulaşılamıyor';
+      if (kind === 'online') connText.textContent = 'EMSC akışı canlı';
+      else if (kind === 'loading') connText.textContent = 'EMSC akışı güncelleniyor…';
+      else connText.textContent = 'EMSC akışına ulaşılamıyor';
     }
   }
 
@@ -273,14 +281,15 @@
 
       return '<article class="quake-item" data-level="' + level + '">' +
         '<div class="quake-mag" aria-label="Büyüklük ' + esc(mag.toFixed(1)) + '">' +
-          '<strong>' + esc(mag.toFixed(1)) + '</strong><small>' + esc(event.type || 'ML') + '</small>' +
+          '<strong>' + esc(mag.toFixed(1)) + '</strong><small>' + esc(event.type || '—') + '</small>' +
         '</div>' +
         '<div class="quake-item-main">' +
           '<div class="quake-item-title" title="' + esc(event.location) + '">' + esc(event.location) + '</div>' +
           '<div class="quake-item-meta">' +
             '<span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>' +
               esc(fmtDate(event.origin_ms)) + updated + '</span>' +
-            '<span>Derinlik ' + esc(Number(event.depth_km).toFixed(1)) + ' km</span>' +
+            (Number.isFinite(event.depth_km)
+              ? '<span>Derinlik ' + esc(event.depth_km.toFixed(1)) + ' km</span>' : '') +
             (distance != null ? '<span>Size ' + esc(fmtDistance(distance)) + '</span>' : '') +
           '</div>' +
           (eta ? '<span class="quake-eta ' + eta.cls + '">' + esc(eta.text) + '</span>' : '') +
@@ -357,7 +366,7 @@
     if (meta) {
       const dist = hypocentralKm(event);
       meta.textContent = (dist != null ? 'Odak uzaklığı ' + fmtDistance(dist) + ' · ' : '') +
-        'AFAD kaydı ' + fmtClock(event.origin_ms);
+        'EMSC kaydı ' + fmtClock(event.origin_ms);
     }
 
     alert.hidden = false;
@@ -573,7 +582,7 @@
       }
 
       const data = await res.json();
-      if (!data || data.ok !== true || !Array.isArray(data.events)) {
+      if (!data || data.ok !== true || data.source !== SOURCE || !Array.isArray(data.events)) {
         throw new Error((data && data.error) || 'Veri biçimi beklenmedik');
       }
 
@@ -585,23 +594,26 @@
           Number.isFinite(Number(event.longitude));
       });
 
-      const candidate = findAlertCandidate(events, previousSeen);
+      const candidate = state.needsSourceBaseline ? null : findAlertCandidate(events, previousSeen);
       if (candidate) showAlert(candidate.event, candidate.seconds);
 
       state.events = events;
       state.lastFetch = Date.now();
       state.initialized = true;
+      const sourceChanged = state.needsSourceBaseline;
+      state.needsSourceBaseline = false;
       markSeen(events);
+      if (sourceChanged) saveStore();
       render();
 
       setLive('online', 'Canlı');
-      setStatus('AFAD’dan ' + events.length + ' kayıt alındı · ' +
+      setStatus('EMSC’den ' + events.length + ' kayıt alındı · ' +
         fmtClock(state.lastFetch), 'ok');
     } catch (err) {
       setLive('error', 'Bağlantı yok');
       const aborted = err && err.name === 'AbortError';
       setStatus(aborted
-        ? 'AFAD isteği zaman aşımına uğradı. Birkaç saniye sonra yeniden deneyin.'
+        ? 'EMSC isteği zaman aşımına uğradı. Birkaç saniye sonra yeniden deneyin.'
         : 'Deprem akışı alınamadı. İnternet bağlantısını kontrol edin; son liste korunuyor.',
         'error');
     } finally {

@@ -1,48 +1,14 @@
-/* ==========================================================================
-   api/earthquakes.js — AFAD son deprem akışı için güvenli önbellekli röle
-   --------------------------------------------------------------------------
-   GET /api/earthquakes?hours=24&minmag=2.5&limit=100
-
-   Neden röle?
-     • deprem.afad.gov.tr tarayıcıdan CORS nedeniyle okunamayabilir.
-     • Vercel kenar önbelleği sayesinde AFAD'a gereksiz yük binmez.
-     • Yanıt alanları sadeleştirilir; ham servis yapısı istemciye taşınmaz.
-
-   Bu uç nokta deprem TAHMİNİ üretmez. Yalnızca AFAD'ın yayımladığı
-   kayıtları listeler. S dalgası varış hesabı istemcide, kullanıcı konumuyla
-   ve yaklaşık 3,5 km/s hız varsayımıyla yapılır.
-   ========================================================================== */
-
 'use strict';
 
-const AFAD_URL = 'https://deprem.afad.gov.tr/apiv2/event/filter';
+const EMSC_URL = 'https://www.seismicportal.eu/fdsnws/event/1/query';
 const TIMEOUT_MS = 9000;
 const MAX_HOURS = 72;
 const MAX_LIMIT = 200;
 
 function round(value, digits) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return null;
+  if (!Number.isFinite(value)) return null;
   const factor = Math.pow(10, digits);
-  return Math.round(n * factor) / factor;
-}
-
-/* AFAD saatleri Türkiye saatidir (UTC+3) ve saat dilimi eki içermez.
-   Sunucu hangi saat diliminde çalışırsa çalışsın doğru yorumlayalım. */
-function parseAfadDate(value) {
-  const raw = String(value || '').trim();
-  if (!raw) return NaN;
-  const hasZone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(raw);
-  return Date.parse(hasZone ? raw : raw + '+03:00');
-}
-
-/* Türkiye saatini açıkça +03:00 olarak biçimlendir. */
-function trtIso(date) {
-  const t = new Date(date.getTime() + 3 * 3600 * 1000);
-  const p = function (n) { return String(n).padStart(2, '0'); };
-  return t.getUTCFullYear() + '-' + p(t.getUTCMonth() + 1) + '-' + p(t.getUTCDate()) +
-    'T' + p(t.getUTCHours()) + ':' + p(t.getUTCMinutes()) + ':' +
-    p(t.getUTCSeconds()) + '+03:00';
+  return Math.round(value * factor) / factor;
 }
 
 function numberParam(value, fallback, min, max) {
@@ -51,34 +17,34 @@ function numberParam(value, fallback, min, max) {
   return Math.min(max, Math.max(min, n));
 }
 
-function normalizeEvent(raw) {
-  if (!raw || typeof raw !== 'object') return null;
+function normalizeEvent(feature) {
+  const props = feature?.properties;
+  const coords = feature?.geometry?.coordinates;
+  if (!props || feature.geometry?.type !== 'Point' || !Array.isArray(coords)) return null;
 
-  const originMs = parseAfadDate(raw.date);
-  const lat = Number(raw.latitude);
-  const lng = Number(raw.longitude);
-  const mag = Number(raw.magnitude);
+  const [lng, lat] = coords;
+  const originMs = Date.parse(props.time);
+  const mag = props.mag;
+  const id = feature.id ?? props.unid;
+  if (!id || !Number.isFinite(originMs) || !Number.isFinite(lat) ||
+      !Number.isFinite(lng) || !Number.isFinite(mag)) return null;
 
-  if (!Number.isFinite(originMs) || !Number.isFinite(lat) ||
-      !Number.isFinite(lng) || !Number.isFinite(mag)) {
-    return null;
-  }
-
+  const updatedMs = Date.parse(props.lastupdate);
   return {
-    id: String(raw.eventID || ''),
+    id: 'emsc:' + id,
     time: new Date(originMs).toISOString(),
     origin_ms: originMs,
     latitude: round(lat, 5),
     longitude: round(lng, 5),
-    depth_km: round(raw.depth, 2),
+    depth_km: round(props.depth, 2),
     magnitude: round(mag, 1),
-    type: String(raw.type || ''),
-    location: String(raw.location || 'Konum bilgisi yok'),
-    country: raw.country ? String(raw.country) : '',
-    province: raw.province ? String(raw.province) : '',
-    district: raw.district ? String(raw.district) : '',
-    updated: raw.isEventUpdate === true,
-    updated_at: raw.lastUpdateDate ? String(raw.lastUpdateDate) : null
+    type: String(props.magtype || '').toUpperCase(),
+    location: String(props.flynn_region || 'Konum bilgisi yok'),
+    country: '',
+    province: '',
+    district: '',
+    updated: false,
+    updated_at: Number.isFinite(updatedMs) ? new Date(updatedMs).toISOString() : null
   };
 }
 
@@ -104,59 +70,69 @@ module.exports = async function handler(req, res) {
   const limit = Math.round(numberParam(q.limit, 100, 1, MAX_LIMIT));
 
   const now = new Date();
-  const start = new Date(now.getTime() - hours * 3600 * 1000);
-  const upstreamUrl = AFAD_URL +
-    '?start=' + encodeURIComponent(trtIso(start)) +
-    '&end=' + encodeURIComponent(trtIso(now)) +
-    '&minmag=' + encodeURIComponent(minmag.toFixed(1)) +
-    '&limit=' + limit;
+  const start = new Date(now.getTime() - hours * 3600000);
+  const url = new URL(EMSC_URL);
+  url.search = new URLSearchParams({
+    starttime: start.toISOString(),
+    endtime: now.toISOString(),
+    minlatitude: '35.5',
+    maxlatitude: '42.5',
+    minlongitude: '25.5',
+    maxlongitude: '45',
+    minmagnitude: String(minmag),
+    orderby: 'time',
+    limit: String(limit),
+    catalog: 'EMSC-RTS',
+    format: 'json',
+    nodata: '204'
+  });
 
   const controller = new AbortController();
   const timer = setTimeout(function () { controller.abort(); }, TIMEOUT_MS);
 
   try {
-    const upstream = await fetch(upstreamUrl, {
-      method: 'GET',
+    const upstream = await fetch(url, {
       signal: controller.signal,
-      headers: {
-        'Accept': 'application/json',
-        'User-Agent': 'DeneyapEvKoruma/2.23 (+https://ddproje.vercel.app)'
-      }
+      headers: { Accept: 'application/json' }
     });
 
     if (!upstream.ok) {
       res.setHeader('Cache-Control', 'no-store');
       res.status(502).json({
         ok: false,
-        error: 'AFAD servisi yanıt vermedi',
+        error: 'EMSC servisi yanıt vermedi',
         upstream_status: upstream.status
       });
       return;
     }
 
-    const data = await upstream.json();
-    const list = Array.isArray(data) ? data : (Array.isArray(data.events) ? data.events : []);
-    const events = list.map(normalizeEvent).filter(Boolean)
-      .sort(function (a, b) { return b.origin_ms - a.origin_ms; })
-      .slice(0, limit);
+    let events = [];
+    if (upstream.status !== 204) {
+      const data = await upstream.json();
+      if (data?.type !== 'FeatureCollection' || !Array.isArray(data.features)) {
+        throw new Error('EMSC yanıt biçimi geçersiz');
+      }
+      events = data.features.map(normalizeEvent).filter(Boolean)
+        .sort((a, b) => b.origin_ms - a.origin_ms)
+        .slice(0, limit);
+    }
 
-    /* 30 saniyelik kenar önbelleği: canlıya yakın kalır, AFAD'ı korur. */
     res.setHeader('Cache-Control', 'public, max-age=15, s-maxage=30, stale-while-revalidate=60');
     res.status(200).json({
       ok: true,
-      source: 'AFAD',
+      source: 'EMSC',
       generated_at: new Date().toISOString(),
       window_hours: hours,
       min_magnitude: minmag,
       count: events.length,
-      events: events
+      events
     });
   } catch (err) {
     res.setHeader('Cache-Control', 'no-store');
     const aborted = err && err.name === 'AbortError';
     res.status(aborted ? 504 : 502).json({
       ok: false,
-      error: aborted ? 'AFAD isteği zaman aşımına uğradı' : 'AFAD verisi alınamadı'
+      error: aborted ? 'EMSC isteği zaman aşımına uğradı' : 'EMSC verisi alınamadı'
     });
   } finally {
     clearTimeout(timer);
