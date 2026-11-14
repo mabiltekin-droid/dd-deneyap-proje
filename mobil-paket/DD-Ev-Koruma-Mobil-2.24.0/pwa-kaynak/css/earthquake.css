@@ -1,0 +1,779 @@
+/* ==========================================================================
+   earthquake.css — Canlı deprem izleme sayfası
+   --------------------------------------------------------------------------
+   Tasarım dili redesign.css ile aynı: sıcak krem zemin, orman yeşili
+   vurgular, yumuşak kartlar. Bu dosya redesign.css'ten sonra yüklenir.
+   ========================================================================== */
+
+.quake-page {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  padding: 2rem clamp(1rem, 3vw, 2.5rem) 4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+
+/* ------------------------------------------------------------------ Hero */
+
+.quake-hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(210px, 0.55fr);
+  align-items: center;
+  gap: clamp(1rem, 3vw, 2.5rem);
+  padding: clamp(1.35rem, 3vw, 2.4rem);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background:
+    radial-gradient(480px 260px at 92% 0%, var(--primary-soft), transparent 72%),
+    var(--surface);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.quake-hero::after {
+  content: "";
+  position: absolute;
+  inset: auto -60px -110px auto;
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  border: 1px solid var(--border-bright);
+  opacity: 0.42;
+  pointer-events: none;
+}
+
+.quake-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.7rem;
+  color: var(--primary);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.quake-pulse {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--primary);
+  box-shadow: 0 0 0 0 var(--primary-glow);
+  animation: quake-pulse 2s ease-out infinite;
+}
+
+@keyframes quake-pulse {
+  0% { box-shadow: 0 0 0 0 var(--primary-glow); }
+  70% { box-shadow: 0 0 0 11px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+.quake-hero h2 {
+  margin: 0 0 0.55rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 3.4vw, 2.7rem);
+  line-height: 1.06;
+  letter-spacing: -0.035em;
+  color: var(--text);
+}
+
+.quake-lead {
+  max-width: 58ch;
+  margin: 0;
+  color: var(--text-dim);
+  font-size: clamp(0.92rem, 1.25vw, 1.02rem);
+  line-height: 1.62;
+}
+
+.quake-disclaimer {
+  display: flex;
+  gap: 0.55rem;
+  margin-top: 1.1rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid color-mix(in srgb, var(--warn) 24%, var(--border));
+  border-radius: var(--radius-xs);
+  background: color-mix(in srgb, var(--warn) 8%, var(--surface));
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.quake-disclaimer svg {
+  flex: 0 0 auto !important;
+  width: 16px !important;
+  height: 16px !important;
+  margin-top: 0.12rem;
+  color: var(--warn);
+}
+
+/* Radar / geri sayım halkası */
+
+.quake-radar {
+  position: relative;
+  justify-self: center;
+  width: min(210px, 46vw);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background:
+    repeating-radial-gradient(circle at center,
+      transparent 0 36px,
+      color-mix(in srgb, var(--primary) 16%, transparent) 37px 38px);
+}
+
+.quake-radar::before,
+.quake-radar::after {
+  content: "";
+  position: absolute;
+  inset: 14%;
+  border-radius: 50%;
+  border: 1px solid var(--border-bright);
+  opacity: 0.55;
+}
+
+.quake-radar::after {
+  inset: 29%;
+  opacity: 0.8;
+}
+
+.quake-radar-core {
+  position: relative;
+  z-index: 1;
+  width: 58%;
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: var(--card-rim), 0 16px 32px -22px rgba(27, 40, 34, 0.5);
+}
+
+.quake-radar-core strong {
+  font-size: clamp(2rem, 5vw, 2.9rem);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.06em;
+  color: var(--primary);
+}
+
+.quake-radar-core span {
+  margin-top: 0.2rem;
+  color: var(--text-muted);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* --------------------------------------------------------------- Uyarı bandı */
+
+.quake-alert {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.15rem;
+  border: 1px solid color-mix(in srgb, var(--danger) 38%, var(--border));
+  border-radius: var(--radius);
+  background:
+    linear-gradient(120deg,
+      color-mix(in srgb, var(--danger) 12%, var(--surface)),
+      color-mix(in srgb, var(--terracotta) 10%, var(--surface)));
+  box-shadow: 0 18px 42px -30px color-mix(in srgb, var(--danger) 48%, transparent);
+  animation: quake-alert-in 0.35s ease both;
+}
+
+.quake-alert[hidden] { display: none; }
+
+@keyframes quake-alert-in {
+  from { opacity: 0; transform: translateY(-7px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.quake-alert-count {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  min-width: 82px;
+  padding: 0.4rem 0.65rem;
+  border-radius: 16px;
+  background: var(--danger);
+  color: #fff;
+  box-shadow: 0 10px 24px -16px var(--danger);
+}
+
+.quake-alert-count strong {
+  font-size: 2rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.06em;
+}
+
+.quake-alert-count span {
+  font-size: 0.7rem;
+  font-weight: 800;
+  opacity: 0.9;
+}
+
+.quake-alert-copy strong {
+  display: block;
+  margin-bottom: 0.2rem;
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.quake-alert-copy p {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.quake-alert-copy .quake-alert-meta {
+  margin-top: 0.3rem;
+  color: var(--danger);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+/* -------------------------------------------------------------- Araç çubuğu */
+
+.quake-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.75rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.quake-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.32rem;
+  min-width: 124px;
+}
+
+.quake-field > label {
+  color: var(--text-muted);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.quake-field select {
+  height: 40px;
+  padding: 0 2rem 0 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-alt);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.quake-field select:focus-visible,
+.quake-btn:focus-visible,
+.quake-switch:focus-within {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.quake-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 40px;
+  padding: 0 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-alt);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 750;
+  cursor: pointer;
+  transition: transform 0.16s ease, background 0.16s ease, border-color 0.16s ease;
+}
+
+.quake-btn:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-bright);
+}
+
+.quake-btn:active { transform: scale(0.97); }
+
+.quake-btn svg {
+  flex: 0 0 auto !important;
+  width: 16px !important;
+  height: 16px !important;
+}
+
+.quake-btn[disabled] {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.quake-toolbar-spacer { flex: 1 1 12px; }
+
+.quake-loc-state {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 150px;
+  padding: 0 0.15rem 0.1rem;
+}
+
+.quake-loc-state small {
+  color: var(--text-muted);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.quake-loc-state strong {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.quake-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 40px;
+  padding: 0 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-alt);
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  user-select: none;
+}
+
+.quake-switch input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.quake-switch-track {
+  position: relative;
+  width: 34px;
+  height: 20px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--border-bright);
+  transition: background 0.18s ease;
+}
+
+.quake-switch-track::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 0.18s ease;
+}
+
+.quake-switch input:checked + .quake-switch-track {
+  background: var(--primary);
+}
+
+.quake-switch input:checked + .quake-switch-track::after {
+  transform: translateX(14px);
+}
+
+/* ------------------------------------------------------------------ Akış */
+
+.quake-feed {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.quake-feed-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.05rem 1.2rem 0.9rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.quake-feed-head h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.12rem;
+  letter-spacing: -0.02em;
+}
+
+.quake-feed-head p {
+  margin: 0.16rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+}
+
+.quake-live-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 0 0 auto;
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.quake-live-chip::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.quake-live-chip[data-state="error"] {
+  background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+  color: var(--danger);
+}
+
+.quake-live-chip[data-state="loading"] {
+  background: var(--surface-alt);
+  color: var(--text-muted);
+}
+
+.quake-list { display: flex; flex-direction: column; }
+
+.quake-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.95rem 1.2rem;
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background 0.16s ease;
+}
+
+.quake-item:last-child { border-bottom: 0; }
+.quake-item:hover { background: color-mix(in srgb, var(--primary) 4%, var(--surface)); }
+
+.quake-mag {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 54px;
+  flex: 0 0 auto;
+  border: 1px solid color-mix(in srgb, var(--primary) 24%, var(--border));
+  border-radius: 16px;
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.quake-mag strong {
+  font-size: 1.08rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.04em;
+}
+
+.quake-mag small {
+  margin-top: 0.18rem;
+  font-size: 0.56rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  opacity: 0.75;
+}
+
+.quake-item[data-level="mid"] .quake-mag {
+  border-color: color-mix(in srgb, var(--warn) 30%, var(--border));
+  background: color-mix(in srgb, var(--warn) 11%, var(--surface));
+  color: var(--warn);
+}
+
+.quake-item[data-level="high"] .quake-mag {
+  border-color: color-mix(in srgb, var(--terracotta) 36%, var(--border));
+  background: color-mix(in srgb, var(--terracotta) 12%, var(--surface));
+  color: var(--terracotta);
+}
+
+.quake-item[data-level="critical"] .quake-mag {
+  border-color: color-mix(in srgb, var(--danger) 40%, var(--border));
+  background: color-mix(in srgb, var(--danger) 11%, var(--surface));
+  color: var(--danger);
+}
+
+.quake-item-main { min-width: 0; }
+
+.quake-item-title {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 750;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quake-item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.28rem 0.55rem;
+  margin-top: 0.22rem;
+  color: var(--text-muted);
+  font-size: 0.73rem;
+}
+
+.quake-item-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.quake-item-meta svg {
+  flex: 0 0 auto !important;
+  width: 12px !important;
+  height: 12px !important;
+  opacity: 0.75;
+}
+
+.quake-eta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  margin-top: 0.4rem;
+  padding: 0.24rem 0.5rem;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: 0.69rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.quake-eta.is-past {
+  background: var(--surface-alt);
+  color: var(--text-muted);
+}
+
+.quake-eta.is-soon {
+  background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+  color: var(--danger);
+}
+
+.quake-map {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-alt);
+  color: var(--text-dim);
+  transition: color 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+}
+
+.quake-map:hover {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.quake-map svg {
+  flex: 0 0 auto !important;
+  width: 16px !important;
+  height: 16px !important;
+}
+
+.quake-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 2.8rem 1.2rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.quake-empty svg {
+  flex: 0 0 auto !important;
+  width: 32px !important;
+  height: 32px !important;
+  color: var(--border-bright);
+}
+
+.quake-empty strong {
+  color: var(--text-dim);
+  font-size: 0.9rem;
+}
+
+.quake-empty p {
+  max-width: 38ch;
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.quake-skeleton {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.9rem;
+  align-items: center;
+  padding: 0.95rem 1.2rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.quake-skeleton:last-child { border-bottom: 0; }
+
+.quake-sk-circle,
+.quake-sk-line {
+  border-radius: 12px;
+  background: linear-gradient(90deg,
+    var(--surface-alt) 0%,
+    color-mix(in srgb, var(--surface-alt) 55%, var(--surface)) 50%,
+    var(--surface-alt) 100%);
+  background-size: 200% 100%;
+  animation: quake-shimmer 1.3s linear infinite;
+}
+
+.quake-sk-circle { width: 54px; height: 54px; border-radius: 16px; }
+.quake-sk-line { height: 11px; border-radius: 999px; }
+.quake-sk-line + .quake-sk-line { margin-top: 0.5rem; width: 62%; }
+
+@keyframes quake-shimmer {
+  to { background-position: -200% 0; }
+}
+
+/* --------------------------------------------------------------- Alt bilgi */
+
+.quake-status {
+  min-height: 1.2rem;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+.quake-status[data-kind="error"] { color: var(--danger); }
+.quake-status[data-kind="ok"] { color: var(--primary); }
+
+.quake-footnote {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding-top: 0.2rem;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
+.quake-footnote a {
+  color: var(--primary);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.quake-footnote a:hover { text-decoration: underline; }
+
+/* ------------------------------------------------------------------ Mobil */
+
+@media (max-width: 860px) {
+  .quake-page {
+    padding: 1.15rem 0.9rem calc(var(--nav-h) + 1.6rem);
+  }
+
+  .quake-hero {
+    grid-template-columns: 1fr;
+    padding: 1.2rem;
+  }
+
+  .quake-radar {
+    display: grid !important;
+    width: 130px !important;
+    height: 130px !important;
+    margin: 0.8rem auto 0.4rem !important;
+  }
+
+  .quake-toolbar {
+    align-items: stretch;
+  }
+
+  .quake-field {
+    flex: 1 1 132px;
+  }
+
+  .quake-toolbar-spacer { display: none; }
+
+  .quake-loc-state {
+    flex: 1 1 100%;
+    order: 5;
+  }
+
+  .quake-switch {
+    flex: 1 1 100%;
+    justify-content: space-between;
+  }
+
+  .quake-btn {
+    flex: 1 1 auto;
+  }
+
+  .quake-item {
+    grid-template-columns: auto minmax(0, 1fr);
+    padding: 0.9rem 1rem;
+  }
+
+  .quake-map { display: inline-flex !important; }
+}
+
+@media (max-width: 420px) {
+  .quake-hero h2 { font-size: 1.6rem; }
+  .quake-item-title { white-space: normal; }
+  .quake-alert { grid-template-columns: 1fr; }
+  .quake-alert-count { justify-self: start; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quake-pulse,
+  .quake-sk-circle,
+  .quake-sk-line { animation: none; }
+  .quake-alert { animation: none; }
+}
+
+/* Çok düşük güçlü cihazlarda animasyonlu arka planı kapat. */
+[data-tier="low"] .quake-hero::after { display: none; }

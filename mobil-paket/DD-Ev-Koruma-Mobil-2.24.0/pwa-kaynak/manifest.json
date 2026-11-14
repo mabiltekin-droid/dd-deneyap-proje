@@ -1,0 +1,48 @@
+{
+  "name": "DD Ev Koruma",
+  "short_name": "DD Ev Koruma",
+  "description": "Gaz, duman, su ve hareket sensörlerini tek ekranda izleyin.",
+  "id": "./index.html",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "any",
+  "lang": "tr",
+  "dir": "ltr",
+  "categories": ["utilities", "smart-home", "lifestyle"],
+  "background_color": "#f7f2e4",
+  "theme_color": "#f7f2e4",
+  "shortcuts": [
+    {
+      "name": "Canlı Sensörler",
+      "url": "./index.html#telemetry",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Ayarlar",
+      "url": "./settings.html",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

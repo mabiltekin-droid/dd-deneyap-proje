@@ -1,0 +1,15 @@
+﻿DD Ev Koruma - Mobil Paket
+Sürüm: 2.24.0 (versionCode 5)
+Tarih: 14.11.2026
+
+İçerik:
+- DeneyapEvKoruma-2.24.0-release.apk  -> Telefona doğrudan kurulum
+- DeneyapEvKoruma-2.24.0-release.aab  -> Google Play / kapalı test yüklemesi
+- android-kaynak                       -> Android uygulama kaynakları
+- pwa-kaynak                           -> PWA / mobil web kaynakları
+
+Not: android/keystore.properties güvenlik nedeniyle bu kopyaya dahil edilmedi.
+İmzalı yeni APK/AAB üretmek için asıl projedeki keystore yapılandırmasını kullanın.
+
+Asıl proje:
+C:\Users\mabil\OneDrive\Desktop\dd uygulama\dd-deneyap-proje

@@ -1,0 +1,880 @@
+/* ==========================================================================
+   config.js — Cyber-Console Yapılandırması, Tema, Ses Sentezleyici,
+   Haptik Geri Bildirim ve Etkileşim Motoru.
+   Bu dosya diğer tüm modüllerden önce yüklenir.
+   ========================================================================== */
+
+(function () {
+  'use strict';
+
+  const App = (window.App = window.App || {});
+
+  App.VERSION = '2.31.0';
+  App.STORAGE_KEY = 'deneyap.settings.v2';
+
+  /* Evrensel Ortam Tespiti: Standalone PWA / Normal Web ayrımı */
+  App.isStandalone = (function () {
+    return (window.matchMedia && (
+             window.matchMedia('(display-mode: standalone)').matches ||
+             window.matchMedia('(display-mode: window-controls-overlay)').matches
+           )) ||
+           navigator.standalone === true; // iOS Safari PWA
+  })();
+
+  App.DEFAULTS = {
+    /* --- Taşıma (transport) seçimi ---
+       'http' : Cihazın kendi web sunucusuna doğrudan fetch.
+                Yalnızca cihazın kendi ağından (http://192.168.4.1) açılınca
+                çalışır; bu panel https üzerinden açıldığında tarayıcı mixed
+                content engeline takılır.
+       'mqtt' : Cihaz bir MQTT yayıncısına bağlanır, panel de aynı yayıncıya
+                WebSocket ile bağlanır. https üzerinden de sorunsuz çalışır.
+       Boş bırakılırsa mqttUrl varsa otomatik 'mqtt' seçilir.            */
+    transport: 'mqtt',
+
+    /* --- MQTT / bulut rölesi ---
+       Bu ayarlar firmware'deki MQTT_HOST / MQTT_USER / MQTT_PASS /
+       MQTT_TOPIC değerleriyle AYNI olmalı. */
+    mqttUrl: 'wss://broker.emqx.io:8084/mqtt',  /* yayıncının WebSocket adresi */
+    mqttUrl2: 'wss://broker.hivemq.com:8884/mqtt', /* yedek yayıncı: firmware'deki
+        MQTT_HOST_FALLBACK ile AYNI broker'a işaret eder. Birincil erişilemezse
+        panel yedeğe geçer, birincil düzelince kendiliğinden ona döner. */
+    mqttUser: '',
+    mqttPass: '',
+    mqttTopic: 'deneyap/kart1',    /* firmware'deki MQTT_TOPIC ile aynı olmalı */
+
+    host: '',          // yalnızca 'http' taşımasında kullanılır
+    token: '',         // config.h içinde API_TOKEN tanımlıysa gerekli
+    pollMs: 2000,      // http taşımasında yoklama periyodu (ms); mqtt'te itme kullanılır
+
+    /* --- Firebase (hesaplar, roller, cihaz mülkiyeti) ---
+       Firebase Console > Proje Ayarları > Genel > "Web uygulaması" config objesi.
+       Bu değerler GİZLİ DEĞİLDİR: Firebase config public'tir, güvenlik
+       Firestore Rules ile sağlanır. */
+    fbConfig: {
+      apiKey: "AIzaSyDxnQQRqJQTc2071ILIt3s1U0GgVPAjc8I",
+      authDomain: "ddproje-9f594.firebaseapp.com",
+      projectId: "ddproje-9f594",
+      storageBucket: "ddproje-9f594.firebasestorage.app",
+      messagingSenderId: "849622636824",
+      appId: "1:849622636824:web:55771068b6f8ffb76e266d",
+      measurementId: "G-0JYK3RJ89B"
+    },
+
+    gasWarn: 250,      // donanım eşikleriyle senkronize
+    gasDanger: 400,
+    rainInvert: false, // true = ters mantık
+    autoControl: true, // otomatik fan, servo ve güvenlik müdahalesi
+    theme: 'light',    // 'dark' | 'amoled' | 'light' | 'system'
+    soundEnabled: true,// Web Audio API sesli geri bildirim
+    vibrateEnabled: true, // Haptik titreşim desteği
+    aiVoice: true,     // Tarayıcı konuşma sentezi (Web Speech) ile Türkçe sesli uyarı/anons
+
+    /* --- Yeni donanım özelliklerinin yerel aynası (cihaz NVS ile senkron) ---
+       Bu değerler cihazda tutulur; panel yalnızca son bilinen hâli yansıtır. */
+    vibEnabled: true,     // titreşim/sarsıntı algılama
+    vibAlarm: true,       // titreşim => tam alarm (siren + aktüatör + Telegram)
+    vibUseDigital: true,  // dijital DO girişi kullanılsın
+    vibUseAnalog: false,  // analog AO girişi kullanılsın (4 pinli modül)
+    vibTg: true,          // titreşimde Telegram bildirimi
+    sndVolume: 70,         // cihaz hoparlör ses seviyesi (0..100)
+
+    /* Alev sensörü (IR Flame) */
+    flameEnabled: true,
+    flameAlarm: true,
+    flameUseDigital: true,
+    flameUseAnalog: false,
+    flameTg: true,
+
+    /* --- Modlar & Zamanlanmış Otomasyon ---
+       mode        : aktif çalışma modu ('home' | 'night' | 'away' | 'off')
+       modeAuto    : zamanlanmış otomatik mod geçişi etkin mi
+       modeSync    : moda göre cihaz (otomasyon + ses) ayarları uygulansın mı
+       modeSchedule: [{ id, days:[0..6], start:'HH:MM', end:'HH:MM', mode, enabled }] */
+    mode: 'home',
+    modeAuto: false,
+    modeSync: true,
+    modeSchedule: [],
+
+    /* --- Panel bildirimleri (PWA yerel; cihaza GÖNDERİLMEZ) ---
+       Masaüstü/telefon sistem bildirimi + Web Push aboneliği tercihleri.
+       Bkz. pwa/js/notify.js */
+    notifyEnabled: false,  // sistem bildirimleri açık mı (izin verildikten sonra)
+    notifySound: true,     // bildirim sesli mi
+    notifyGas: true,       // gaz tehlikesi (danger)
+    notifyWarn: true,      // gaz uyarı seviyesi (warning)
+    notifyFlood: true,     // su baskını
+    notifyFlame: true,     // alev / yangın
+    notifyVib: true,       // sarsıntı / kurcalama
+    notifyOffline: false,  // cihaz bağlantısı kesildi
+    pushEnabled: false,     // arka plan Web Push aboneliği (Vercel gönderici)
+
+    /* --- Çoklu cihaz (device manager) ---
+       activeDeviceId: panelin şu an konuştuğu cihaz (boş = otomatik/ilk görülen).
+       deviceTopics:   cihaz kimliği -> MQTT konusu eşlemesi (her kart kendi
+                       konusunu yayınlar; firmware MQTT_TOPIC ile aynı olmalı).
+       Yereldir: konu bilgisi tarayıcıya özgüdür. Bkz. pwa/js/devices.js */
+    activeDeviceId: '',
+    deviceTopics: {},
+
+    /* --- Konum (gün doğumu/batımı zamanlaması; yalnızca bu cihazda saklanır).
+       null = konum yok → kurallar yazılı saati kullanır. --- */
+    latitude: null,
+    longitude: null,
+
+    /* --- Oturum güvenliği ---
+       sessionIdleMin: hareketsizlikte otomatik çıkış (dakika; 0 = kapalı).
+       Yalnızca kullanıcı ETKİLEŞİMİ sayılır (telemetri akışı oturumu canlı
+       tutmaz). Kritik işlemler için "taze giriş" (step-up) kuralı sunucu
+       tarafında ayrıca zorlanır: bkz. firestore.rules → freshSignIn(). */
+    sessionIdleMin: 30
+  };
+
+  App.GAS_FS_MAX = 10000; // Sensör tam skalası (10.000 PPM)
+
+  /* --------------------------------------------------------- şifre politikası
+     Firebase en az 6 karakter ister; konsol daha güçlü bir eşik uygular:
+     8+ karakter, en az bir harf ve bir rakam. Kayıt, yönetici kullanıcı
+     oluşturma ve şifre değiştirme aynı işlevi kullanır.
+     Dönüş: sorun varsa açıklama metni, yoksa boş metin (''). */
+  App.passwordIssue = function (pw) {
+    const s = String(pw == null ? '' : pw);
+    if (!s) return 'Şifre girin.';
+    if (s.length < 8) return 'Şifre en az 8 karakter olmalı.';
+    if (!/[A-Za-zÇĞİÖŞÜçğıöşü]/.test(s)) return 'Şifre en az bir harf içermeli.';
+    if (!/[0-9]/.test(s)) return 'Şifre en az bir rakam içermeli.';
+    if (/(1234|123456|password|parola|qwerty|deneyap)/i.test(s)) {
+      return 'Şifre çok tahmin edilebilir; farklı bir şifre seçin.';
+    }
+    return '';
+  };
+
+  /* ------------------------------------------------------- App Check (App Check) */
+  /* reCAPTCHA v3 site anahtarı. BOŞ = App Check kapalı (varsayılan, güvenli).
+     Doldurulunca her Firestore isteğine kanıt eklenir; konsolda "Enforce"
+     açılana kadar istekleri ENGELLEMEZ, bu yüzden kademeli açılabilir.
+     Kurulum adımları: FIREBASE.md §8 */
+  App.APP_CHECK_KEY = '';
+  /* localhost'ta hata ayıklama jetonu üretilsin mi (konsola yazdırılır). */
+  App.APP_CHECK_DEBUG = true;
+
+  /* ------------------------------------------- gün doğumu / gün batımı ----
+     Verilen gün için, konumdan (enlem/boylam) gün doğumu ve gün batımını
+     hesaplar. Yerel saate göre DAKİKA (0–1439) döndürür. Kutup günü/gecesinde
+     değerler null olur. Algoritma: NOAA'nın kısa güneş konumu formülü
+     (~±2 dk hata — zamanlanmış otomasyon için fazlasıyla yeterli).
+     Dönüş: { sunriseMin, sunsetMin, sunrise: Date, sunset: Date } | null */
+  App.sunTimes = function (date, lat, lon) {
+    /* null/undefined/'' → konum yok. Number(null) 0 olduğu için açıkça ele alınır;
+       yoksa "konum girilmemiş" hâli sıfır-nokta sanılıp yanlış saat üretilirdi. */
+    if (lat === null || lat === undefined || lat === '' ||
+        lon === null || lon === undefined || lon === '') return null;
+    const la = Number(lat), lo = Number(lon);
+    if (!isFinite(la) || !isFinite(lo) || Math.abs(la) > 89) return null;
+
+    const d = (date instanceof Date) ? date : new Date(date == null ? Date.now() : date);
+    const RAD = Math.PI / 180;
+    /* J2000'den (2000-01-01 00:00 UT) geçen GÜN sayısı — yerel gece yarısına göre.
+       J2000 sabiti 2451545.0 = 2000-01-01 12:00 UT olduğu için +0.5 EKLENMEZ;
+       eklenirse hesap 12 saat kayar (gün doğumu gece yarısına düşer). */
+    const gunMs = Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
+    const n = Math.round((gunMs - Date.UTC(2000, 0, 1)) / 86400000);
+
+    const Js = n - lo / 360;                                  /* ortalama güneş öğlesi */
+    const M = ((357.5291 + 0.98560028 * Js) % 360 + 360) % 360;
+    const Mr = M * RAD;
+    const C = 1.9148 * Math.sin(Mr) + 0.02 * Math.sin(2 * Mr) + 0.0003 * Math.sin(3 * Mr);
+    const L = (((M + C + 180 + 102.9372) % 360) + 360) % 360 * RAD;
+    const Jt = 2451545.0 + Js + 0.0053 * Math.sin(Mr) - 0.0069 * Math.sin(2 * L);
+
+    const sinD = Math.sin(L) * Math.sin(23.4397 * RAD);
+    const cosD = Math.cos(Math.asin(sinD));
+    const cosW = (Math.sin(-0.833 * RAD) - Math.sin(la * RAD) * sinD) /
+                 (Math.cos(la * RAD) * cosD);
+
+    /* |cosW| > 1 → güneş hiç doğmuyor/batmıyor (kutup bölgesi) */
+    if (!(cosW >= -1 && cosW <= 1)) {
+      return { sunriseMin: null, sunsetMin: null, sunrise: null, sunset: null };
+    }
+
+    const W = Math.acos(cosW) * 180 / Math.PI;
+    const julianToDate = function (J) { return new Date((J - 2440587.5) * 86400000); };
+    const dakika = function (x) { return x.getHours() * 60 + x.getMinutes(); };
+
+    const rise = julianToDate(Jt - W / 360);
+    const set = julianToDate(Jt + W / 360);
+    return {
+      sunriseMin: dakika(rise), sunsetMin: dakika(set),
+      sunrise: rise, sunset: set
+    };
+  };
+
+  /* ------------------------------------------------------- Web Push (VAPID) */
+  /* Genel anahtar (private DEĞİL) — tarayıcı aboneliği bununla imzalanır.
+     Özel anahtar yalnızca göndericide (Vercel ortam değişkeni) durur.
+     Üretmek için:  node tools/gen-vapid.js
+     Boşsa panelde "arka plan bildirimi" düğmesi kapalı görünür. */
+  App.VAPID_PUBLIC_KEY = 'BEuziLAOcLECKODrGCd8KiVvtNFqYJYZiLedzsILXFDqhVPZRVVcOV2tii7NUBGAeHWcSpgpx8kusgzEbvHGlh0';
+  /* ------------------------------------------------------------ ayar deposu */
+
+  function loadSettings() {
+    let raw = null;
+    try {
+      raw = localStorage.getItem(App.STORAGE_KEY);
+    } catch (e) {
+      console.warn('[ayarlar] localStorage erişilemiyor, varsayılanlar kullanılacak.', e);
+      return Object.assign({}, App.DEFAULTS);
+    }
+    if (!raw) return Object.assign({}, App.DEFAULTS);
+    try {
+      const parsed = JSON.parse(raw);
+      const out = Object.assign({}, App.DEFAULTS);
+      Object.keys(App.DEFAULTS).forEach((k) => {
+        if (parsed[k] !== undefined && parsed[k] !== null) out[k] = parsed[k];
+      });
+      return out;
+    } catch (e) {
+      console.warn('[ayarlar] bozuk JSON, varsayılanlara dönülüyor.', e);
+      return Object.assign({}, App.DEFAULTS);
+    }
+  }
+
+  let settings = loadSettings();
+
+  App.settings = function () { return Object.assign({}, settings); };
+
+  App.saveSettings = function (patch) {
+    settings = Object.assign({}, settings, patch || {});
+    try {
+      localStorage.setItem(App.STORAGE_KEY, JSON.stringify(settings));
+    } catch (e) {
+      console.warn('[ayarlar] kaydedilemedi.', e);
+    }
+    return App.settings();
+  };
+
+  App.resetSettings = function () {
+    try { localStorage.removeItem(App.STORAGE_KEY); } catch (e) { /* yoksay */ }
+    settings = Object.assign({}, App.DEFAULTS);
+    return App.settings();
+  };
+
+  App.baseUrl = function () {
+    return (settings.host || location.origin).replace(/\/+$/, '');
+  };
+
+  /* ------------------------------------------------------------ SVG ikonları */
+  /* Harici font/CDN bağımlılığı olmaksızın hafif, yüksek netlikte SVG kütüphanesi */
+  App.ICONS = {
+    sun: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>',
+    moon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/><path d="M19 3v4M21 5h-4"/></svg>',
+    dashboard: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>',
+    settings: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>',
+    flame: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 14.5A3.5 3.5 0 0 0 12 18a3.5 3.5 0 0 0 3.5-3.5c0-2-1.5-3-2-4.5-.5 1.5-1.5 2-1.5 2s-.5-1.5-1-2.5c-.8 1.5-2.5 3-2.5 5Z"/><path d="M12 2c1 3 4 5.5 5.5 8.5a7 7 0 1 1-13 3.5c0-4 3.5-7.5 5-10.5.5 2 2 3 2.5 3 .5-.5 1-2.5 0-4.5Z"/></svg>',
+    cloudRain: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M16 14v6M8 14v6M12 16v6"/></svg>',
+    fan: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="2"/><path d="M12 10a4 4 0 0 0-4-4c-2.2 0-3 1.8-1.5 3.5L10 12"/><path d="M14 12a4 4 0 0 0 4-4c0-2.2-1.8-3-3.5-1.5L12 10"/><path d="M12 14a4 4 0 0 0 4 4c2.2 0 3-1.8 1.5-3.5L14 12"/><path d="M10 12a4 4 0 0 0-4 4c0 2.2 1.8 3 3.5 1.5L12 14"/></svg>',
+    pump: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/><path d="M8 14h2l2-3 2 5 2-2h2"/></svg>',
+    bell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M2 8c.5-1.5 1.5-2.5 3-3M22 8c-.5-1.5-1.5-2.5-3-3"/></svg>',
+    zap: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
+    window: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 3v18M3 12h18"/></svg>',
+    blinds: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 3v18M12 3v18M17 3v18"/></svg>',
+    shieldAlert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
+    clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+    globe: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>',
+    chip: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="8" y="8" width="8" height="8" rx="1"/><line x1="4" y1="9" x2="2" y2="9"/><line x1="4" y1="15" x2="2" y2="15"/><line x1="20" y1="9" x2="22" y2="9"/><line x1="20" y1="15" x2="22" y2="15"/><line x1="9" y1="4" x2="9" y2="2"/><line x1="15" y1="4" x2="15" y2="2"/><line x1="9" y1="20" x2="9" y2="22"/><line x1="15" y1="20" x2="15" y2="22"/></svg>',
+    terminal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>',
+    database: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>',
+    download: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
+    upload: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>',
+    activity: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>'
+  };
+
+  /* ------------------------------------------------------------------ tema */
+
+  function prefersDark() {
+    return window.matchMedia &&
+           window.matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+
+  App.isDark = function (mode) {
+    const m = mode || settings.theme || 'light';
+    if (m === 'amoled' || m === 'dark') return true;
+    if (m === 'light') return false;
+    return prefersDark();
+  };
+
+  App.applyTheme = function (mode) {
+    const target = mode || settings.theme || 'light';
+    const isDarkTheme = App.isDark(target);
+    const resolved = (target === 'system') ? (prefersDark() ? 'dark' : 'light') : target;
+
+    document.documentElement.setAttribute('data-theme', resolved);
+    document.documentElement.setAttribute('data-color-scheme', isDarkTheme ? 'dark' : 'light');
+
+    const meta = document.getElementById('metaThemeColor');
+    if (meta) {
+      if (resolved === 'amoled') meta.setAttribute('content', '#050806');
+      else if (isDarkTheme) meta.setAttribute('content', '#0f1714');
+      else meta.setAttribute('content', '#f6f2e9');
+    }
+
+    const toggleBtn = document.getElementById('themeToggleBtn');
+    if (toggleBtn) {
+      toggleBtn.setAttribute('aria-checked', isDarkTheme ? 'true' : 'false');
+      toggleBtn.setAttribute('aria-label', isDarkTheme ? 'Aydınlık temaya geç' : 'Karanlık temaya geç');
+    }
+
+    /* NOT: Eski kod burada #themeIcon adlı bir element arayıp içine
+       güneş/ay SVG'si yazıyordu; o element hiçbir HTML'de yok ve tema
+       düğmesi zaten animasyonlu .sky-pill (sun-orb / moon-orb + aria-checked)
+       ile durumu gösteriyor. Ölü kod kaldırıldı. */
+
+    return isDarkTheme;
+  };
+
+  /* matchMedia dinleyicisi yalnızca bir kez eklenir; son kaydedilen cb
+     çağrılır. Yoksa her sayfa geçişinde yeni bir dinleyici birikirdi. */
+  let systemThemeMq = null;
+  let systemThemeCb = null;
+
+  App.onSystemThemeChange = function (cb) {
+    if (!window.matchMedia) return;
+    systemThemeCb = cb;
+    if (systemThemeMq) return;
+    systemThemeMq = window.matchMedia('(prefers-color-scheme: dark)');
+    const handler = function () {
+      if ((App.settings().theme || 'system') === 'system') {
+        const isDark = App.applyTheme('system');
+        if (typeof systemThemeCb === 'function') systemThemeCb(isDark);
+      }
+    };
+    if (systemThemeMq.addEventListener) systemThemeMq.addEventListener('change', handler);
+    else if (systemThemeMq.addListener) systemThemeMq.addListener(handler);
+  };
+
+  /* ------------------------------------------- Web Audio API Sentezleyici */
+  /* Harici ses dosyası indirmeden tarayıcının yerleşik osilatörü ile ses üretir */
+
+  let audioCtx = null;
+  function getAudioCtx() {
+    if (!audioCtx && (window.AudioContext || window.webkitAudioContext)) {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      audioCtx = new AudioCtx();
+    }
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+    return audioCtx;
+  }
+
+  function unlockAudio() {
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+    // iOS Safari SpeechSynthesis hazırlığı (boş utterance)
+    if (window.speechSynthesis && window.speechSynthesis.speak) {
+      try {
+        const silent = new SpeechSynthesisUtterance('');
+        silent.volume = 0;
+        window.speechSynthesis.speak(silent);
+      } catch (e) {}
+    }
+    window.removeEventListener('pointerdown', unlockAudio);
+    window.removeEventListener('touchstart', unlockAudio);
+  }
+  window.addEventListener('pointerdown', unlockAudio, { passive: true });
+  window.addEventListener('touchstart', unlockAudio, { passive: true });
+
+  App.sound = {
+    click: function () {
+      if (!settings.soundEnabled) return;
+      try {
+        const ctx = getAudioCtx();
+        if (!ctx) return;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        const now = ctx.currentTime;
+        osc.frequency.setValueAtTime(820, now);
+        osc.frequency.exponentialRampToValueAtTime(360, now + 0.035);
+        gain.gain.setValueAtTime(0.06, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.035);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.035);
+      } catch (e) { /* yoksay */ }
+    },
+
+    chime: function () {
+      if (!settings.soundEnabled) return;
+      try {
+        const ctx = getAudioCtx();
+        if (!ctx) return;
+        const freqs = [523.25, 659.25, 783.99]; // C5, E5, G5 akoru
+        freqs.forEach(function (f, i) {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          const t = ctx.currentTime + i * 0.055;
+          osc.frequency.setValueAtTime(f, t);
+          gain.gain.setValueAtTime(0.05, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(t);
+          osc.stop(t + 0.16);
+        });
+      } catch (e) { /* yoksay */ }
+    },
+
+    /* FM Osilatör Sentezleyicisi (Reactor FM Synthesis Alarm) */
+    alarm: function (intensity) {
+      if (!settings.soundEnabled) return;
+      try {
+        const ctx = getAudioCtx();
+        if (!ctx) return;
+
+        const now = ctx.currentTime;
+        // 0.0 - 1.0 arası normalize tehlike şiddeti (varsayılan: 0.7)
+        const norm = typeof intensity === 'number' ? Math.max(0, Math.min(1.0, intensity)) : 0.7;
+
+        // Taşıyıcı (Carrier) & Modülatör (Modulator) Osilatörleri
+        const carrier = ctx.createOscillator();
+        const modulator = ctx.createOscillator();
+        const modGain = ctx.createGain();
+        const masterGain = ctx.createGain();
+
+        carrier.type = 'triangle';
+        modulator.type = 'sawtooth';
+
+        // Reaktif reaktör parametreleri (PPM yükseldikçe tırmanan ton ve vuruş)
+        const baseFreq = 260 + norm * 340;        // 260Hz .. 600Hz
+        const modFreq = 8 + norm * 26;            // 8Hz .. 34Hz modülasyon vuruşu
+        const modIndex = 110 + norm * 320;        // Modülasyon derinliği
+        const dur = 0.28 + norm * 0.12;           // Süre (0.28s .. 0.40s)
+
+        carrier.frequency.setValueAtTime(baseFreq, now);
+        modulator.frequency.setValueAtTime(modFreq, now);
+        modulator.frequency.exponentialRampToValueAtTime(modFreq * 1.4, now + dur);
+
+        modGain.gain.setValueAtTime(modIndex, now);
+        modGain.gain.linearRampToValueAtTime(0, now + dur);
+
+        // FM Bağlantısı: Modülatör -> ModGain -> Carrier Frekansı
+        modulator.connect(modGain);
+        modGain.connect(carrier.frequency);
+
+        // Çıkış Zarfı (Düşük ses seviyesi: gain <= 0.08)
+        masterGain.gain.setValueAtTime(0.001, now);
+        masterGain.gain.linearRampToValueAtTime(0.075, now + 0.035);
+        masterGain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+
+        carrier.connect(masterGain);
+        masterGain.connect(ctx.destination);
+
+        carrier.start(now);
+        modulator.start(now);
+        carrier.stop(now + dur);
+        modulator.stop(now + dur);
+      } catch (e) { /* yoksay */ }
+    }
+  };
+
+  App.haptic = function (ms) {
+    if (settings.vibrateEnabled && navigator.vibrate) {
+      try { navigator.vibrate(ms || 15); } catch (e) {}
+    } else if (settings.vibrateEnabled) {
+      // iOS Safari için görsel haptik fallback (aktif butona hafif pulse)
+      const activeEl = document.activeElement;
+      if (activeEl && activeEl.classList && !activeEl.classList.contains('haptic-pulse')) {
+        activeEl.classList.add('haptic-pulse');
+        setTimeout(function () { activeEl.classList.remove('haptic-pulse'); }, 180);
+      }
+    }
+  };
+
+  /* ------------------------------------------------- AI sesli anons (TTS) --
+     Tarayıcının konuşma sentezi (Web Speech API) ile Türkçe sesli uyarı.
+     "AI ile sesli" gereksinimini karşılar; cihazın kendi hoparlörü ise
+     firmware tarafında siren/ton çalar. aiVoice kapalıysa hiç konuşmaz. */
+  let voiceMuted = false;
+  App.voice = {
+    available: function () {
+      return typeof window !== 'undefined' && 'speechSynthesis' in window &&
+             typeof window.SpeechSynthesisUtterance === 'function';
+    },
+    _last: { text: '', ts: 0 },
+    speak: function (text, opts) {
+      if (!settings.aiVoice) return;
+      if (voiceMuted && !(opts && opts.force)) return;
+      if (!App.voice.available()) return;
+      const t = String(text || '').trim();
+      if (!t) return;
+      const now = Date.now();
+      /* Aynı cümleyi 12 sn içinde tekrar söyleme (bildirim spam'ini önler). */
+      if (t === App.voice._last.text && now - App.voice._last.ts < 12000) return;
+      App.voice._last = { text: t, ts: now };
+      try {
+        const u = new SpeechSynthesisUtterance(t);
+        u.lang = 'tr-TR';
+        u.rate = 1.02;
+        u.pitch = 1.0;
+        u.volume = 1.0;
+        window.speechSynthesis.speak(u);
+      } catch (e) { /* yoksay */ }
+    },
+    stop: function () {
+      try { if (App.voice.available()) window.speechSynthesis.cancel(); } catch (e) { /* yoksay */ }
+    },
+    mute: function (m) { voiceMuted = !!m; if (voiceMuted) App.voice.stop(); },
+    isMuted: function () { return voiceMuted; }
+  };
+
+  /* ---------------------------------- 3D Card Tilt, Glare & Parallaks */
+
+  App.init3DTilt = function () {
+    const hasCoarsePointer = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+    const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+    if (hasCoarsePointer || isTouch) {
+      return; // Dokunmatik ekranlarda kart tilt olaylarını hiç bağlama
+    }
+
+    const reducedMotion = window.matchMedia &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reducedMotion) return;
+
+    const cards = document.querySelectorAll('.tilt-card');
+    if (!cards.length) return;
+
+    cards.forEach(function (card) {
+      let glare = card.querySelector('.card-glare');
+      if (!glare) {
+        glare = document.createElement('div');
+        glare.className = 'card-glare';
+        card.appendChild(glare);
+      }
+
+      let ticking = false;
+      let lastX = 0, lastY = 0;
+
+      function updateCardTransform() {
+        if (App.Tier && App.Tier.isLow()) {
+          ticking = false;
+          return;
+        }
+
+        const isUltra = App.Tier && App.Tier.isUltra();
+        const maxDeg = isUltra ? 5.5 : 2.5;
+        const zDepth = isUltra ? 8 : 2;
+        const glareOpacity = isUltra ? 0.16 : 0.08;
+
+        const rect = card.getBoundingClientRect();
+        const px = ((lastX - rect.left) / rect.width) * 2 - 1;   // -1 .. +1
+        const py = ((lastY - rect.top) / rect.height) * 2 - 1;  // -1 .. +1
+
+        const rotX = -py * maxDeg;
+        const rotY = px * maxDeg;
+
+        card.style.transition = 'none';
+        card.style.transform = 'perspective(900px) rotateX(' + rotX.toFixed(2) + 'deg) rotateY(' + rotY.toFixed(2) + 'deg) translateZ(' + zDepth + 'px)';
+        glare.style.background = 'radial-gradient(circle at ' + (lastX - rect.left) + 'px ' + (lastY - rect.top) + 'px, rgba(255,255,255,' + glareOpacity + ') 0%, transparent 60%)';
+        glare.style.opacity = '1';
+
+        ticking = false;
+      }
+
+      function onMouseMove(e) {
+        if (App.Tier && App.Tier.isLow()) return;
+        lastX = e.clientX;
+        lastY = e.clientY;
+
+        if (!ticking) {
+          ticking = true;
+          requestAnimationFrame(updateCardTransform);
+        }
+      }
+
+      function onMouseEnter(e) {
+        if (App.Tier && App.Tier.isLow()) return;
+        card.style.transition = 'none';
+        lastX = e.clientX;
+        lastY = e.clientY;
+        updateCardTransform();
+      }
+
+      function onMouseLeave() {
+        ticking = false;
+        card.style.transition = 'transform 0.55s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease';
+        card.style.transform = 'perspective(900px) rotateX(0deg) rotateY(0deg) translateZ(0)';
+        glare.style.transition = 'opacity 0.4s ease';
+        glare.style.opacity = '0';
+      }
+
+      card.addEventListener('mouseenter', onMouseEnter, { passive: true });
+      card.addEventListener('mousemove', onMouseMove, { passive: true });
+      card.addEventListener('mouseleave', onMouseLeave, { passive: true });
+    });
+
+    if (App.Tier && App.Tier.onChange) {
+      App.Tier.onChange(function (tier) {
+        if (tier === 'low') {
+          cards.forEach(function (card) {
+            card.style.transform = 'none';
+            const glare = card.querySelector('.card-glare');
+            if (glare) glare.style.opacity = '0';
+          });
+        }
+      });
+    }
+  };
+
+  /* Parallax ve scroll yönetimi tek motor olarak parallax.js'e devredilmiştir */
+  App.initParallax = function () {
+    if (App.Parallax && typeof App.Parallax.reinit === 'function') {
+      App.Parallax.reinit();
+    }
+  };
+
+  let rippleBound = false;
+  App.initRipple = function () {
+    if (rippleBound) return;
+    rippleBound = true;
+    document.addEventListener('click', function (e) {
+      const btn = e.target.closest('.btn, .icon-btn');
+      if (!btn) return;
+      App.sound.click();
+      App.haptic(15);
+
+      const circle = document.createElement('span');
+      circle.className = 'ripple-effect';
+      const rect = btn.getBoundingClientRect();
+      const diameter = Math.max(rect.width, rect.height);
+      circle.style.width = circle.style.height = diameter + 'px';
+      circle.style.left = (e.clientX - rect.left - diameter / 2) + 'px';
+      circle.style.top = (e.clientY - rect.top - diameter / 2) + 'px';
+      btn.appendChild(circle);
+
+      setTimeout(function () {
+        if (circle.parentNode) circle.parentNode.removeChild(circle);
+      }, 550);
+    }, { passive: true });
+  };
+
+  /* ------------------------------------------------------- Service Worker */
+
+  App.registerServiceWorker = function () {
+    if (!('serviceWorker' in navigator)) {
+      return Promise.resolve(null);
+    }
+
+    /* Güncelleme denetimini sayfa açılışında ve görünür olduğunda yap. */
+    function checkForUpdate(reg) {
+      if (!reg || document.visibilityState !== 'visible') return;
+      reg.update().catch(function (err) {
+        console.warn('[sw] güncelleme denetlenemedi:', err && err.message);
+      });
+    }
+
+    return navigator.serviceWorker.register('./sw.js', {
+      scope: './',
+      updateViaCache: 'none'
+    })
+      .then(function (reg) {
+        checkForUpdate(reg);
+        if (App._swCheckTimer) clearInterval(App._swCheckTimer);
+        App._swCheckTimer = setInterval(function () { checkForUpdate(reg); }, 5 * 60 * 1000);
+        if (!App._swVisibilityBound) {
+          App._swVisibilityBound = true;
+          document.addEventListener('visibilitychange', function () {
+            checkForUpdate(reg);
+          });
+        }
+        return reg;
+      })
+      .catch(function (err) {
+        console.error('[sw] kayıt hatası:', err);
+        return null;
+      });
+  };
+
+  App.activateUpdate = function (reg) {
+    if (!reg) return false;
+    const waiting = reg.waiting || reg.installing;
+    if (!waiting) return false;
+    waiting.postMessage({ type: 'SKIP_WAITING' });
+    return true;
+  };
+
+  /* ----------------------------------------------------------- biçimlendirme */
+
+  App.fmtDuration = function (ms) {
+    if (typeof ms !== 'number' || ms < 0) return '—';
+    const s = Math.floor(ms / 1000);
+    const d = Math.floor(s / 86400);
+    const h = Math.floor((s % 86400) / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    if (d) return d + 'g ' + h + 's ' + m + 'd';
+    if (h) return h + 's ' + m + 'd ' + sec + 'sn';
+    if (m) return m + 'd ' + sec + 'sn';
+    return sec + 'sn';
+  };
+
+  App.fmtBytes = function (b) {
+    if (typeof b !== 'number' || b <= 0) return '—';
+    if (b >= 1048576) return (b / 1048576).toFixed(1) + ' MB';
+    if (b >= 1024) return Math.round(b / 1024) + ' KB';
+    return b + ' B';
+  };
+
+  App.fmtAgo = function (ts) {
+    if (!ts) return '—';
+    const s = Math.round((Date.now() - ts) / 1000);
+    if (s < 2) return 'az önce';
+    if (s < 60) return s + ' sn önce';
+    const m = Math.floor(s / 60);
+    if (m < 60) return m + ' dk önce';
+    const h = Math.floor(m / 60);
+    if (h < 24) return h + ' sa önce';
+    return Math.floor(h / 24) + ' gün önce';
+  };
+
+  /* --------------------------------------------------------------- toast */
+
+  let toastTimer = null;
+  App.toast = function (message, opts) {
+    const o = opts || {};
+    const el = document.getElementById('toast');
+    if (!el) return;
+    el.textContent = '';
+    el.className = 'toast' + (o.kind ? ' ' + o.kind : '');
+
+    const iconSpan = document.createElement('span');
+    iconSpan.className = 'toast-icon';
+    if (o.kind === 'danger') iconSpan.innerHTML = App.ICONS.shieldAlert;
+    else if (o.kind === 'warn') iconSpan.innerHTML = App.ICONS.bell;
+    else iconSpan.innerHTML = App.ICONS.zap;
+    el.appendChild(iconSpan);
+
+    const txtSpan = document.createElement('span');
+    txtSpan.className = 'toast-msg';
+    txtSpan.textContent = message;
+    el.appendChild(txtSpan);
+
+    if (o.actionLabel && typeof o.onAction === 'function') {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'btn sm primary';
+      b.textContent = o.actionLabel;
+      b.addEventListener('click', function () {
+        o.onAction();
+        App.toast('');
+      });
+      el.appendChild(b);
+    }
+    el.hidden = false;
+    clearTimeout(toastTimer);
+    if (!o.sticky) {
+      toastTimer = setTimeout(function () { el.hidden = true; }, o.duration || 4000);
+    }
+  };
+
+  App.hideToast = function () {
+    const el = document.getElementById('toast');
+    if (el) el.hidden = true;
+    clearTimeout(toastTimer);
+  };
+
+  /* Bağlantı rozetini güncelle */
+  App.setConnBadge = function (state, text) {
+    const badge = document.getElementById('conn');
+    if (!badge) return;
+    badge.setAttribute('data-state', state);
+    const label = badge.querySelector('#connText');
+    if (label) {
+      label.textContent = text;
+      return;
+    }
+    badge.innerHTML = '<span class="dot" aria-hidden="true"></span><span id="connText">' + String(text).replace(/</g, '&lt;') + '</span>';
+  };
+
+  App.renderDeviceInfo = function (s) {
+    const put = function (id, value) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = value;
+    };
+    put('fw', s.fw ? 'v' + s.fw : '—');
+    put('ip', s.ip || '—');
+    put('rssi', typeof s.rssi === 'number' ? s.rssi + ' dBm' : '—');
+    put('heap', App.fmtBytes(s.heap));
+    put('uptime', App.fmtDuration(s.uptime));
+    put('fsState', s.fs ? 'LittleFS Aktif' : 'API-Only');
+  };
+
+  /* -------------------------------------------------- PWA İndirme / Yükleme */
+  App.setupPwaInstall = function (btnId) {
+    const btn = document.getElementById(btnId || 'pwaInstallBtn');
+    if (!btn) return;
+
+    if (App.isStandalone) {
+      btn.hidden = true;
+      btn.style.display = 'none';
+      return;
+    }
+
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();
+      window.__pwaDeferredPrompt = e;
+      btn.hidden = false;
+      btn.style.display = '';
+      btn.classList.add('has-prompt');
+    });
+
+    window.addEventListener('appinstalled', function () {
+      window.__pwaDeferredPrompt = null;
+      btn.classList.remove('has-prompt');
+      btn.hidden = true;
+      btn.style.display = 'none';
+      App.toast('Ev Koruma başarıyla yüklendi! 🎉', { kind: 'ok' });
+    });
+
+    btn.addEventListener('click', async function () {
+      if (typeof App.haptic === 'function') App.haptic(25);
+      if (typeof App.sound === 'function') App.sound('toggle');
+
+      const promptEvent = window.__pwaDeferredPrompt;
+      if (promptEvent) {
+        promptEvent.prompt();
+        try {
+          const choice = await promptEvent.userChoice;
+          if (choice && choice.outcome === 'accepted') {
+            App.toast('Uygulama yükleniyor...', { kind: 'ok' });
+            btn.hidden = true;
+            btn.style.display = 'none';
+          }
+        } catch (err) {
+          console.warn('[pwa] seçim hatası:', err);
+        }
+        window.__pwaDeferredPrompt = null;
+        btn.classList.remove('has-prompt');
+        return;
+      }
+
+      if (App.isStandalone) {
+        btn.hidden = true;
+        btn.style.display = 'none';
+        App.toast('Uygulama zaten cihazınızda kurulu ve bağımsız çalışıyor.', { kind: 'ok' });
+        return;
+      }
+
+      const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+      if (isIos) {
+        App.toast('iOS Safari: "Paylaş" ➔ "Ana Ekrana Ekle" butonuna dokunun.', { kind: 'warn', duration: 6000 });
+      } else {
+        App.toast('Tarayıcı menüsünden (⋮) "Uygulamayı Yükle" veya "Ana ekrana ekle"yi seçebilirsiniz.', { kind: 'ok', duration: 5000 });
+      }
+    });
+  };
+})();
+

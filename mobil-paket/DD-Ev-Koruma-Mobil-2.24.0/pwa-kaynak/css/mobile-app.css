@@ -1,0 +1,889 @@
+/* ==========================================================================
+   Deneyap Ev Koruma - Mobil uygulama kabuğu
+   --------------------------------------------------------------------------
+   Bu dosya yalnızca mobilde devreye girer. Amaç:
+     - Masaüstü SCADA başlığını telefon ekranında sıkışmaktan kurtarmak
+     - Çalışma modlarını başparmakla erişilebilir bir şeride taşımak
+     - Alt gezinmeyi 5 ana bölüme çıkarmak
+     - Android WebView içinde yerel "Uygulama" menüsünü göstermek
+   Masaüstü görünümü değişmez.
+   ========================================================================== */
+
+/* Bu öğeler masaüstünde görünmez; mobil kurallar açar. */
+.mobile-quickbar,
+.mobile-native-menu,
+.mobile-cockpit-head {
+  display: none;
+}
+
+/* --------------------------------------------------- Çevrimdışı şeridi ---
+   Alt gezinmenin hemen üstünde duran, sayfa kaydırılınca kaybolmayan
+   ince uyarı. Yalnızca bağlantı koptuğunda veya önbellek gösterilirken
+   görünür; "Yeniden dene" yoklamayı hemen başlatır. */
+.dd-offline-bar {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  z-index: 130;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.6rem 0.65rem 0.6rem 0.8rem;
+  border: 1px solid rgba(245, 158, 11, 0.55);
+  border-radius: 14px;
+  background: rgba(69, 39, 6, 0.97);
+  color: #fde68a;
+  font-size: 0.76rem;
+  line-height: 1.3;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.dd-offline-bar[hidden] {
+  display: none;
+}
+
+.dd-offline-bar[data-kind="cache"] {
+  border-color: rgba(56, 189, 248, 0.5);
+  background: rgba(12, 36, 55, 0.97);
+  color: #bae6fd;
+}
+
+.dd-offline-dot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f59e0b;
+  box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.16);
+}
+
+.dd-offline-bar[data-kind="cache"] .dd-offline-dot {
+  background: #38bdf8;
+  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.16);
+}
+
+.dd-offline-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.dd-offline-btn {
+  flex: 0 0 auto;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  padding: 0.32rem 0.62rem;
+  cursor: pointer;
+}
+
+.dd-offline-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+@media (max-width: 980px) {
+  .dd-offline-bar {
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@media (max-width: 980px) {
+  /* Marka alanı her zaman nefes alsın; eylemler markayı ezmesin. */
+  .glass-header .brand {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .glass-header .brand-meta {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .glass-header .header-actions {
+    flex: 0 0 auto;
+    max-width: 68%;
+  }
+
+  .glass-header .brand-meta h1 {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 980px) {
+  /* Telefon/tablet başlığı: yalnızca marka, tema ve hesap kalsın. */
+  .glass-header {
+    gap: 0.45rem;
+    padding-left: 0.7rem;
+    padding-right: 0.7rem;
+    /* Sayfa kaydırılırken arkadaki metinler başlığın içinden görünmesin. */
+    background: var(--bg);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .glass-header .header-actions > .mode-switch,
+  .glass-header .header-actions > #voiceBtn,
+  .glass-header .header-actions > #voiceHint,
+  .glass-header .header-actions > .nav-settings-pill,
+  .glass-header .header-actions > #pwaInstallBtn {
+    display: none !important;
+  }
+
+  .glass-header .header-actions {
+    gap: 0.35rem;
+    max-width: none;
+  }
+
+  .glass-header .brand-icon {
+    width: 30px;
+    height: 30px;
+  }
+
+  .glass-header .brand-meta h1 {
+    font-size: 0.9rem;
+    letter-spacing: -0.01em;
+  }
+
+  .glass-header .brand-meta .conn {
+    font-size: 0.68rem;
+  }
+
+  /* Telefonda pazarlama hero'su yerine canlı kokpit gösterilir. */
+  .hero-section {
+    min-height: auto;
+    padding-top: 0;
+  }
+
+  .hero-section .parallax-stage {
+    display: none !important;
+  }
+
+  .hero-section .hero-telemetry-hud {
+    width: 100%;
+    max-width: none;
+    padding: 0.8rem 0.7rem 0.45rem;
+  }
+
+  .mobile-cockpit-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.1rem 0.1rem 0.65rem;
+  }
+
+  .mch-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-width: 0;
+  }
+
+  .mch-kicker {
+    font-family: var(--font-mono);
+    font-size: 0.58rem;
+    letter-spacing: 0.18em;
+    color: var(--primary);
+    opacity: 0.9;
+  }
+
+  .mch-title {
+    font-size: 1.05rem;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    color: var(--text);
+  }
+
+  .mch-live {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.32rem;
+    flex: 0 0 auto;
+    padding: 0.3rem 0.55rem;
+    border: 1px solid color-mix(in srgb, var(--text-dim) 45%, transparent);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--text-dim) 8%, transparent);
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+    font-size: 0.58rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+  }
+
+  .mch-live[data-state="normal"] {
+    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    color: var(--accent);
+  }
+
+  .mch-live[data-state="warning"] {
+    border-color: color-mix(in srgb, var(--warn) 50%, transparent);
+    background: color-mix(in srgb, var(--warn) 10%, transparent);
+    color: var(--warn);
+  }
+
+  .mch-live[data-state="danger"],
+  .mch-live[data-state="offline"] {
+    border-color: color-mix(in srgb, var(--danger) 50%, transparent);
+    background: color-mix(in srgb, var(--danger) 10%, transparent);
+    color: var(--danger);
+  }
+
+  .mch-live-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-dim);
+    box-shadow: 0 0 10px var(--text-dim);
+    animation: mchPulse 1.8s ease-in-out infinite;
+  }
+
+  .mch-live[data-state="normal"] .mch-live-dot {
+    background: var(--accent);
+    box-shadow: 0 0 10px var(--accent);
+  }
+
+  .mch-live[data-state="warning"] .mch-live-dot {
+    background: var(--warn);
+    box-shadow: 0 0 10px var(--warn);
+  }
+
+  .mch-live[data-state="danger"] .mch-live-dot,
+  .mch-live[data-state="offline"] .mch-live-dot {
+    background: var(--danger);
+    box-shadow: 0 0 10px var(--danger);
+  }
+
+  @keyframes mchPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.55; transform: scale(0.8); }
+  }
+
+  /* Mobilde GPU'yu yoran ağır arka plan katmanlarını ve parıltıları kapat */
+  #ambientGlow,
+  .crt-overlay,
+  .cyber-backdrop,
+  .ambient-orb,
+  .parallax-grid {
+    display: none !important;
+  }
+
+  /* Dokunmatik gecikmesini (300ms delay) tamamen kaldır */
+  *, *::before, *::after {
+    touch-action: manipulation;
+  }
+
+  html, body {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    text-rendering: optimizeSpeed;
+  }
+
+  /* Mobilde pahalı blur filtrelerini kapat, hafif ve katı renklere geç */
+  .glass-header,
+  .mobile-quickbar,
+  .bottom-nav,
+  .panoramic-card,
+  .widget,
+  .command-card,
+  .analytics-card,
+  .eventlog-card,
+  .diagnostics-card,
+  .dd-offline-bar {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  /* Orantılı Canlı Kokpit ve Başlık */
+  .hero-section .hero-telemetry-hud {
+    padding: 0.5rem 0.65rem 0.25rem !important;
+  }
+
+  .hero-section .hero-telemetry-hud .widget {
+    padding: 0.75rem 0.85rem !important;
+    border-radius: 14px !important;
+  }
+
+  .w-header {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.65rem !important;
+    margin-bottom: 0.6rem !important;
+  }
+
+  .w-hero-icon {
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 9px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .w-hero-icon svg {
+    width: 16px !important;
+    height: 16px !important;
+  }
+
+  .w-state {
+    font-size: 1.15rem !important;
+    line-height: 1.2 !important;
+    font-weight: 700 !important;
+  }
+
+  .w-since {
+    font-size: 0.68rem !important;
+    line-height: 1.2 !important;
+  }
+
+  .w-items {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.4rem !important;
+  }
+
+  .w-item {
+    padding: 0.45rem 0.6rem !important;
+    border-radius: 10px !important;
+  }
+
+  .w-item-label {
+    font-size: 0.62rem !important;
+    margin-bottom: 0.15rem !important;
+  }
+
+  .w-item-val {
+    font-size: 0.88rem !important;
+    font-weight: 700 !important;
+  }
+
+  .hero-section .scroll-cue {
+    display: none;
+  }
+
+  /* Bölüm Başlıkları Orantısı */
+  .scrolly-section {
+    padding-top: 1.1rem !important;
+  }
+
+  .section-badge-header {
+    margin-bottom: 0.45rem !important;
+  }
+
+  .sec-badge {
+    font-size: 0.58rem !important;
+    padding: 0.18rem 0.45rem !important;
+    letter-spacing: 0.1em !important;
+  }
+
+  .sec-title {
+    font-size: 1.18rem !important;
+    line-height: 1.25 !important;
+    margin-top: 0.2rem !important;
+    margin-bottom: 0.2rem !important;
+  }
+
+  .sec-subtitle {
+    font-size: 0.76rem !important;
+    line-height: 1.3 !important;
+    margin-bottom: 0.65rem !important;
+  }
+
+  /* Kartlar ve Sensör Panelleri */
+  .telemetry-panoramic-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.65rem !important;
+  }
+
+  .panoramic-card,
+  .command-card,
+  .analytics-card,
+  .eventlog-card,
+  .diagnostics-card {
+    padding: 0.75rem 0.85rem !important;
+    border-radius: 14px !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04) !important;
+  }
+
+  .card-head {
+    margin-bottom: 0.6rem !important;
+  }
+
+  .card-head h3 {
+    font-size: 0.92rem !important;
+  }
+
+  .telemetry-readout-row {
+    grid-template-columns: 1fr !important;
+    gap: 0.65rem !important;
+  }
+
+  .gas-readout-wrap .gas-ppm {
+    font-size: 1.5rem !important;
+    line-height: 1.1 !important;
+  }
+
+  .gas-gauge-wrap,
+  .gauge-wrap {
+    max-width: 130px !important;
+    margin: 0.4rem auto !important;
+  }
+
+  /* Kontroller ve Butonlar */
+  .controls-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.65rem !important;
+  }
+
+  .ctrl-group {
+    padding: 0.65rem 0.75rem !important;
+    border-radius: 12px !important;
+    margin-bottom: 0.55rem !important;
+  }
+
+  .ctrl-group h4 {
+    font-size: 0.82rem !important;
+    margin-bottom: 0.35rem !important;
+  }
+
+  .ctrl-group .btn-row,
+  .ctrl-group .btn-group {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 0.35rem !important;
+  }
+
+  .ctrl-group .btn {
+    min-height: 38px !important;
+    padding: 0.35rem 0.65rem !important;
+    font-size: 0.76rem !important;
+    border-radius: 8px !important;
+    flex: 1 1 auto !important;
+  }
+
+  /* Grafikler */
+  .hist-canvas-wrap,
+  .analytics-card .hist-canvas-wrap {
+    min-height: 150px !important;
+    max-height: 180px !important;
+    padding: 0.4rem !important;
+  }
+
+  /* Başparmakla mod değiştirme şeridi */
+  .mobile-quickbar {
+    display: block;
+    position: relative;
+    z-index: 44;
+    padding: 0.35rem 0.6rem 0.4rem;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+
+  body.settings-studio-body .mobile-quickbar {
+    display: none;
+  }
+
+  [data-theme="light"] .mobile-quickbar {
+    background: var(--surface);
+  }
+
+  .mobile-quickbar-inner {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-width: 0;
+  }
+
+  .mobile-quickbar .mode-switch {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    justify-content: space-between;
+    padding: 3px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .mobile-quickbar .mode-switch::-webkit-scrollbar {
+    display: none;
+  }
+
+  .mobile-quickbar .mode-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    justify-content: center;
+    gap: 0.28rem;
+    padding: 0.36rem 0.28rem;
+    font-size: 0.7rem;
+    white-space: nowrap;
+  }
+
+  .mobile-quickbar .mode-btn .mode-txt {
+    display: inline;
+    max-width: 5.2rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.68rem;
+  }
+
+  .mobile-quickbar .mode-btn .mode-ico svg {
+    width: 0.9rem;
+    height: 0.9rem;
+  }
+
+  .mobile-quickbar .mode-sep {
+    display: none;
+  }
+
+  .mobile-native-menu {
+    flex: 0 0 auto;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface-alt);
+    color: var(--text);
+    cursor: pointer;
+    place-items: center;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html.android-app .mobile-native-menu {
+    display: inline-grid;
+  }
+
+  .mobile-native-menu svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .mobile-native-menu:active {
+    transform: scale(0.94);
+  }
+
+  /* Alt gezinme: 6 ana bölüm, kompakt ve standart 56px yükseklik */
+  .bottom-nav {
+    height: 56px !important;
+    min-height: 56px !important;
+    background: var(--surface) !important;
+    border-top: 1px solid var(--border) !important;
+    padding-top: 2px !important;
+    padding-bottom: max(2px, env(safe-area-inset-bottom, 0px)) !important;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.04) !important;
+  }
+
+  .bottom-nav a {
+    min-height: 48px !important;
+    gap: 1px !important;
+    padding: 3px 1px 2px !important;
+    font-size: 0.58rem !important;
+    letter-spacing: -0.01em;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .bottom-nav a svg {
+    width: 19px !important;
+    height: 19px !important;
+  }
+
+  .bottom-nav a span {
+    font-size: 0.58rem !important;
+    max-width: 50px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .bottom-nav a.active::after {
+    width: 18px !important;
+    height: 2px !important;
+  }
+
+  .bottom-nav a:active svg {
+    transform: scale(0.88);
+  }
+
+  /* Mobilde masaüstü footer link kalabalığını gizle, sadeleştir */
+  .scada-footer {
+    padding: 1rem 0.8rem calc(70px + env(safe-area-inset-bottom, 0px)) !important;
+    margin-top: 1.2rem !important;
+    text-align: center !important;
+    border-top: 1px solid var(--border) !important;
+  }
+
+  .scada-footer .footer-inner,
+  .scada-footer .footer-nav,
+  .scada-footer .footer-links,
+  .scada-footer .footer-col {
+    display: none !important;
+  }
+
+  /* Mobilde yatay taşan eski kontrol grupları kendi içinde kaydırılsın. */
+  .blackbox-actions,
+  .btn-row,
+  .social-row {
+    max-width: 100%;
+  }
+
+  /* Dokunmatikte gecikmeli çift dokunma yakınlaştırmasını azalt. */
+  .bottom-nav a,
+  .mode-btn,
+  .mobile-native-menu,
+  .btn,
+  button {
+    touch-action: manipulation;
+  }
+}
+
+@media (max-width: 480px) {
+  .glass-header {
+    padding-left: 0.55rem;
+    padding-right: 0.55rem;
+  }
+
+  .glass-header .brand-meta h1 {
+    font-size: 0.84rem;
+  }
+
+  .glass-header .brand-meta .conn {
+    font-size: 0.64rem;
+  }
+
+  .glass-header .acct-pill {
+    padding: 0.36rem 0.5rem;
+  }
+
+  .glass-header .acct-pill span:not(.acct-role) {
+    max-width: 54px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-quickbar {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+
+  .mobile-quickbar .mode-btn {
+    padding-left: 0.24rem;
+    padding-right: 0.24rem;
+  }
+
+  .mobile-quickbar .mode-btn .mode-txt {
+    max-width: 4.4rem;
+    font-size: 0.66rem;
+  }
+
+  .bottom-nav a {
+    font-size: 0.6rem;
+  }
+
+  .bottom-nav a svg {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+@media (max-width: 380px) {
+  .glass-header .brand-meta h1 {
+    font-size: 0.78rem;
+  }
+
+  .glass-header .acct-pill span:not(.acct-role) {
+    display: none;
+  }
+
+  .glass-header .acct-pill {
+    padding: 0.36rem;
+  }
+
+  .mobile-quickbar .mode-btn {
+    gap: 0.16rem;
+    padding-left: 0.14rem;
+    padding-right: 0.14rem;
+  }
+
+  /* Küçük telefonlarda da mod etiketleri kalsın; yalnızca çok dar
+     ekranlarda yer açmak için gizlenir. */
+  .mobile-quickbar .mode-btn .mode-txt {
+    display: inline;
+    max-width: 3.7rem;
+    font-size: 0.6rem;
+  }
+
+  .mobile-quickbar .mode-btn .mode-ico svg {
+    width: 0.95rem;
+    height: 0.95rem;
+  }
+
+  .bottom-nav a {
+    font-size: 0.56rem;
+  }
+}
+
+@media (max-width: 345px) {
+  .mobile-quickbar .mode-btn .mode-txt {
+    display: none;
+  }
+}
+
+/* Performans ve Orantı İyileştirmeleri (WebView & Mobil Akış Hızlandırma) */
+@media (max-width: 980px) {
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  /* GPU render yükünü azaltma ve kaydırma/çizim hızlandırma */
+  .panoramic-card,
+  .widget,
+  .command-card,
+  .analytics-card,
+  .eventlog-card,
+  .diagnostics-card,
+  .ctrl-group {
+    contain: content;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07) !important;
+    transform: translateZ(0);
+  }
+
+  /* Orantısız boşlukları ve element boyutlarını optimize etme */
+  .scrolly-section {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+
+  .telemetry-panoramic-grid,
+  .controls-grid,
+  .telemetry-readout-row {
+    gap: 0.55rem !important;
+  }
+}
+
+/* Yatay/dikey güvenli alanlarda içerik kenara yapışmasın. */
+@supports (padding: max(0px)) {
+  @media (max-width: 980px) {
+    .mobile-quickbar {
+      padding-left: max(0.65rem, env(safe-area-inset-left));
+      padding-right: max(0.65rem, env(safe-area-inset-right));
+    }
+  }
+}
+
+/* Geniş ama çok geniş olmayan masaüstlerinde marka adı sıkışmasın.
+   Ayarlar zaten alt gezinmede; İndir düğmesi tarayıcı menüsünde var. */
+@media (min-width: 981px) and (max-width: 1500px) {
+  .glass-header .nav-settings-pill,
+  .glass-header #pwaInstallBtn {
+    display: none !important;
+  }
+
+  .glass-header .brand-meta h1 {
+    white-space: nowrap;
+  }
+}
+
+/* Masaüstünde üst gezinme zaten var; alt çubuk yalnızca mobil uygulama içindir. */
+@media (min-width: 981px) {
+  .bottom-nav {
+    display: none;
+  }
+}
+
+.brand-icon {
+  width: 38px !important;
+  height: 38px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 10px !important;
+  overflow: hidden !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.brand-logo-img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  border-radius: 8px !important;
+}
+
+/* Floating Action Button (FAB) */
+.dd-fab-container {
+  position: fixed;
+  right: 18px;
+  bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  z-index: 150;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: flex-end;
+  gap: 0.6rem;
+}
+
+.dd-fab-main {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--paper);
+  border: none;
+  box-shadow: 0 10px 25px rgba(27, 40, 34, 0.4);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.dd-fab-main:active {
+  transform: scale(0.92);
+}
+
+.dd-fab-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  animation: ddFabIn 0.2s ease both;
+}
+
+.dd-fab-menu[hidden] {
+  display: none;
+}
+
+.dd-fab-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.85rem;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 650;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.dd-fab-item:active {
+  transform: scale(0.95);
+}
+
+@keyframes ddFabIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (min-width: 981px) {
+  .dd-fab-container {
+    bottom: 24px;
+  }
+}

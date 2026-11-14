@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">DD Ev Koruma</string>
+
+    <!-- Ana ekran kısayolları -->
+    <string name="shortcut_overview_short">Panel</string>
+    <string name="shortcut_overview_long">Canlı panele git</string>
+    <string name="shortcut_telemetry_short">Telemetri</string>
+    <string name="shortcut_telemetry_long">Sensör telemetrisini aç</string>
+    <string name="shortcut_defense_short">Savunma</string>
+    <string name="shortcut_defense_long">Savunma komutlarını aç</string>
+    <string name="shortcut_earthquake_short">Deprem</string>
+    <string name="shortcut_earthquake_long">Kandilli ve AFAD deprem takibi</string>
+    <string name="shortcut_settings_short">Ayarlar</string>
+    <string name="shortcut_settings_long">Sistem ayarlarını aç</string>
+    <string name="shortcut_chrome_short">Chrome\'da aç</string>
+    <string name="shortcut_chrome_long">Google girişi için Chrome\'da aç</string>
+
+    <!-- Ana ekran widget'ı -->
+    <string name="widget_description">Son bilinen sistem durumu ve hızlı erişim</string>
+    <string name="widget_kicker">DD EV KORUMA</string>
+    <string name="widget_waiting">Panel bekleniyor</string>
+    <string name="widget_tap_hint">Ayrıntı için dokunun</string>
+    <string name="widget_action_guard">Savunma</string>
+    <string name="widget_action_open">Paneli aç ›</string>
+</resources>
