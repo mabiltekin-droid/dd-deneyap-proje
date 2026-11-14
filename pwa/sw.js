@@ -1,6 +1,6 @@
 /* HTML stays network-first. Versioned static assets are cached for reuse. */
 const VERSION = '2.31.0';
-const CACHE = 'deneyap-pwa-v' + VERSION + '-r15';
+const CACHE = 'deneyap-pwa-v' + VERSION + '-r16';
 const SHELL = './index.html';
 const ASSET_VERSION = '';
 
@@ -104,6 +104,11 @@ async function cacheOfflinePages() {
     await Promise.all(paths.slice(offset, offset + 4).map(async function (path) {
       const url = precacheUrl(path);
       if (!(await cache.match(url))) await cache.add(url).catch(function () {});
+      if (ASSET_VERSION && path.endsWith('.html')) {
+        const canonical = path === SHELL ? './' : path.slice(0, -5);
+        const stored = await cache.match(url);
+        if (stored && !(await cache.match(canonical))) await cache.put(canonical, stored);
+      }
     }));
   }
 }

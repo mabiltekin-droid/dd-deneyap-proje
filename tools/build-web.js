@@ -176,6 +176,7 @@ walk(PWA)
     hash.update('\0');
   });
 const ASSET_VERSION = surumler.sw + '-' + hash.digest('hex').slice(0, 10);
+const PAGE_LINK = /(href="\.\/)(events|earthquake|settings|privacy)\.html(?=["?#])/g;
 const ASSET_RE = /((?:src|href)=")(\.\/(?:css|js)\/[^"?#]+)(?:\?[^"#]*)?(")/g;
 
 walk(PUBLIC)
@@ -184,7 +185,7 @@ walk(PUBLIC)
     const before = fs.readFileSync(f, 'utf8');
     const after = before.replace(ASSET_RE, function (_, pre, url, post) {
       return pre + url + '?v=' + ASSET_VERSION + post;
-    });
+    }).replace(PAGE_LINK, '$1$2');
     if (after !== before) fs.writeFileSync(f, after, 'utf8');
   });
 
