@@ -157,7 +157,7 @@ public final class AppNotifications {
 
         NotificationCompat.Builder b = new NotificationCompat.Builder(c, CH_STATUS)
                 .setSmallIcon(R.drawable.ic_stat_deneyap)
-                .setColor(0xFF10B981)
+                .setColor(c.getColor(R.color.app_on_background))
                 .setContentTitle(safe(title, "Sistem durumu"))
                 .setContentText(safe(body, "Son durum"))
                 .setContentIntent(openIntent(c, url, 1))
@@ -196,7 +196,7 @@ public final class AppNotifications {
         String tag = kind == null ? "alarm" : kind;
         NotificationCompat.Builder b = new NotificationCompat.Builder(c, CH_ALARM)
                 .setSmallIcon(R.drawable.ic_stat_deneyap)
-                .setColor(0xFFEF4444)
+                .setColor(c.getColor(R.color.app_alarm))
                 .setContentTitle(safe(title, "Güvenlik alarmı"))
                 .setContentText(safe(body, "Evdeki durumu kontrol edin."))
                 .setStyle(new NotificationCompat.BigTextStyle().bigText(safe(body, "")))
@@ -225,7 +225,7 @@ public final class AppNotifications {
 
         NotificationCompat.Builder b = new NotificationCompat.Builder(c, CH_EARTHQUAKE)
                 .setSmallIcon(R.drawable.ic_stat_deneyap)
-                .setColor(0xFFF97316)
+                .setColor(c.getColor(R.color.app_amber))
                 .setContentTitle(safe(title, "Deprem Uyarısı"))
                 .setContentText(safe(body, "Bölgenizde deprem tespit edildi."))
                 .setStyle(new NotificationCompat.BigTextStyle().bigText(safe(body, "")))

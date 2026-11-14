@@ -8,7 +8,8 @@ import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
+import android.content.res.ColorStateList;
+import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -32,8 +33,10 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -77,9 +80,10 @@ public class WebViewActivity extends FragmentActivity {
     private static WeakReference<WebViewActivity> INSTANCE = new WeakReference<>(null);
 
     private WebView webView;
+    private GoogleSignInBridge googleSignIn;
     private SwipeRefreshLayout swipeRefresh;
     private ProgressBar progressBar;
-    private LinearLayout errorView;
+    private ScrollView errorView;
     private TextView errorText;
     private ValueCallback<Uri[]> filePathCallback;
     private GeolocationPermissions.Callback pendingGeoCallback;
@@ -101,12 +105,17 @@ public class WebViewActivity extends FragmentActivity {
         ensureFcmToken();
 
         Window window = getWindow();
-        window.setStatusBarColor(Color.parseColor("#0A0D14"));
-        window.setNavigationBarColor(Color.parseColor("#0A0D14"));
+        int background = getColor(R.color.app_background);
+        window.setStatusBarColor(background);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            window.setNavigationBarColor(background);
+            WindowCompat.getInsetsController(window, window.getDecorView())
+                    .setAppearanceLightNavigationBars(true);
+        }
         WindowCompat.setDecorFitsSystemWindows(window, false);
 
         FrameLayout root = new FrameLayout(this);
-        root.setBackgroundColor(Color.parseColor("#0A0D14"));
+        root.setBackgroundColor(background);
         setContentView(root);
 
         ViewCompat.setOnApplyWindowInsetsListener(root, (view, insets) -> {
@@ -117,19 +126,16 @@ public class WebViewActivity extends FragmentActivity {
         });
 
         swipeRefresh = new SwipeRefreshLayout(this);
-        swipeRefresh.setBackgroundColor(Color.parseColor("#0A0D14"));
-        swipeRefresh.setColorSchemeColors(
-                Color.parseColor("#38BDF8"),
-                Color.parseColor("#10B981"),
-                Color.parseColor("#F59E0B"));
-        swipeRefresh.setProgressBackgroundColorSchemeColor(Color.parseColor("#111827"));
+        swipeRefresh.setBackgroundColor(background);
+        swipeRefresh.setColorSchemeResources(R.color.app_on_background);
+        swipeRefresh.setProgressBackgroundColorSchemeResource(R.color.app_sage);
         swipeRefresh.setDistanceToTriggerSync(dp(72));
         root.addView(swipeRefresh, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
 
         webView = new WebView(this);
-        webView.setBackgroundColor(Color.parseColor("#0A0D14"));
+        webView.setBackgroundColor(background);
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
         webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
         webView.setNestedScrollingEnabled(true);
@@ -200,6 +206,7 @@ public class WebViewActivity extends FragmentActivity {
 
             @Override
             public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
+                if (googleSignIn != null) googleSignIn.cancel();
                 progressBar.setVisibility(View.VISIBLE);
                 if (errorView.getVisibility() != View.VISIBLE) {
                     showWebContent();
@@ -208,6 +215,7 @@ public class WebViewActivity extends FragmentActivity {
 
             @Override
             public void onPageFinished(WebView view, String url) {
+                if (googleSignIn != null) googleSignIn.onPageFinished(url);
                 progressBar.setVisibility(View.GONE);
                 swipeRefresh.setRefreshing(false);
                 if (errorView.getVisibility() != View.VISIBLE) {
@@ -308,49 +316,58 @@ public class WebViewActivity extends FragmentActivity {
         });
 
         webView.addJavascriptInterface(new AndroidBridge(), BRIDGE_NAME);
+        googleSignIn = new GoogleSignInBridge(this, webView, getString(R.string.start_url));
         webView.loadUrl(startUrl);
     }
 
     private void buildErrorView(FrameLayout root) {
-        errorView = new LinearLayout(this);
-        errorView.setOrientation(LinearLayout.VERTICAL);
-        errorView.setGravity(Gravity.CENTER);
-        errorView.setPadding(dp(24), dp(24), dp(24), dp(24));
-        errorView.setBackgroundColor(Color.parseColor("#0A0D14"));
+        errorView = new ScrollView(this);
+        errorView.setFillViewport(true);
+        errorView.setBackgroundColor(getColor(R.color.app_background));
         errorView.setVisibility(View.GONE);
+
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setGravity(Gravity.CENTER);
+        content.setPadding(dp(24), dp(24), dp(24), dp(24));
+        errorView.addView(content, new ScrollView.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        ImageView logo = new ImageView(this);
+        logo.setImageResource(R.mipmap.ic_launcher);
+        logo.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        LinearLayout.LayoutParams logoParams = new LinearLayout.LayoutParams(dp(64), dp(64));
+        logoParams.bottomMargin = dp(20);
+        content.addView(logo, logoParams);
 
         TextView title = new TextView(this);
         title.setText("Bağlantı kurulamadı");
-        title.setTextColor(Color.WHITE);
-        title.setTextSize(20);
+        title.setTextColor(getColor(R.color.app_on_background));
+        title.setTextSize(28);
+        title.setTypeface(Typeface.SERIF, Typeface.BOLD);
         title.setGravity(Gravity.CENTER);
-        errorView.addView(title, new LinearLayout.LayoutParams(
+        ViewCompat.setAccessibilityHeading(title, true);
+        content.addView(title, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT));
 
         errorText = new TextView(this);
-        errorText.setTextColor(Color.parseColor("#94A3B8"));
-        errorText.setTextSize(14);
+        errorText.setTextColor(getColor(R.color.app_text_secondary));
+        errorText.setTextSize(16);
         errorText.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams errorParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT);
         errorParams.topMargin = dp(12);
-        errorView.addView(errorText, errorParams);
-
-        LinearLayout buttons = new LinearLayout(this);
-        buttons.setOrientation(LinearLayout.HORIZONTAL);
-        buttons.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams buttonRowParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT);
-        buttonRowParams.topMargin = dp(20);
-        errorView.addView(buttons, buttonRowParams);
+        content.addView(errorText, errorParams);
 
         Button retry = new Button(this);
         retry.setText("Tekrar dene");
         retry.setAllCaps(false);
-        retry.setTextColor(Color.WHITE);
+        retry.setTextColor(getColor(R.color.app_background));
+        retry.setBackgroundTintList(ColorStateList.valueOf(getColor(R.color.app_on_background)));
+        retry.setMinHeight(dp(48));
         retry.setOnClickListener(v -> {
             showWebContent();
             webView.loadUrl(startUrl);
@@ -358,16 +375,18 @@ public class WebViewActivity extends FragmentActivity {
         LinearLayout.LayoutParams retryParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT);
-        retryParams.rightMargin = dp(10);
-        buttons.addView(retry, retryParams);
+        retryParams.topMargin = dp(20);
+        content.addView(retry, retryParams);
 
         Button chrome = new Button(this);
         chrome.setText("Chrome'da aç");
         chrome.setAllCaps(false);
-        chrome.setTextColor(Color.WHITE);
+        chrome.setTextColor(getColor(R.color.app_on_background));
+        chrome.setBackgroundTintList(ColorStateList.valueOf(getColor(R.color.app_sage)));
+        chrome.setMinHeight(dp(48));
         chrome.setOnClickListener(v ->
                 MainActivity.openInChrome(this, currentUrl()));
-        buttons.addView(chrome, new LinearLayout.LayoutParams(
+        content.addView(chrome, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT));
 
@@ -906,6 +925,7 @@ public class WebViewActivity extends FragmentActivity {
     @Override
     protected void onDestroy() {
         INSTANCE = new WeakReference<>(null);
+        if (googleSignIn != null) googleSignIn.cancel();
         if (webView != null) {
             webView.removeJavascriptInterface(BRIDGE_NAME);
             webView.loadUrl("about:blank");

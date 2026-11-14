@@ -4,7 +4,6 @@ import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
-import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.widget.Toast;
@@ -100,8 +99,9 @@ public class MainActivity extends Activity {
             CustomTabsIntent.Builder builder = new CustomTabsIntent.Builder();
             builder.setShowTitle(true);
             builder.setUrlBarHidingEnabled(true);
-            builder.setToolbarColor(Color.parseColor("#0A0D14"));
-            builder.setNavigationBarColor(Color.parseColor("#0A0D14"));
+            int background = activity.getColor(R.color.app_background);
+            builder.setToolbarColor(background);
+            builder.setNavigationBarColor(background);
             CustomTabsIntent intent = builder.build();
             if (browser != null) {
                 intent.intent.setPackage(browser);

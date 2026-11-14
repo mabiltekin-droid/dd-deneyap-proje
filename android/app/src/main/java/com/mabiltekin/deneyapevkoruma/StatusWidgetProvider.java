@@ -78,7 +78,8 @@ public class StatusWidgetProvider extends AppWidgetProvider {
 
         views.setTextViewText(R.id.widget_status, status);
         views.setTextViewText(R.id.widget_detail, detail);
-        views.setTextColor(R.id.widget_status, ok ? 0xFF34D399 : 0xFFFBBF24);
+        views.setTextColor(R.id.widget_status, context.getColor(ok
+                ? R.color.app_on_background : R.color.app_amber));
 
         String base = context.getString(R.string.start_url);
 

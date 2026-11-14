@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="splash_background">#F7F2E4</color>
-    <color name="status_bar">#14251E</color>
-    <color name="nav_bar">#14251E</color>
-    <color name="accent">#2F5B47</color>
+    <color name="app_background">#FAF4E9</color>
+    <color name="app_sage">#E7E8D9</color>
+    <color name="app_border">#C5C7B4</color>
+    <color name="app_on_background">#163B25</color>
+    <color name="app_text_secondary">#4F594D</color>
+    <color name="app_amber">#81500B</color>
+    <color name="app_alarm">#A72B19</color>
     <color name="ic_launcher_background">#F7F2E4</color>
 </resources>
