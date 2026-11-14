@@ -146,18 +146,33 @@
     return s;
   }
 
+  let authReady = null;
+
+  function restoredUser() {
+    if (auth.currentUser) return Promise.resolve(auth.currentUser);
+    if (!authReady) {
+      let unsubscribe;
+      authReady = new Promise(function (resolve, reject) {
+        unsubscribe = auth.onAuthStateChanged(
+          function (user) { resolve(user); },
+          function (error) { reject(error); }
+        );
+      }).finally(function () {
+        if (unsubscribe) unsubscribe();
+      });
+    }
+    return authReady.then(function () { return auth.currentUser; });
+  }
+
   async function ensureSession() {
     ensureFirebase();
     
     const live = current();
     if (live) return live;
 
-    const s = store(true);
-    if (!s || !s.refresh_token) return null;
-
     try {
-      // Firebase refresh token ile yenileme (internal API)
-      const user = auth.currentUser;
+      // Firebase'in kendi kayıtlı oturumu, uygulamanın yerel kopyası silinse de geri yüklenebilir.
+      const user = await restoredUser();
       if (user) {
         // E-posta doğrulanmış mı kontrol et
         if (!user.emailVerified) {
@@ -169,20 +184,7 @@
             return null;
           }
         }
-        const token = await user.getIdToken(true);
-        const sess = {
-          access_token: token,
-          refresh_token: s.refresh_token,
-          expires_at: Math.floor(Date.now() / 1000) + 3600,
-          user: {
-            id: user.uid,
-            email: user.email,
-            emailVerified: !!user.emailVerified,
-            created_at: user.metadata.creationTime
-          }
-        };
-        save(sess);
-        return sess;
+        return saveSession(user, await user.getIdToken(true));
       }
       return null;
     } catch (e) {
@@ -1181,7 +1183,7 @@
   /* -------------------------------------------------- Sosyal Giriş -------- */
   // Google / GitHub / Apple ile oturum açma. Önce açılır pencere (popup)
   // denenir; tarayıcı engellerse tam sayfa yönlendirmeye (redirect) düşülür.
-  // Yönlendirme dönüşünde onAuthStateChanged oturumu kendiliğinden kaydeder.
+  // Yönlendirme dönüşünü uygulama getRedirectResult ile tamamlar.
   // Bu sağlayıcıların hesapları e-postası doğrulanmış gelir; ek doğrulama yok.
 
   const SOCIAL = {
@@ -1213,6 +1215,20 @@
     }
   };
 
+  const REDIRECT_PROVIDER_KEY = 'deneyap.auth.redirect.provider';
+
+  function pendingRedirectProvider() {
+    try { return sessionStorage.getItem(REDIRECT_PROVIDER_KEY) || ''; }
+    catch (e) { return ''; }
+  }
+
+  function saveRedirectProvider(name) {
+    try {
+      if (name) sessionStorage.setItem(REDIRECT_PROVIDER_KEY, name);
+      else sessionStorage.removeItem(REDIRECT_PROVIDER_KEY);
+    } catch (e) { /* Firebase hâlâ tarayıcının yerleşik oturumunu geri yükleyebilir. */ }
+  }
+
   function socialHuman(err, label) {
     const code = err && err.code;
     if (code === 'auth/operation-not-allowed')
@@ -1227,6 +1243,8 @@
       return 'Bu ' + label + ' hesabı başka bir kullanıcıya bağlı.';
     if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request')
       return label + ' girişi iptal edildi.';
+    if (code === 'auth/missing-redirect-result' || code === 'auth/web-storage-unsupported')
+      return label + ' oturumu tamamlanamadı. Açılır pencereye izin verip tekrar deneyin.';
     return human(err);
   }
 
@@ -1249,16 +1267,50 @@
       if (!googleIdToken && (code === 'auth/popup-blocked' ||
           code === 'auth/operation-not-supported-in-this-environment')) {
         // Açılır pencere engellendi/desteklenmiyor → tam sayfa yönlendirme.
-        await auth.signInWithRedirect(def.make());
-        return { redirect: true };
+        saveRedirectProvider(name);
+        try {
+          await auth.signInWithRedirect(def.make());
+          return { redirect: true };
+        } catch (error) {
+          saveRedirectProvider('');
+          throw socialError(error, def.label);
+        }
       }
-      const err = new Error((e && e.message) || def.label + ' girişi başarısız.');
-      err.code = code || 'unknown';
-      err.human = socialHuman(e, def.label);
-      throw err;
+      throw socialError(e, def.label);
     }
+    return providerSession(cred.user, name);
+  }
 
-    const user = cred.user;
+  function socialError(error, label) {
+    const err = new Error((error && error.message) || label + ' girişi başarısız.');
+    err.code = (error && error.code) || 'unknown';
+    err.human = socialHuman(error, label);
+    return err;
+  }
+
+  async function finishProviderRedirect() {
+    const provider = pendingRedirectProvider();
+    if (!Object.prototype.hasOwnProperty.call(SOCIAL, provider)) return null;
+    const def = SOCIAL[provider];
+    try {
+      ensureFirebase();
+      const result = await auth.getRedirectResult();
+      if (!result || !result.user) {
+        const error = new Error('Yönlendirme sonucu bulunamadı.');
+        error.code = 'auth/missing-redirect-result';
+        throw error;
+      }
+      return { provider: provider, session: await providerSession(result.user, provider) };
+    } catch (e) {
+      if (e.human) throw e;
+      throw socialError(e, def.label);
+    } finally {
+      saveRedirectProvider('');
+    }
+  }
+
+  async function providerSession(user, name) {
+    const def = SOCIAL[name];
     // GitHub bazı hesaplarda e-posta paylaşmaz; profil için e-posta şart.
     if (!user.email) {
       try { await auth.signOut(); } catch (e) { /* yoksay */ }
@@ -1321,6 +1373,7 @@
     },
 
     signInWithProvider: signInWithProvider,
+    finishProviderRedirect: finishProviderRedirect,
     signInWithGoogle: signInWithGoogle,
     signInWithGithub: signInWithGithub,
     signInWithApple: signInWithApple,

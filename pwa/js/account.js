@@ -220,6 +220,10 @@
     const nativeBridge = window.DeneyapGoogleSignIn || android;
     const nativeGoogle = provider === 'google' && nativeBridge
       && typeof nativeBridge.getGoogleIdToken === 'function';
+    if (provider === 'google' && android && !nativeGoogle) {
+      setResult('Google girişi bu uygulama sürümünde kullanılamıyor. Uygulamayı güncelleyin veya e-posta ve şifreyle giriş yapın.', 'err');
+      return;
+    }
     if (!nativeGoogle && android && typeof android.openInChrome === 'function') {
       if (confirm('Tarayıcı açılacak ve oturum orada devam edecek. Devam edilsin mi?')) {
         android.openInChrome();
@@ -771,6 +775,7 @@
 
     App.Auth.init().then(function (snap) {
       render(snap);
+      if (snap.redirectError && !snap.signedIn) setResult(snap.redirectError, 'err');
       return loadDevice();
     }).catch(function (e) {
       setResult(e.human || e.message, 'err');

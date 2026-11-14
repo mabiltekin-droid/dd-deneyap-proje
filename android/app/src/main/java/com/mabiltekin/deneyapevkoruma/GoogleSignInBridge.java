@@ -2,6 +2,7 @@ package com.mabiltekin.deneyapevkoruma;
 
 import android.app.Activity;
 import android.os.CancellationSignal;
+import android.util.Log;
 import android.webkit.WebView;
 
 import androidx.core.content.ContextCompat;
@@ -12,6 +13,9 @@ import androidx.credentials.GetCredentialRequest;
 import androidx.credentials.GetCredentialResponse;
 import androidx.credentials.exceptions.GetCredentialCancellationException;
 import androidx.credentials.exceptions.GetCredentialException;
+import androidx.credentials.exceptions.GetCredentialInterruptedException;
+import androidx.credentials.exceptions.GetCredentialProviderConfigurationException;
+import androidx.credentials.exceptions.GetCredentialUnsupportedException;
 import androidx.credentials.exceptions.NoCredentialException;
 import androidx.webkit.JavaScriptReplyProxy;
 import androidx.webkit.WebViewCompat;
@@ -29,6 +33,7 @@ import java.util.Set;
 
 /** Connects the panel's Google sign-in button to Android Credential Manager. */
 final class GoogleSignInBridge {
+    private static final String LOG_TAG = "DDGoogleSignIn";
     private static final String PORT_NAME = "DeneyapGooglePort";
     private static final String REQUEST_TOKEN = "getGoogleIdToken";
     private static final String SCRIPT = """
@@ -39,19 +44,31 @@ final class GoogleSignInBridge {
               port.onmessage = ({data}) => {
                 const reply = JSON.parse(data);
                 const request = pending;
+                if (!request || request.id !== reply.id) return;
                 pending = null;
-                if (!request) return;
+                clearTimeout(request.timer);
                 if (reply.idToken) request.resolve(reply.idToken);
                 else request.reject(Object.assign(new Error(reply.error), {code: reply.code}));
               };
+              let nextRequestId = 0;
               window.DeneyapGoogleSignIn = Object.freeze({
                 getGoogleIdToken() {
                   if (pending) return Promise.reject(new Error('Google girişi zaten açık.'));
                   return new Promise((resolve, reject) => {
-                    pending = {resolve, reject};
+                    const id = String(++nextRequestId);
+                    const timer = setTimeout(() => {
+                      pending = null;
+                      try { port.postMessage('cancelGoogleSignIn:' + id); } catch {}
+                      reject(Object.assign(
+                        new Error('Google girişinden yanıt alınamadı. Tekrar deneyin.'),
+                        {code: 'auth/native-sign-in-timeout'}
+                      ));
+                    }, 180000);
+                    pending = {id, timer, resolve, reject};
                     try {
-                      port.postMessage('getGoogleIdToken');
+                      port.postMessage('getGoogleIdToken:' + id);
                     } catch (error) {
+                      clearTimeout(timer);
                       pending = null;
                       reject(error);
                     }
@@ -65,7 +82,8 @@ final class GoogleSignInBridge {
     private final WebView webView;
     private final URI origin;
     private final boolean injectOnPageFinished;
-    private CancellationSignal pending;
+    private record Request(String id, CancellationSignal cancellation) {}
+    private Request pending;
 
     GoogleSignInBridge(Activity activity, WebView webView, String startUrl) {
         this.activity = activity;
@@ -79,11 +97,15 @@ final class GoogleSignInBridge {
         Set<String> origins = Collections.singleton("https://" + origin.getHost() + ":" + httpsPort(origin));
         WebViewCompat.addWebMessageListener(webView, PORT_NAME, origins,
                 (view, message, source, isMainFrame, reply) -> {
-                    if (isMainFrame && matchesOrigin(source.toString()) && matchesOrigin(view.getUrl())
-                            && message.getType() == androidx.webkit.WebMessageCompat.TYPE_STRING
-                            && REQUEST_TOKEN.equals(message.getData())) {
-                        requestIdToken(reply);
-                    }
+                    if (!isMainFrame || !matchesOrigin(source.toString()) || !matchesOrigin(view.getUrl())
+                            || message.getType() != androidx.webkit.WebMessageCompat.TYPE_STRING) return;
+                    String data = message.getData();
+                    if (data == null || data.length() > 40) return;
+                    String[] parts = data.split(":", 2);
+                    if (parts.length != 2 || !parts[1].matches("[0-9]{1,12}")) return;
+                    if (REQUEST_TOKEN.equals(parts[0])) requestIdToken(parts[1], reply);
+                    else if ("cancelGoogleSignIn".equals(parts[0]) && pending != null
+                            && pending.id().equals(parts[1])) cancel();
                 });
         injectOnPageFinished = !WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT);
         if (!injectOnPageFinished) WebViewCompat.addDocumentStartJavaScript(webView, SCRIPT, origins);
@@ -94,21 +116,29 @@ final class GoogleSignInBridge {
     }
 
     void cancel() {
-        CancellationSignal request = pending;
+        Request request = pending;
         pending = null;
-        if (request != null) request.cancel();
+        if (request != null) {
+            Log.d(LOG_TAG, "request_closed");
+            request.cancellation().cancel();
+        }
     }
 
-    private void requestIdToken(JavaScriptReplyProxy reply) {
-        if (pending != null) return;
-        CancellationSignal request = new CancellationSignal();
+    private void requestIdToken(String id, JavaScriptReplyProxy reply) {
+        Request request = new Request(id, new CancellationSignal());
+        if (pending != null) {
+            postReply(request, reply, "error", "Google girişi zaten açık.",
+                    "auth/native-sign-in-busy");
+            return;
+        }
         pending = request;
+        Log.d(LOG_TAG, "credential_requested");
         try {
             GetCredentialRequest credentials = new GetCredentialRequest.Builder()
                     .addCredentialOption(new GetSignInWithGoogleOption.Builder(
                             activity.getString(R.string.default_web_client_id)).build())
                     .build();
-            CredentialManager.create(activity).getCredentialAsync(activity, credentials, request,
+            CredentialManager.create(activity).getCredentialAsync(activity, credentials, request.cancellation(),
                     ContextCompat.getMainExecutor(activity),
                     new CredentialManagerCallback<GetCredentialResponse, GetCredentialException>() {
                         @Override
@@ -119,8 +149,10 @@ final class GoogleSignInBridge {
                                 try {
                                     String token = GoogleIdTokenCredential
                                             .createFrom(credential.getData()).getIdToken();
-                                    finish(request, reply, "idToken", token, "");
-                                    return;
+                                    if (!token.isEmpty()) {
+                                        finish(request, reply, "idToken", token, "");
+                                        return;
+                                    }
                                 } catch (RuntimeException ignored) {
                                     // Geçersiz sağlayıcı yanıtı.
                                 }
@@ -131,33 +163,57 @@ final class GoogleSignInBridge {
 
                         @Override
                         public void onError(GetCredentialException error) {
-                            if (error instanceof GetCredentialCancellationException) {
-                                finish(request, reply, "error", "Google girişi iptal edildi.",
-                                        "auth/cancelled-popup-request");
-                            } else if (error instanceof NoCredentialException) {
-                                finish(request, reply, "error", "Uygun Google hesabı bulunamadı.",
-                                        "auth/no-credential");
-                            } else {
-                                finish(request, reply, "error", "Google girişi başlatılamadı.",
-                                        "auth/native-sign-in-failed");
-                            }
+                            finishWithError(request, reply, error);
                         }
                     });
         } catch (RuntimeException ignored) {
             finish(request, reply, "error", "Google girişi bu cihazda başlatılamadı.",
+                    "auth/native-request-failed");
+        }
+    }
+
+    private void finishWithError(Request request, JavaScriptReplyProxy reply,
+                                 GetCredentialException error) {
+        if (error instanceof GetCredentialCancellationException) {
+            finish(request, reply, "error", "Google girişi iptal edildi.",
+                    "auth/cancelled-popup-request");
+        } else if (error instanceof NoCredentialException) {
+            finish(request, reply, "error", "Kullanılabilir Google hesabı bulunamadı. Telefonunuzdaki Google hesabını kontrol edin.",
+                    "auth/no-credential");
+        } else if (error instanceof GetCredentialProviderConfigurationException
+                || error instanceof GetCredentialUnsupportedException) {
+            finish(request, reply, "error", "Google girişi kullanılamıyor. Google Play Hizmetleri’ni güncelleyip tekrar deneyin.",
+                    "auth/native-provider-unavailable");
+        } else if (error instanceof GetCredentialInterruptedException) {
+            finish(request, reply, "error", "Google girişi kesildi. İnternet bağlantınızı kontrol edip tekrar deneyin.",
+                    "auth/native-sign-in-interrupted");
+        } else {
+            finish(request, reply, "error", "Google hesabı doğrulanamadı. Tekrar deneyin.",
                     "auth/native-sign-in-failed");
         }
     }
 
-    private void finish(CancellationSignal request, JavaScriptReplyProxy reply,
+    private void finish(Request request, JavaScriptReplyProxy reply,
                         String key, String value, String code) {
         if (pending != request) return;
         pending = null;
-        if (!matchesOrigin(webView.getUrl())) return;
+        postReply(request, reply, key, value, code);
+    }
+
+    private void postReply(Request request, JavaScriptReplyProxy reply,
+                           String key, String value, String code) {
+        if (!matchesOrigin(webView.getUrl())) {
+            Log.d(LOG_TAG, "reply_origin_changed");
+            return;
+        }
         try {
-            reply.postMessage(new JSONObject().put(key, value).put("code", code).toString());
+            reply.postMessage(new JSONObject().put("id", request.id())
+                    .put(key, value).put("code", code).toString());
+            Log.d(LOG_TAG, code.isEmpty() ? "credential_sent" : code);
         } catch (JSONException ignored) {
-            // Yanıt yalnızca metin alanları içerir.
+            Log.d(LOG_TAG, "reply_format_failed");
+        } catch (RuntimeException ignored) {
+            Log.d(LOG_TAG, "reply_channel_closed");
         }
     }
 

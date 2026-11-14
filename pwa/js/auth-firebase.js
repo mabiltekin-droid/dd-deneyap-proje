@@ -31,7 +31,8 @@
     deviceRoles: {},    // deviceId -> 'admin' | 'maintainer' | 'viewer'
     deviceInfo: null,   // son checkDevice sonucu
     setupRequired: false,
-    error: null
+    error: null,
+    redirectError: null
   };
 
   const listeners = [];
@@ -380,7 +381,22 @@
     return null;
   }
 
-  async function init() {
+  let initPromise = null;
+
+  async function initialize() {
+    let redirected = null;
+    try {
+      if (FB() && FB().finishProviderRedirect) redirected = await FB().finishProviderRedirect();
+    } catch (e) {
+      state.redirectError = e.human || e.message;
+    }
+    if (redirected) {
+      state.session = redirected.session;
+      resetDeviceAccess();
+      await completeSocialLogin(redirected.session, redirected.provider);
+      return App.Auth.snapshot();
+    }
+
     try {
       state.session = await FB().ensureSession();
     } catch (e) { state.session = null; }
@@ -395,6 +411,13 @@
     emit();
     startIdleWatch();
     return App.Auth.snapshot();
+  }
+
+  function init() {
+    if (!initPromise) {
+      initPromise = initialize().finally(function () { initPromise = null; });
+    }
+    return initPromise;
   }
 
   /* Sosyal giriş sonrası ortak işler: davet kodu, profil sağlığı, giriş kaydı. */
@@ -444,6 +467,7 @@
         isAdmin: !!(state.profile && state.profile.role === 'admin'),
         setupRequired: state.setupRequired,
         error: state.error,
+        redirectError: state.redirectError,
         bindings: state.bindings,
         homes: (state.homes || []).slice()
       };
@@ -520,7 +544,9 @@
 
     // Sosyal giriş: 'google' | 'github' | 'apple'
     signInWithProvider: async function (provider, googleIdToken) {
+      if (initPromise) await initPromise;
       state.error = null;
+      state.redirectError = null;
       const r = await FB().signInWithProvider(provider, googleIdToken);
       if (r && r.redirect) return { redirect: true };
       state.session = r;
