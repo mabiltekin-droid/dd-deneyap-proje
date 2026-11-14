@@ -672,10 +672,10 @@
   App.setConnBadge = function (state, text) {
     const badge = document.getElementById('conn');
     if (!badge) return;
-    badge.setAttribute('data-state', state);
+    if (badge.dataset.state !== state) badge.dataset.state = state;
     const label = badge.querySelector('#connText');
     if (label) {
-      label.textContent = text;
+      if (label.textContent !== text) label.textContent = text;
       return;
     }
     badge.innerHTML = '<span class="dot" aria-hidden="true"></span><span id="connText">' + String(text).replace(/</g, '&lt;') + '</span>';

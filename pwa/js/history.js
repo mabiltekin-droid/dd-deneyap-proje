@@ -32,6 +32,8 @@
      değiştirildiğinde iki kartın örnekleri tek grafikte karışırdı.
      Cihaz kimliği bilinmiyorsa eski (cihazsız) anahtar kullanılır. */
   function localKey() {
+    const active = App.lastTelemetry?.()?.dev;
+    if (active) return LOCAL_KEY_BASE + '.' + active;
     let id = '';
     try {
       if (App.Devices && App.Devices.currentId) id = App.Devices.currentId() || '';
@@ -62,7 +64,7 @@
 
   /* Her status itmesinde çağrılır; dakikada bir yazar. */
   function noteSample(s) {
-    if (!s || typeof s.gasPpm !== 'number') return;
+    if (!s?.dev || typeof s.gasPpm !== 'number' || (App.Auth?.canView && !App.Auth.canView(s.dev))) return;
     if (typeof s.uptime === 'number') lastUptimeSec = s.uptime / 1000;
 
     const now = Date.now();
@@ -98,9 +100,9 @@
 
   /* ------------------------------------------------------ kart verisi ---- */
 
-  async function fetchDevice() {
+  async function fetchDevice(span) {
     /* span dk, 60 sn'lik ham örnek demek: 1440 dk = 1440 ham örnek = 24 saat */
-    const lastRaw = Math.min(1440, Math.max(1, spanMin));
+    const lastRaw = Math.min(1440, Math.max(1, span));
     const n = Math.min(140, lastRaw);
     return App.api.history({ n: n, last: lastRaw });
   }
@@ -436,41 +438,58 @@
 
   /* --------------------------------------------------------- yükle ------- */
 
+  let queued = false;
+
   async function load(force) {
-    if (busy || (!force && !historyVisible)) return;
+    const card = $('historyCard');
+    const status = App.lastTelemetry?.();
+    const deviceId = status?.dev;
+    if (!card || card.closest('[hidden]') || !historyVisible || !deviceId
+        || (App.Auth?.canView && !App.Auth.canView(deviceId))) return;
+
+    if (busy) {
+      queued = queued || force;
+      return;
+    }
     busy = true;
+    const span = spanMin;
+    const from = Date.now() - span * 60000;
+    const local = readLocal().filter(point => point.e >= from);
+    const refresh = $('histRefreshBtn');
     const chip = $('histChip');
-    if (chip && force) { chip.dataset.state = 'unknown'; chip.textContent = 'ÇEKİLİYOR'; }
+    const isCurrent = () => span === spanMin && localKey() === cacheKey
+      && !card.closest('[hidden]') && historyVisible && App.lastTelemetry?.()?.dev === deviceId
+      && (!App.Auth?.canView || App.Auth.canView(deviceId));
+    const cacheKey = localKey();
 
-    const now = Date.now();
-    const from = now - spanMin * 60000;
-
-    let devPts = [], src = '';
-    try {
-      const st = await App.api.status();
-      if (st && typeof st.uptime === 'number') lastUptimeSec = st.uptime / 1000;
-    } catch (e) { /* durum yok — göreli zamanla devam */ }
-
-    try {
-      const h = await fetchDevice();
-      devPts = devicePoints(h, lastUptimeSec);
-      src = App.api.transport() ? 'kart (MQTT)' : 'kart (HTTP)';
-    } catch (e) {
-      devPts = [];
+    function paint(points, source) {
+      lastPts = points;
+      paintMetrics(points, span, source);
+      draw(points, activeScrubberPoint);
     }
 
-    const local = readLocal().filter(function (p) { return p.e >= from; })
-      .map(function (p) { return { e: p.e, p: p.p, r: p.r, s: p.s, f: p.f }; });
+    if (refresh) refresh.setAttribute('aria-busy', 'true');
 
-    let pts = merge(devPts, local, from);
-    if (!devPts.length && local.length) src = 'yerel önbellek (kart çevrimdışı)';
-    else if (devPts.length && local.length) src += ' + yerel önbellek';
-    else if (!devPts.length && !local.length) src = 'kaynak yok';
-
-    lastPts = pts;
-    paintMetrics(pts, spanMin * 60000, src);
-    draw(pts, activeScrubberPoint);
-    busy = false;
+    try {
+      paint(local, local.length ? 'yerel kayıtlar' : 'kart bekleniyor');
+      if (chip) { chip.dataset.state = 'unknown'; chip.textContent = 'YÜKLENİYOR'; }
+      const response = await fetchDevice(span);
+      if (!isCurrent()) return;
+      const points = devicePoints(response, typeof status.uptime === 'number' ? status.uptime / 1000 : lastUptimeSec);
+      const source = points.length
+        ? (local.length ? 'kart ve yerel kayıtlar' : 'kart')
+        : (local.length ? 'yerel kayıtlar' : 'kayıt yok');
+      paint(merge(points, local, from), source);
+    } catch (_) {
+      if (isCurrent()) paint(local, local.length ? 'yerel kayıtlar · kart erişilemiyor' : 'kart erişilemiyor');
+    } finally {
+      busy = false;
+      if (refresh) refresh.removeAttribute('aria-busy');
+      if (queued) {
+        queued = false;
+        load(true);
+      }
+    }
   }
 
   let lastPts = [];
@@ -584,10 +603,7 @@
       } else {
         historyVisible = true;
       }
-      /* Cihazdan gelen her durum örneğe dönüşsün (yerel önbellek). */
-      if (App.api && typeof App.api.onStatus === 'function') {
-        App.api.onStatus(function (s) { if (s && s.ok) noteSample(s); });
-      }
+      document.addEventListener('deneyap:telemetry', event => noteSample(event.detail));
 
       /* Sekme görünür olunca grafiği tazele; ayrıca ilk çizim için. */
       document.addEventListener('visibilitychange', function () {

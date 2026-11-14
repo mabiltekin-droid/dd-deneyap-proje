@@ -541,8 +541,13 @@
 
   /* ---------------------------------------------------------------- veri */
 
-  async function poll() {
-    if (state.loading) return;
+  let filterPending = false;
+
+  async function poll(filterChanged = false) {
+    if (state.loading) {
+      filterPending = filterPending || filterChanged;
+      return;
+    }
     state.loading = true;
 
     setLive('loading', 'Güncelleniyor');
@@ -550,10 +555,11 @@
     const controller = new AbortController();
     const timeout = setTimeout(function () { controller.abort(); }, 12000);
     const previousSeen = new Set(state.seen);
+    const {hours, minMag} = state;
 
     try {
-      const url = API + '?hours=' + encodeURIComponent(state.hours) +
-        '&minmag=' + encodeURIComponent(state.minMag.toFixed(1)) +
+      const url = API + '?hours=' + encodeURIComponent(hours) +
+        '&minmag=' + encodeURIComponent(minMag.toFixed(1)) +
         '&limit=200';
       const res = await fetch(url, {
         method: 'GET',
@@ -571,6 +577,7 @@
         throw new Error((data && data.error) || 'Veri biçimi beklenmedik');
       }
 
+      if (state.hours !== hours || state.minMag !== minMag) return;
       const events = data.events.filter(function (event) {
         return event && Number.isFinite(Number(event.origin_ms)) &&
           Number.isFinite(Number(event.magnitude)) &&
@@ -600,6 +607,10 @@
     } finally {
       clearTimeout(timeout);
       state.loading = false;
+      if (filterPending) {
+        filterPending = false;
+        poll();
+      }
     }
   }
 
@@ -611,7 +622,7 @@
       mag.addEventListener('change', function () {
         state.minMag = Number(mag.value) || 2.5;
         saveStore();
-        poll();
+        poll(true);
       });
     }
 
@@ -620,7 +631,7 @@
       hours.addEventListener('change', function () {
         state.hours = Number(hours.value) || 24;
         saveStore();
-        poll();
+        poll(true);
       });
     }
 

@@ -308,12 +308,10 @@
       const dangerIndex = Math.round((clampPct(dangerTh) / 100) * segments.length);
 
       segments.forEach(function (seg, idx) {
-        seg.className = 'seg';
-        if (idx < activeCount) {
-          if (idx >= dangerIndex) seg.classList.add('active-danger');
-          else if (idx >= warnIndex) seg.classList.add('active-warn');
-          else seg.classList.add('active-normal');
-        }
+        const className = idx >= activeCount ? 'seg' :
+          idx >= dangerIndex ? 'seg active-danger' :
+            idx >= warnIndex ? 'seg active-warn' : 'seg active-normal';
+        if (seg.className !== className) seg.className = className;
       });
     }
   }
@@ -539,7 +537,7 @@
       const btn = document.querySelector('.btn[data-device="' + p[0] + '"][data-action="toggle"]');
       const lbl = $(p[2]);
       const text = p[1] ? 'Açık' : 'Kapalı';
-      if (lbl) lbl.textContent = text;
+      if (lbl && lbl.textContent !== text) lbl.textContent = text;
       if (btn) {
         if (pumpArmed && p[0] === 'pump') return; // Onay beklerken metni koru
         btn.classList.toggle('on', !!p[1]);
@@ -633,7 +631,7 @@
      Ek koşul (münhasırlık): cihaz bir hesaba bağlanmışsa yalnız sahibi
      veya admin kumanda gönderebilir; başkası görünüm alır ama kilitlidir. */
   function controlsAllowed() {
-    if (App.api.transport() && App.deviceOnline === false) return false;
+    if (!online || (App.api.transport() && App.deviceOnline === false)) return false;
     if (App.Auth && App.Auth.bindingOf && lastData && lastData.dev) {
       if (!App.Auth.canControl(lastData.dev)) return false;
     }
@@ -657,7 +655,7 @@
   /* --- Cihaz görünürlüğü --------------------------------------------------
      Başka bir hesaba bağlı cihaz; farklı bir hesapta ya da oturum yokken
      "hiç yokmuş" gibi gösterilir: telemetri, kumanda ve alarmlar gizlenir. */
-  const DEVICE_SECTIONS = ['homeWidget', 'telemetry', 'command-center', 'analytics', 'eventCard', 'diagnostics'];
+  const DEVICE_SECTIONS = '#homeWidget, #eventCard, [data-device-content]';
 
   function deviceVisible(dev) {
     if (!dev) return false;
@@ -666,14 +664,16 @@
   }
 
   function hideDeviceSections() {
-    DEVICE_SECTIONS.forEach(function (id) { const el = $(id); if (el) el.hidden = true; });
+    document.querySelectorAll(DEVICE_SECTIONS).forEach(el => { if (!el.hidden) el.hidden = true; });
+    document.querySelectorAll('[data-device-empty]').forEach(el => { if (el.hidden) el.hidden = false; });
     const b = $('banner'); if (b) b.hidden = true;
     const empty = $('eventUnavailable'); if (empty) empty.hidden = false;
     const hint = $('controlHint'); if (hint) hint.textContent = '';
   }
 
   function showDeviceSections() {
-    DEVICE_SECTIONS.forEach(function (id) { const el = $(id); if (el) el.hidden = false; });
+    document.querySelectorAll(DEVICE_SECTIONS).forEach(el => { if (el.hidden) el.hidden = false; });
+    document.querySelectorAll('[data-device-empty]').forEach(el => { if (!el.hidden) el.hidden = true; });
     const empty = $('eventUnavailable'); if (empty) empty.hidden = true;
   }
 
@@ -691,7 +691,11 @@
     let title = 'Cihaz bulunamadı';
     let message = 'Kendi cihazınızı görmek için hesabınıza giriş yapın.';
     let action = 'Hesaba git';
-    if (App.Auth && App.Auth.needsCheck && dev && App.Auth.needsCheck(dev)) {
+    if (!dev && (!snap.ready || online)) {
+      title = 'Cihaz aranıyor';
+      message = 'Cihaz bağlantısı bekleniyor…';
+      action = 'Cihaz ve hesap ayarları';
+    } else if (App.Auth && App.Auth.needsCheck && dev && App.Auth.needsCheck(dev)) {
       title = 'Cihaz kontrol ediliyor';
       message = 'Cihaz erişiminiz doğrulanıyor.';
     } else if (snap.signedIn) {
@@ -704,10 +708,15 @@
     setText('noDeviceTitle', title);
     setText('noDeviceMsg', message);
     setText('noDeviceAction', action);
+    document.querySelectorAll('[data-device-message]').forEach(el => {
+      if (el.textContent !== message) el.textContent = message;
+    });
+    document.querySelectorAll('[data-device-action]').forEach(el => {
+      if (el.textContent !== action) el.textContent = action;
+    });
   }
 
   function render(data, at) {
-    const firstDeviceDisplay = $('homeWidget')?.hidden;
     lastData = data;
     lastUpdateTs = Number(at) || Date.now();
     ensureDeviceAccess(data && data.dev);
@@ -725,10 +734,11 @@
     }
     const nd = $('noDevice');
     if (nd) nd.hidden = true;
+    const hashTarget = document.getElementById(location.hash.slice(1));
+    const revealAnchor = hashTarget?.closest('[data-device-content]')?.hidden;
     showDeviceSections();
-    if (firstDeviceDisplay && window.location.hash) {
-      const target = document.getElementById(window.location.hash.slice(1));
-      if (target && target.closest('.scrolly-section')) target.scrollIntoView();
+    if (revealAnchor && !hashTarget.closest('section[hidden]') && hashTarget.getClientRects().length) {
+      hashTarget.scrollIntoView({ behavior: 'instant' });
     }
 
     const state = gasStateOf(data);
@@ -1035,8 +1045,11 @@
     }
   }
 
-  async function send(device, action, value) {
-    const btn = document.querySelector('.btn[data-device="' + device + '"][data-action="' + action + '"]');
+  async function send(device, action, value, trigger) {
+    if (!controlsAllowed()) return;
+    const btn = trigger || document.querySelector('.btn[data-device="' + device + '"][data-action="' + action + '"]');
+    if (btn?.getAttribute('aria-busy') === 'true') return;
+    if (btn) btn.setAttribute('aria-busy', 'true');
     if (btn) btn.classList.add('is-busy');
     try {
       const data = await App.api.control(device, action, value);
@@ -1070,7 +1083,7 @@
          bağlantının kopması AYNI ŞEY DEĞİLDİR. Eski kod her hatada
          markOffline() çağırıyordu; pompa gaz alarmında 409 döndüğünde
          panel "Cihaza Ulaşılamıyor" deyip tüm kumandaları kilitliyordu. */
-      const rejected = !!(err && (typeof err.status === 'number' || err.device));
+      const rejected = !!(err && (typeof err.status === 'number' || err.device || err.code === 'role-denied'));
       if (rejected) {
         App.sound.alarm();
         App.toast('Komut reddedildi: ' + err.message, { kind: 'warn', duration: 7000 });
@@ -1085,13 +1098,16 @@
       clearTimeout(pollTimer);
       pollTimer = setTimeout(poll, 1200);
     } finally {
-      if (btn) btn.classList.remove('is-busy');
+      if (btn) {
+        btn.classList.remove('is-busy');
+        btn.removeAttribute('aria-busy');
+      }
     }
   }
 
   function onControlClick(e) {
     const btn = e.target.closest('.btn[data-device]');
-    if (!btn || btn.disabled) return;
+    if (!btn || btn.disabled || btn.getAttribute('aria-busy') === 'true' || !controlsAllowed()) return;
 
     const device = btn.dataset.device;
     const action = btn.dataset.action;
@@ -1113,7 +1129,7 @@
 
     if (device === 'pump') disarmPump();
 
-    send(device, action, value);
+    send(device, action, value, btn);
   }
 
   /* ---------------------------------------------------- Hassas Açı Kaydırıcıları */
@@ -1131,11 +1147,12 @@
         wVal.textContent = wSlider.value + '°';
       });
       wSlider.addEventListener('change', function () {
-        windowSliderActive = false;
+        wVal.textContent = wSlider.value + '°';
       });
       wBtn.addEventListener('click', function () {
+        if (!controlsAllowed()) return;
         windowSliderActive = false;
-        send('window', 'set', Number(wSlider.value));
+        send('window', 'set', Number(wSlider.value), wBtn);
       });
     }
 
@@ -1149,11 +1166,12 @@
         bVal.textContent = bSlider.value + '°';
       });
       bSlider.addEventListener('change', function () {
-        blindSliderActive = false;
+        bVal.textContent = bSlider.value + '°';
       });
       bBtn.addEventListener('click', function () {
+        if (!controlsAllowed()) return;
         blindSliderActive = false;
-        send('blind', 'set', Number(bSlider.value));
+        send('blind', 'set', Number(bSlider.value), bBtn);
       });
     }
   }
@@ -1169,6 +1187,7 @@
     });
     sl.addEventListener('change', function () {
       sndVolumeActive = false;
+      if (!controlsAllowed()) return;
       if (val) val.textContent = sl.value + '%';
       App.saveSettings({ sndVolume: Number(sl.value) });
       send('sound', 'set', Number(sl.value));
@@ -1240,6 +1259,7 @@
       /* Oturum/rol değişince cihaz görünürlüğünü yeniden hesapla:
          ör. admin çıkış yapınca başkasının cihazı anında gizlenir. */
       if (lastData) render(lastData, lastUpdateTs);
+      else if (snap.ready && failStreak) paintNoDevice(null);
     }
 
     App.Auth.onChange(paint);

@@ -2936,3 +2936,28 @@ body :is(a, button, input, select, textarea, summary):focus-visible {
   .w-lbl { font-size: 0.82rem; }
   .w-item { padding-inline: 0.45rem; }
 }
+
+/* Dashboard links select one section without scrolling through other panels. */
+html.js-panel #main[data-panel-view] #hero,
+html.js-panel #main[data-panel-view] .scrolly-section {
+  display: none;
+}
+
+html.js-panel #main[data-panel-view="hero"] #hero,
+html.js-panel #main[data-panel-view="telemetry"] #telemetry,
+html.js-panel #main[data-panel-view="command-center"] #command-center,
+html.js-panel #main[data-panel-view="analytics"] #analytics,
+html.js-panel #main[data-panel-view="diagnostics"] #diagnostics {
+  display: block;
+}
+
+html.js-panel #main .scrolly-section {
+  padding-top: clamp(1.1rem, 3vw, 2.3rem);
+}
+
+.section-device-empty {
+  display: grid;
+  gap: 0.8rem;
+  justify-items: start;
+  padding: clamp(1rem, 3vw, 1.5rem);
+}

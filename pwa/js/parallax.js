@@ -1,50 +1,48 @@
-/* Section navigation uses the browser's scroll and history. */
+/* Dashboard views share the current device connection and browser history. */
 (function () {
   'use strict';
 
-  const sections = new Map();
-  for (const link of document.querySelectorAll('.header-nav a[href^="#"], .bottom-nav a[href^="#"]')) {
-    const id = link.hash.slice(1);
-    if (!document.getElementById(id)) continue;
-    if (!sections.has(id)) sections.set(id, []);
-    sections.get(id).push(link);
+  const main = document.querySelector('[data-panel-view]');
+  if (!main) return;
+
+  const panels = new Set(['hero', 'telemetry', 'command-center', 'analytics', 'diagnostics']);
+  const links = Array.from(document.querySelectorAll('.header-nav a[href^="#"], .bottom-nav a[href^="#"]'));
+
+  function viewFor(target) {
+    const section = target && target.closest('#hero, .scrolly-section');
+    return section && panels.has(section.id) ? section.id : '';
   }
 
-  function highlight(id) {
-    for (const [section, links] of sections) {
-      const selected = section === id;
-      for (const link of links) {
-        link.classList.toggle('active', selected);
-        if (selected) link.setAttribute('aria-current', 'location');
-        else link.removeAttribute('aria-current');
-      }
+  function show(target) {
+    const view = viewFor(target) || 'hero';
+    main.dataset.panelView = view;
+    for (const link of links) {
+      const current = link.hash === '#' + view;
+      link.classList.toggle('active', current);
+      if (current) link.setAttribute('aria-current', 'location');
+      else link.removeAttribute('aria-current');
     }
+    if (window.scrollY) window.scrollTo({top:0,behavior:'instant'});
+    if (target && target.id !== view && !target.closest('[hidden]')) target.scrollIntoView();
+    document.dispatchEvent(new CustomEvent('deneyap:panel-view', { detail: view }));
   }
 
-  function highlightHash() {
+  document.documentElement.classList.add('js-panel');
+  show(document.getElementById(location.hash.slice(1)));
+  window.addEventListener('pageshow', () => {
     const target = document.getElementById(location.hash.slice(1));
-    const section = target && target.closest('.scrolly-section, #hero');
-    highlight(section ? section.id : 'hero');
-  }
+    if (viewFor(target) && viewFor(target) !== main.dataset.panelView) show(target);
+  });
+  window.addEventListener('hashchange', () => show(document.getElementById(location.hash.slice(1))));
 
   document.addEventListener('click', function (event) {
-    const link = event.target.closest('.header-nav a[href^="#"], .bottom-nav a[href^="#"]');
-    if (!link || event.button > 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const link = event.target.closest('a[href^="#"]');
+    if (!link || event.defaultPrevented || event.button > 0 || event.metaKey || event.altKey ||
+        event.ctrlKey || event.shiftKey) return;
     const target = document.getElementById(link.hash.slice(1));
-    if (!target?.hidden) return;
+    if (!viewFor(target)) return;
     event.preventDefault();
-    const message = document.getElementById('noDeviceMsg')?.textContent;
-    window.App?.toast(message || 'Cihaz bağlantısı bekleniyor.', { kind: 'warn' });
+    if (link.hash !== location.hash) history.pushState(null, '', link.hash);
+    show(target);
   });
-
-  window.addEventListener('hashchange', highlightHash);
-  highlightHash();
-
-  if ('IntersectionObserver' in window) {
-    const observer = new IntersectionObserver(function (entries) {
-      const visible = entries.find(entry => entry.isIntersecting);
-      if (visible) highlight(visible.target.id);
-    }, { rootMargin: '-30% 0px -60% 0px' });
-    for (const id of sections.keys()) observer.observe(document.getElementById(id));
-  }
 })();

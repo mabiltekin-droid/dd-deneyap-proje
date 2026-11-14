@@ -177,14 +177,15 @@
 
       inFlightControls.set(lockKey, { promise: p, time: now });
 
-      p.finally(function () {
+      function releaseControlLock() {
         setTimeout(function () {
           const cur = inFlightControls.get(lockKey);
           if (cur && cur.promise === p) {
             inFlightControls.delete(lockKey);
           }
         }, CONTROL_THROTTLE_MS);
-      });
+      }
+      p.then(releaseControlLock, releaseControlLock);
 
       return p;
     },

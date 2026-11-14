@@ -19,6 +19,7 @@
   <link rel="stylesheet" href="./css/sakin-secondary.css">
   <script defer src="./js/events-route.js"></script>
   <script src="./js/theme-boot.js"></script>
+  <script defer src="./js/parallax.js"></script>
 </head>
 <body class="mission-control-body">
   <!-- Ambient Ekran Kenarı Alarm & CRT Katmanları -->
@@ -145,7 +146,7 @@
     </div>
   </div>
 
-  <main id="main" class="page-container mission-control-page">
+  <main id="main" class="page-container mission-control-page" data-panel-view="hero">
     <section class="hero-section" id="hero" aria-label="Ev durumu">
       <section class="widget" id="homeWidget" aria-label="Sensör özeti" data-state="unknown" hidden>
         <div class="w-hero">
@@ -216,11 +217,16 @@
     <div id="banner" class="banner" role="status" hidden></div>
 
     <!-- 2. CANLI GÜVENLİK & TELEMETRİ VİTRİNİ -->
-    <section class="scrolly-section telemetry-section" id="telemetry" hidden aria-label="Sensörler">
+    <section class="scrolly-section telemetry-section" id="telemetry" aria-label="Sensörler">
       <div class="section-badge-header">
         <h2 class="sec-title">Sensörler</h2>
         <p class="sec-subtitle">Gaz, duman, yağmur, sarsıntı ve alev sensörlerinden gelen son değerler.</p>
       </div>
+      <div class="card section-device-empty" data-device-empty>
+        <p data-device-message>Cihaz bağlantısı bekleniyor…</p>
+        <a class="btn ghost" href="./settings.html#accountCard" data-device-action>Cihaz ve hesap ayarları</a>
+      </div>
+      <div data-device-content hidden>
 
       <div class="telemetry-panoramic-grid">
         <!-- Gaz & Duman Ana Vitrin Kartı -->
@@ -417,14 +423,20 @@
           </div>
         </article>
       </div>
+      </div>
     </section>
 
     <!-- 3. OTONOM SAVUNMA & AKTÜATÖR İSTASYONU -->
-    <section class="scrolly-section command-section" id="command-center" hidden aria-label="Otonom Savunma ve Aktüatör Konsolu">
+    <section class="scrolly-section command-section" id="command-center" aria-label="Otonom Savunma ve Aktüatör Konsolu">
       <div class="section-badge-header">
         <h2 class="sec-title">Cihaz kontrolü</h2>
         <p class="sec-subtitle">Fan, pompa, siren, pencere ve panjuru tek dokunuşla yönetin.</p>
       </div>
+      <div class="card section-device-empty" data-device-empty>
+        <p data-device-message>Cihaz bağlantısı bekleniyor…</p>
+        <a class="btn ghost" href="./settings.html#accountCard" data-device-action>Cihaz ve hesap ayarları</a>
+      </div>
+      <div data-device-content hidden>
 
       <div class="card tilt-card command-card" aria-label="Cihaz kontrolü">
         <div class="card-head">
@@ -630,14 +642,20 @@
           </div>
         </div>
       </div>
+      </div>
     </section>
 
     <!-- 4. ZAMAN SERİSİ & ANALİTİK RADAR -->
-    <section class="scrolly-section analytics-section" id="analytics" hidden aria-label="Sensör geçmişi">
+    <section class="scrolly-section analytics-section" id="analytics" aria-label="Sensör geçmişi">
       <div class="section-badge-header">
         <h2 class="sec-title">Son 24 saat</h2>
         <p class="sec-subtitle">Sensör değerlerini ve alarmları zaman içinde görün.</p>
       </div>
+      <div class="card section-device-empty" data-device-empty>
+        <p data-device-message>Cihaz bağlantısı bekleniyor…</p>
+        <a class="btn ghost" href="./settings.html#accountCard" data-device-action>Cihaz ve hesap ayarları</a>
+      </div>
+      <div data-device-content hidden>
 
       <article class="card tilt-card analytics-card" id="historyCard">
         <div class="card-head">
@@ -715,13 +733,19 @@
           <span id="histSource">kaynak: —</span>
         </p>
       </article>
+      </div>
     </section>
 
-    <section class="scrolly-section diagnostics-section" id="diagnostics" hidden aria-label="Sistem Teşhisi ve Bulut Ağı">
+    <section class="scrolly-section diagnostics-section" id="diagnostics" aria-label="Sistem Teşhisi ve Bulut Ağı">
       <div class="section-badge-header">
         <h2 class="sec-title">Sistem sağlığı</h2>
         <p class="sec-subtitle">Kartın bağlantısı, sinyali ve kaynak kullanımı.</p>
       </div>
+      <div class="card section-device-empty" data-device-empty>
+        <p data-device-message>Cihaz bağlantısı bekleniyor…</p>
+        <a class="btn ghost" href="./settings.html#accountCard" data-device-action>Cihaz ve hesap ayarları</a>
+      </div>
+      <div data-device-content hidden>
 
       <article class="card tilt-card span-2 diagnostics-card" id="diagnosticsCard">
         <div class="card-head">
@@ -846,6 +870,7 @@
           <span id="clientCount">bağlı istemci: 0</span>
         </p>
       </article>
+      </div>
     </section>
 
     <noscript>
@@ -944,7 +969,6 @@
   <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-  <script defer src="./js/parallax.js"></script>
   <script defer src="./js/blackbox.js"></script>
   <script defer src="./js/api.js"></script>
   <script defer src="./js/mqtt.js"></script>
