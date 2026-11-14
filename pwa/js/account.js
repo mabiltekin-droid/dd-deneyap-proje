@@ -213,9 +213,12 @@
   };
 
   async function doSocialSignIn(provider) {
-    if (window.AndroidApp && typeof window.AndroidApp.openInChrome === 'function') {
-      if (confirm('Google ile güvenli izin ve giriş yapmak için tarayıcı açılacak. Devam edilsin mi?')) {
-        window.AndroidApp.openInChrome();
+    const android = window.AndroidApp;
+    const nativeGoogle = provider === 'google' && android
+      && typeof android.getGoogleIdToken === 'function';
+    if (!nativeGoogle && android && typeof android.openInChrome === 'function') {
+      if (confirm('Tarayıcı açılacak ve oturum orada devam edecek. Devam edilsin mi?')) {
+        android.openInChrome();
       }
       return;
     }
@@ -225,7 +228,9 @@
     if (btn) btn.disabled = true;
     setResult(def.label + ' ile giriş yapılıyor…');
     try {
-      const r = await App.Auth.signInWithProvider(provider);
+      const r = nativeGoogle
+        ? await App.Auth.signInWithProvider('google', await android.getGoogleIdToken())
+        : await App.Auth.signInWithProvider(provider);
       if (r && r.redirect) {
         setResult(def.label + ' sayfasına yönlendiriliyorsunuz…');
         return;
@@ -234,7 +239,7 @@
       App.sound && App.sound.ok ? App.sound.ok() : (App.sound && App.sound.click());
       App.haptic && App.haptic(40);
     } catch (e) {
-      if (e && e.code === 'auth/popup-closed-by-user') {
+      if (e && (e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request')) {
         setResult(def.label + ' girişi iptal edildi.', 'err');
       } else {
         setResult(e.human || e.message, 'err');
