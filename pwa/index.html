@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>DD Ev Koruma — Eviniz için iç rahatlığı</title>
+  <title>DD Ev Koruma</title>
   <meta name="description" content="Gaz, duman, su ve hareket sensörlerini tek ekranda izleyin. Deneyap Kart tabanlı ev güvenlik sistemi.">
-  <meta name="theme-color" content="#f7f2e4" id="metaThemeColor">
+  <meta name="theme-color" content="#faf4e9" id="metaThemeColor">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Ev Koruma">
   <link rel="manifest" href="./manifest.json">
@@ -17,8 +17,9 @@
   <link rel="preload" href="./fonts/dm-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="./fonts/fraunces-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="./css/style.css">
-  <link rel="stylesheet" href="./css/redesign.css">
   <link rel="stylesheet" href="./css/mobile-app.css">
+  <link rel="stylesheet" href="./css/redesign.css">
+  <link rel="stylesheet" href="./css/sakin-secondary.css">
   <script src="./js/theme-boot.js"></script>
 </head>
 <body class="mission-control-body">
@@ -39,7 +40,7 @@
   <header class="glass-header">
     <div class="brand">
       <div class="brand-icon">
-        <img src="./icons/icon-192.png" alt="DD Ev Koruma" class="brand-logo-img">
+        <img src="./icons/icon-192.png" alt="" class="brand-logo-img">
       </div>
       <div class="brand-meta">
         <h1>DD Ev Koruma</h1>
@@ -60,6 +61,7 @@
       <a href="#telemetry" class="nav-item">Sensörler</a>
       <a href="#command-center" class="nav-item">Kontrol</a>
       <a href="#analytics" class="nav-item">Geçmiş</a>
+      <a href="#eventLog" class="nav-item">Olaylar</a>
       <a href="#diagnostics" class="nav-item">Sistem</a>
       <a href="./earthquake.html" class="nav-item">Deprem</a>
     </nav>
@@ -145,191 +147,80 @@
     </div>
   </div>
 
-  <!-- ANA İÇERİK: GÖREV KONTROL MERKEZİ & SCROLLYTELLING BÖLÜMLERİ -->
   <main id="main" class="page-container mission-control-page">
-    <!-- 1. SİNEMATİK HERO & PARALLAX BÖLÜMÜ -->
-    <section class="hero-section" id="hero" aria-label="Sinematik Başlangıç ve Canlı Hat">
-    <div class="parallax-stage" data-parallax-layers>
-      <!-- Katman 1: Derinlik & Siber Izgara (yPercent: 70) -->
-      <div class="p-layer p-layer-1" data-parallax-layer="1" aria-hidden="true">
-        <div class="hero-cyber-grid"></div>
-        <div class="hero-horizon-glow"></div>
-      </div>
-
-      <!-- Katman 2: Atmosferik Işık & Siber Partiküller (yPercent: 55) -->
-      <div class="p-layer p-layer-2" data-parallax-layer="2" aria-hidden="true">
-        <div class="hero-nebula nebula-1"></div>
-        <div class="hero-nebula nebula-2"></div>
-        <div class="hero-particles"></div>
-      </div>
-
-      <!-- Katman 3: Ana Tipografi & HUD Başlık Metinleri (yPercent: 40) -->
-      <div class="p-layer p-layer-3" data-parallax-layer="3">
-        <div class="hero-hud-content">
-          <div class="hero-badge">
-            <span class="badge-pulse"></span>
-            <span class="badge-text">EV GÜVENLİĞİ · CANLI</span>
-            <span class="badge-version" id="heroVersion">v2.23.0</span>
-          </div>
-
-          <h2 class="hero-title">
-            <span class="hero-title-sub">DD EV KORUMA</span>
-            <span class="hero-title-main">Eviniz için<br><span class="soft">iç rahatlığı.</span></span>
-          </h2>
-
-          <p class="hero-desc">
-            Gaz, duman, su ve hareket sensörlerini tek ekranda görün. Bir sorun olduğunda
-            telefonunuza ve e-posta adresinize anında haber gelsin.
-          </p>
-
-          <div class="hero-cta-group">
-            <a href="#telemetry" class="btn primary hero-btn">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-              </svg>
-              Canlı durumu gör
-            </a>
-            <a href="#command-center" class="btn hero-btn ghost">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <rect x="2" y="3" width="20" height="14" rx="2"/>
-                <line x1="8" y1="21" x2="16" y2="21"/>
-                <line x1="12" y1="17" x2="12" y2="21"/>
-              </svg>
-              Cihazları yönet
-            </a>
-          </div>
-
-          <p class="hero-note">Yerel ağda çalışır · Kurulum gerektirmez · Verileriniz size ait</p>
-        </div>
-      </div>
-
-      <!-- Katman 4: Ön Plan Şematik Silüet & Güvenlik Çerçevesi (yPercent: 10) -->
-      <div class="p-layer p-layer-4" data-parallax-layer="4" aria-hidden="true">
-        <div class="schematic-wrap">
-          <svg class="schematic-svg" viewBox="0 0 1000 480" fill="none" preserveAspectRatio="xMidYMid meet">
-            <!-- Arka Plan Güvenlik Çemberleri -->
-            <circle cx="500" cy="240" r="220" stroke="var(--primary)" stroke-opacity="0.12" stroke-width="1.5" stroke-dasharray="6 8" />
-            <circle cx="500" cy="240" r="160" stroke="var(--primary)" stroke-opacity="0.18" stroke-width="1.5" />
-            <circle cx="500" cy="240" r="90" stroke="var(--accent)" stroke-opacity="0.22" stroke-width="2" />
-
-            <!-- Şematik Mimari Çizgiler (Ev & Koruma Silüeti) -->
-            <path d="M260 380 L260 210 L500 70 L740 210 L740 380 Z" stroke="var(--primary)" stroke-opacity="0.45" stroke-width="2" stroke-linejoin="round"/>
-            <path d="M300 380 L300 230 L500 110 L700 230 L700 380" stroke="var(--primary)" stroke-opacity="0.2" stroke-width="1.2" stroke-dasharray="4 4"/>
-            <!-- Kat Bölüntüleri & Çatı Vektörü -->
-            <line x1="260" y1="260" x2="740" y2="260" stroke="var(--primary)" stroke-opacity="0.25" stroke-width="1.5"/>
-            <!-- Giriş ve Güvenlik Odası -->
-            <rect x="460" y="270" width="80" height="110" stroke="var(--accent)" stroke-opacity="0.5" stroke-width="1.8" rx="4"/>
-            <circle cx="500" cy="325" r="5" fill="var(--accent)" fill-opacity="0.8"/>
-            <!-- Pencere Servosu Hattı -->
-            <rect x="330" y="280" width="70" height="60" stroke="var(--primary)" stroke-opacity="0.4" stroke-width="1.5" rx="3"/>
-            <line x1="365" y1="280" x2="365" y2="340" stroke="var(--primary)" stroke-opacity="0.3"/>
-            <line x1="330" y1="310" x2="400" y2="310" stroke="var(--primary)" stroke-opacity="0.3"/>
-            <!-- Panjur Servosu Hattı -->
-            <rect x="600" y="280" width="70" height="60" stroke="var(--primary)" stroke-opacity="0.4" stroke-width="1.5" rx="3"/>
-            <line x1="600" y1="295" x2="670" y2="295" stroke="var(--primary)" stroke-opacity="0.3"/>
-            <line x1="600" y1="310" x2="670" y2="310" stroke="var(--primary)" stroke-opacity="0.3"/>
-            <line x1="600" y1="325" x2="670" y2="325" stroke="var(--primary)" stroke-opacity="0.3"/>
-
-            <!-- Çatı Baca / Gaz Tahliye Fanı Vektörü -->
-            <path d="M630 145 L630 90 L670 90 L670 170" stroke="var(--primary)" stroke-opacity="0.35" stroke-width="1.5"/>
-            <!-- Sensör Düğümleri & Radar Nabzı -->
-            <circle cx="500" cy="180" r="10" stroke="var(--danger)" stroke-opacity="0.6" stroke-width="2" class="radar-node-pulse" />
-            <circle cx="500" cy="180" r="4" fill="var(--danger)" />
-            <circle cx="365" cy="200" r="8" stroke="var(--accent)" stroke-opacity="0.6" stroke-width="1.8" />
-            <circle cx="365" cy="200" r="3" fill="var(--accent)" />
-            <circle cx="635" cy="200" r="8" stroke="var(--primary)" stroke-opacity="0.6" stroke-width="1.8" />
-            <circle cx="635" cy="200" r="3" fill="var(--primary)" />
-
-            <!-- Radar Tarama Hattı -->
-            <line x1="500" y1="240" x2="720" y2="120" stroke="var(--primary)" stroke-opacity="0.4" stroke-width="1.5" stroke-dasharray="3 3"/>
-            <text x="515" y="185" fill="var(--text-dim)" font-size="11" font-family="var(--font-mono)" letter-spacing="1">MQ2 GAZ SENSÖRÜ</text>
-            <text x="250" y="195" fill="var(--text-dim)" font-size="11" font-family="var(--font-mono)" letter-spacing="1">YAĞMUR DEDEKTÖRÜ</text>
-            <text x="650" y="195" fill="var(--text-dim)" font-size="11" font-family="var(--font-mono)" letter-spacing="1">TAHLİYE KANALI</text>
-          </svg>
-        </div>
-      </div>
-    </div>
-
-    <!-- Hero Tabanında Canlı Özet Telemetri HUD Şeridi (widget) -->
-    <div class="hero-telemetry-hud">
-      <div class="mobile-cockpit-head">
-        <div class="mch-copy">
-          <span class="mch-kicker">CANLI DURUM</span>
-          <strong class="mch-title">Ev durumu</strong>
-        </div>
-        <span class="mch-live" id="mobileCockpitLive" data-state="unknown"><span class="mch-live-dot" aria-hidden="true"></span> <span id="mobileCockpitLiveText">Beklemede</span></span>
-      </div>
-      <section class="widget" id="homeWidget" aria-label="Canlı Sistem Özeti" data-state="unknown">
+    <section class="hero-section" id="hero" aria-label="Ev durumu">
+      <section class="widget" id="homeWidget" aria-label="Sensör özeti" data-state="unknown" hidden>
         <div class="w-hero">
           <div class="w-hero-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M3 10.5 12 3l9 7.5"/>
-              <path d="M5 9.5V21h14V9.5"/>
-              <path d="M9.5 21v-6h5v6"/>
-            </svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5M5 9.5V21h14V9.5M9.5 21v-6h5v6"/></svg>
+            <svg class="w-icon-normal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>
+            <svg class="w-icon-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 21h20L12 3Zm0 6v4m0 4h.01"/></svg>
+            <svg class="w-icon-offline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3v5m6-5v5m3 0H6v3a6 6 0 0 0 6 6m0 0v4m8-7-5 5m0-5 5 5"/></svg>
           </div>
           <div class="w-head">
-            <span class="w-dot" aria-hidden="true"></span>
-            <span class="w-state" id="wState">Bağlanıyor…</span>
-            <span class="w-since" id="wSince"></span>
+            <h2 class="w-state" id="wState" role="status">Bağlanıyor…</h2>
+            <p class="w-since">Son veri <span id="wAge">—</span></p>
           </div>
         </div>
-        <div class="w-items">
-          <div class="w-item">
-            <span class="w-lbl">Hava kalitesi</span>
-            <strong id="wGas">—</strong>
+        <figure class="home-visual">
+          <img src="./images/ev-kesiti.jpg" width="1200" height="800" alt="" fetchpriority="high">
+        </figure>
+        <a id="wAlertLink" class="btn home-alert-link" href="#eventLog" hidden>Olayları incele</a>
+        <a id="wOfflineLink" class="btn ghost home-alert-link" href="./settings.html#connSection" hidden>Bağlantıyı kontrol et</a>
+        <div class="w-sensors">
+          <h3>Sensörler</h3>
+          <div class="w-items">
+            <a class="w-item" href="#gasCard" data-state="unknown">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 21c6-6-6-12 0-18m6 18c6-6-6-12 0-18m6 18c6-6-6-12 0-18"/></svg>
+              <span><span class="w-lbl">Gaz ve duman</span><strong id="wGas">Veri bekleniyor</strong></span>
+            </a>
+            <a class="w-item" href="#flameCard" data-state="unknown">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22a7 7 0 0 0 7-7c0-4-2-6-3-7 0 3-2 4-2 4 0-5-2-8-4-10 0 5-1 6-3 9-1 1-2 3-2 4a7 7 0 0 0 7 7z"/></svg>
+              <span><span class="w-lbl">Alev</span><strong id="wFlame">Veri bekleniyor</strong></span>
+            </a>
+            <a class="w-item" href="#rainCard" data-state="unknown">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 15a4 4 0 1 0-1.5-7.7A6 6 0 0 0 7 8.5a3.5 3.5 0 1 0-.5 6.5H20ZM9 18l-1 3m5-3-1 3m5-3-1 3"/></svg>
+              <span><span class="w-lbl">Yağmur</span><strong id="wRain">Veri bekleniyor</strong></span>
+            </a>
+            <a class="w-item" href="#vibCard" data-state="unknown">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12h4l2-7 4 14 2-7h8"/></svg>
+              <span><span class="w-lbl">Sarsıntı</span><strong id="wVib">Veri bekleniyor</strong></span>
+            </a>
           </div>
-          <div class="w-item">
-            <span class="w-lbl">Yağmur</span>
-            <strong id="wRain">—</strong>
-          </div>
-          <div class="w-item">
-            <span class="w-lbl">Pencere</span>
-            <strong id="wWindow">—</strong>
-          </div>
-          <div class="w-item">
-            <span class="w-lbl">Son güncelleme</span>
-            <strong id="wAge">—</strong>
-          </div>
+        </div>
+        <a href="#command-center" class="home-control-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="8" cy="7" r="2" fill="var(--primary-soft)"/><circle cx="16" cy="17" r="2" fill="var(--primary-soft)"/></svg>
+          <span>Cihaz kontrolü</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+        </a>
+        <div class="home-quick-actions">
+          <a class="btn ghost" href="#soundControl">Siren ve ses</a>
+          <button class="btn ghost" type="button" id="ddFabAuth" hidden>Kimliği doğrula</button>
         </div>
       </section>
 
-      <!-- Scrollytelling Kaydırma Göstergesi -->
-      <a href="#telemetry" class="scroll-cue" aria-label="Aşağı kaydır">
-        <span class="scroll-cue-text">Sensörlere git</span>
-        <svg class="scroll-cue-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <polyline points="6 9 12 15 18 9"/>
-        </svg>
-      </a>
-    </div>
-  </section>
-
-  <!-- ANA İÇERİK: GENİŞ BANTLI SCROLLYTELLING BÖLÜMLERİ -->
-  <div class="mission-main">
-    <!-- Erişiminiz olmayan (başka hesaba bağlı) veya giriş yapılmamış durumda
-         cihaz hiç yokmuş gibi bu boş ekran gösterilir. -->
-    <section id="noDevice" class="no-device" hidden aria-live="polite">
-      <div class="no-device-inner">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
-             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <rect x="2" y="3" width="20" height="14" rx="2"/>
-          <line x1="8" y1="21" x2="16" y2="21"/>
-          <line x1="12" y1="17" x2="12" y2="21"/>
-        </svg>
-        <h2 id="noDeviceTitle">Cihaz Yok</h2>
-        <p id="noDeviceMsg">Bağlı bir cihaz yalnızca sahibine ve admine görünür.</p>
-        <a class="btn ghost" href="./settings.html#accountCard">Ayarlar → Hesap &amp; Roller</a>
-      </div>
+      <section id="noDevice" class="no-device" aria-live="polite">
+        <div class="no-device-inner">
+          <figure class="home-visual">
+            <img src="./images/ev-kesiti.jpg" width="1200" height="800" alt="">
+          </figure>
+          <div class="no-device-copy">
+            <div class="w-hero-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5M5 9.5V21h14V9.5M9.5 21v-6h5v6"/></svg></div>
+            <h2 id="noDeviceTitle">Cihaz aranıyor</h2>
+            <p id="noDeviceMsg">Cihaz bağlantısı bekleniyor…</p>
+            <a id="noDeviceAction" class="btn primary" href="./settings.html#accountCard">Hesap ve roller</a>
+          </div>
+        </div>
+      </section>
     </section>
 
-    <!-- Kritik Durum Banner'ı -->
+    <div class="mission-main">
     <div id="banner" class="banner" role="status" hidden></div>
 
     <!-- 2. CANLI GÜVENLİK & TELEMETRİ VİTRİNİ -->
-    <section class="scrolly-section telemetry-section" id="telemetry" aria-label="Canlı Sensör ve Telemetri Vitrini">
+    <section class="scrolly-section telemetry-section" id="telemetry" hidden aria-label="Sensörler">
       <div class="section-badge-header">
-        <span class="sec-tag">Sensörler</span>
-        <h2 class="sec-title">Evdeki durum, tek bakışta</h2>
+        <h2 class="sec-title">Sensörler</h2>
         <p class="sec-subtitle">Gaz, duman, yağmur, sarsıntı ve alev sensörlerinden gelen son değerler.</p>
       </div>
 
@@ -531,10 +422,9 @@
     </section>
 
     <!-- 3. OTONOM SAVUNMA & AKTÜATÖR İSTASYONU -->
-    <section class="scrolly-section command-section" id="command-center" aria-label="Otonom Savunma ve Aktüatör Konsolu">
+    <section class="scrolly-section command-section" id="command-center" hidden aria-label="Otonom Savunma ve Aktüatör Konsolu">
       <div class="section-badge-header">
-        <span class="sec-tag">Kontrol</span>
-        <h2 class="sec-title">Kontrol sizde</h2>
+        <h2 class="sec-title">Cihaz kontrolü</h2>
         <p class="sec-subtitle">Fan, pompa, siren, pencere ve panjuru tek dokunuşla yönetin.</p>
       </div>
 
@@ -598,7 +488,7 @@
           </div>
 
           <!-- Hoparlör & Siren (I2S MAX98357A) -->
-          <div class="ctrl-group span-2">
+          <div class="ctrl-group span-2" id="soundControl">
             <div class="ctrl-header">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M11 5 6 9H2v6h4l5 4z"/>
@@ -745,9 +635,8 @@
     </section>
 
     <!-- 4. ZAMAN SERİSİ & ANALİTİK RADAR -->
-    <section class="scrolly-section analytics-section" id="analytics" aria-label="Zaman Serisi ve Analitik Radar">
+    <section class="scrolly-section analytics-section" id="analytics" hidden aria-label="Sensör geçmişi">
       <div class="section-badge-header">
-        <span class="sec-tag">Geçmiş</span>
         <h2 class="sec-title">Son 24 saat</h2>
         <p class="sec-subtitle">Sensör değerlerini ve alarmları zaman içinde görün.</p>
       </div>
@@ -834,12 +723,12 @@
     <!-- 4. OLAY GÜNLÜĞÜ & ALARM GEÇMİŞİ -->
     <section class="scrolly-section eventlog-section" id="eventLog" aria-label="Olay Günlüğü ve Alarm Geçmişi">
       <div class="section-badge-header">
-        <span class="sec-tag">Olaylar</span>
         <h2 class="sec-title">Olay geçmişi</h2>
-        <p class="sec-subtitle">Alarmlar, bağlantı kesintileri ve sistem olayları tek yerde.</p>
       </div>
 
-      <article class="card span-2 eventlog-card" id="eventCard">
+      <p class="card events-unavailable" id="eventUnavailable">Cihazınıza erişim sağlandığında olay kayıtları burada görünür.</p>
+      <article class="card span-2 eventlog-card" id="eventCard" hidden>
+        <div class="event-shortcuts"><a href="#analytics">Sensör geçmişi</a><a href="#diagnostics">Sistem sağlığı</a></div>
         <div class="card-head">
           <div class="head-title">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -884,9 +773,8 @@
       </article>
     </section>
 
-    <section class="scrolly-section diagnostics-section" id="diagnostics" aria-label="Sistem Teşhisi ve Bulut Ağı">
+    <section class="scrolly-section diagnostics-section" id="diagnostics" hidden aria-label="Sistem Teşhisi ve Bulut Ağı">
       <div class="section-badge-header">
-        <span class="sec-tag">Sistem</span>
         <h2 class="sec-title">Sistem sağlığı</h2>
         <p class="sec-subtitle">Kartın bağlantısı, sinyali ve kaynak kullanımı.</p>
       </div>
@@ -1033,7 +921,7 @@
           <strong>DD Ev Koruma</strong>
         </div>
         <p class="f-desc">Evinizdeki gaz, duman, su ve hareket sensörlerini tek yerden izleyin. Bir sorun olduğunda haberiniz olsun.</p>
-        <span class="f-meta">Sürüm v2.23.0 · Deneyap Kart · MQTT · Firebase</span>
+        <span class="f-meta">Deneyap Kart</span>
       </div>
 
       <div class="footer-col links-col">
@@ -1075,25 +963,9 @@
       </svg>
       <span>Panel</span>
     </a>
-    <a href="#telemetry" data-nav="telemetry">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M3 12h4l2-7 4 14 2-7h6"/>
-      </svg>
-      <span>Sensörler</span>
-    </a>
-    <a href="#command-center" data-nav="command-center">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-        <path d="M9 12l2 2 4-4"/>
-      </svg>
-      <span>Kontrol</span>
-    </a>
-    <a href="#analytics" data-nav="analytics">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M3 3v18h18"/>
-        <path d="M7 15l4-4 3 3 5-6"/>
-      </svg>
-      <span>Geçmiş</span>
+    <a href="#eventLog" data-nav="eventLog">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9m-8 12a2 2 0 0 0 4 0"/></svg>
+      <span>Olaylar</span>
     </a>
     <a href="./earthquake.html">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -1149,24 +1021,5 @@
   <script src="./js/account.js"></script>
   <script src="./js/mobile-app.js"></script>
 
-  <!-- Hızlı Eylem Kısayolu (FAB) -->
-  <div class="dd-fab-container" id="ddFabContainer">
-    <button type="button" class="dd-fab-main" id="ddFabMain" aria-label="Hızlı Eylemler" title="Hızlı Eylemler">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="22" height="22">
-        <line x1="12" y1="5" x2="12" y2="19"></line>
-        <line x1="5" y1="12" x2="19" y2="12"></line>
-      </svg>
-    </button>
-    <div class="dd-fab-menu" id="ddFabMenu" hidden>
-      <button type="button" class="dd-fab-item" id="ddFabSiren" title="Acil Siren Tetikle">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
-        <span>Siren</span>
-      </button>
-      <button type="button" class="dd-fab-item" id="ddFabAuth" title="Biyometrik / PIN Doğrula">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-        <span>Doğrula</span>
-      </button>
-    </div>
-  </div>
 </body>
 </html>

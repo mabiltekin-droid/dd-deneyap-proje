@@ -776,10 +776,8 @@
   }
 }
 
-/* Geniş ama çok geniş olmayan masaüstlerinde marka adı sıkışmasın.
-   Ayarlar zaten alt gezinmede; İndir düğmesi tarayıcı menüsünde var. */
+/* Orta genişlikte masaüstlerinde yükleme düğmesini gizle. */
 @media (min-width: 981px) and (max-width: 1500px) {
-  .glass-header .nav-settings-pill,
   .glass-header #pwaInstallBtn {
     display: none !important;
   }
@@ -814,76 +812,4 @@
   height: 100% !important;
   object-fit: contain !important;
   border-radius: 8px !important;
-}
-
-/* Floating Action Button (FAB) */
-.dd-fab-container {
-  position: fixed;
-  right: 18px;
-  bottom: calc(72px + env(safe-area-inset-bottom, 0px));
-  z-index: 150;
-  display: flex;
-  flex-direction: column-reverse;
-  align-items: flex-end;
-  gap: 0.6rem;
-}
-
-.dd-fab-main {
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  background: var(--primary);
-  color: var(--paper);
-  border: none;
-  box-shadow: 0 10px 25px rgba(27, 40, 34, 0.4);
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-  transition: transform 0.2s ease, background 0.2s ease;
-}
-
-.dd-fab-main:active {
-  transform: scale(0.92);
-}
-
-.dd-fab-menu {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  animation: ddFabIn 0.2s ease both;
-}
-
-.dd-fab-menu[hidden] {
-  display: none;
-}
-
-.dd-fab-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.85rem;
-  background: var(--surface);
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  font-size: 0.78rem;
-  font-weight: 650;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.15);
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.dd-fab-item:active {
-  transform: scale(0.95);
-}
-
-@keyframes ddFabIn {
-  from { opacity: 0; transform: translateY(10px) scale(0.95); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-@media (min-width: 981px) {
-  .dd-fab-container {
-    bottom: 24px;
-  }
 }

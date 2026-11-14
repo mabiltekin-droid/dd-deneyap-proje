@@ -1,26 +1,21 @@
 /* ==========================================================================
-   studio-nav.js - Ayarlar Stüdyosu: hamburger menü + sekmeli bölüm gezintisi
+   studio-nav.js - Ayarlar: konu grupları ve bölüm gezintisi
    --------------------------------------------------------------------------
    Amaç:
-     Uzun tek sayfa yerine aynı anda yalnızca bir yapılandırma paneli gösterir.
-     Tüm bölümler, üst çubuktaki üç çizgi (hamburger) düğmesinden açılan
-     çekmecede gruplanmış bir liste hâlinde toplanır.
+     Ayarları konu başlıklarına ayırır ve seçilen ayarın panelini gösterir.
+     Üst çubuktaki Bölümler düğmesi ayarlara doğrudan geçiş sağlar.
 
    Özellikler:
      - Menü, panel DOM'undan üretilir (başlık/açıklama/numara otomatik).
      - Yetkiye göre gizlenen paneller (Profilim, Davetler) menüde de gizlenir.
      - Adres çubuğu desteği: #accountCard, #thresholdSection veya #h-th gibi
        eski bağlantılar doğru sekmeyi açar.
-     - Son seçilen sekme localStorage'da hatırlanır.
-     - parallax.js'in SPA sayfa geçişlerinde App.initSettings / initDashboard
-       sarmalanır; menü her geçişte yeniden kurulur.
+     - Ayarlar açılışında konu grupları, bağlantı üzerinden bölüm açıldığında ayrıntı görünür.
      - Erişilebilirlik: role=dialog, inert, Esc ile kapatma, odak tuzağı.
    ========================================================================== */
 
 (function () {
   'use strict';
-
-  var STORE_KEY = 'dd.studio.tab';
 
   /* Menüde görünen kısa adlar. Tanımsız panelde h3 metni kullanılır. */
   var LABELS = {
@@ -35,9 +30,18 @@
     automationSection: 'Modlar',
     telegramSection: 'Telegram',
     notifySection: 'Bildirimler',
+    nativeNotifySection: 'Uygulama bildirimleri',
+    emergencySection: 'Acil durum e-postaları',
     themeSection: 'Görünüm',
     backupSection: 'Bakım'
   };
+
+  var OVERVIEW_GROUPS = [
+    { title: 'Hesap', icon: 'accountCard', panels: ['accountCard', 'profileCard', 'inviteCard'] },
+    { title: 'Cihaz ve ev', icon: 'homesSection', panels: ['devicesSection', 'homesSection', 'otaSection', 'connSection', 'thresholdSection', 'automationSection'] },
+    { title: 'Bildirimler', icon: 'notifySection', panels: ['notifySection', 'nativeNotifySection', 'telegramSection', 'emergencySection'] },
+    { title: 'Görünüm ve bakım', icon: 'themeSection', panels: ['themeSection', 'backupSection'] }
+  ];
 
   /* Feather tarzı 24x24 ikon gövdeleri (stroke ortak) */
   var ICONS = {
@@ -125,14 +129,6 @@
       (ICONS[id] || ICONS.accountCard) + '</svg>';
   }
 
-  function readStore() {
-    try { return localStorage.getItem(STORE_KEY) || ''; } catch (e) { return ''; }
-  }
-
-  function writeStore(value) {
-    try { localStorage.setItem(STORE_KEY, value); } catch (e) { /* yoksay */ }
-  }
-
   function versionText() {
     return (window.App && window.App.VERSION) ? ('v' + window.App.VERSION) : 'Deneyap Ev Koruma';
   }
@@ -145,6 +141,78 @@
   function scrollTop() {
     try { window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); }
     catch (e) { try { window.scrollTo(0, 0); } catch (e2) {} }
+  }
+
+  function focusPanel(panel) {
+    var title = panel && panel.querySelector('h3');
+    if (!title) return;
+    title.setAttribute('tabindex', '-1');
+    focusEl(title);
+  }
+
+  function showOverview(options) {
+    var root = mainRoot();
+    var overview = byId('settingsOverview');
+    if (!root || !overview) return;
+
+    options = options || {};
+    currentId = null;
+    allPanels().forEach(function (panel) { panel.classList.remove('is-tab-active'); });
+    root.classList.add('is-overview');
+    overview.hidden = false;
+    document.title = 'Ayarlar — Deneyap Ev Koruma';
+    updateActiveStyles();
+
+    if (options.clearHash && window.location.hash && window.history.replaceState) {
+      window.history.replaceState(window.history.state, '', window.location.pathname + window.location.search);
+    }
+    if (options.focus) focusEl(byId('settingsOverviewTitle'));
+    if (options.scroll) scrollTop();
+  }
+
+  function buildOverview() {
+    var list = byId('settingsOverviewGroups');
+    var back = byId('settingsOverviewBack');
+    if (!list) return;
+    list.replaceChildren();
+
+    OVERVIEW_GROUPS.forEach(function (group) {
+      var details = document.createElement('details');
+      details.className = 'settings-overview-group';
+      var summary = document.createElement('summary');
+      summary.innerHTML = iconSvg(group.icon) +
+        '<span></span><svg class="settings-overview-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>';
+      summary.querySelector('span').textContent = group.title;
+      details.appendChild(summary);
+
+      var rows = document.createElement('div');
+      rows.className = 'settings-overview-rows';
+      group.panels.forEach(function (id) {
+        var panel = panelById(id);
+        if (!panel) return;
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.dataset.panel = id;
+        btn.textContent = panel.querySelector('h3').textContent.trim();
+        btn.addEventListener('click', function () {
+          if (activate(id, {})) focusPanel(panel);
+        });
+        rows.appendChild(btn);
+      });
+      details.appendChild(rows);
+      list.appendChild(details);
+    });
+
+    if (back && !back._bound) {
+      back._bound = true;
+      back.addEventListener('click', function () {
+        if (window.history.state && window.history.state.settingsOverviewParent) {
+          window.history.back();
+          return;
+        }
+        showOverview({ clearHash: true, focus: true, scroll: true });
+      });
+    }
   }
 
   /* ------------------------------------------------------------- Çekmece UI */
@@ -340,13 +408,7 @@
           var ok = activate(id, {});
           if (ok) {
             closeMenu(false);
-            var activePanel = panelById(id);
-            var title = activePanel && (activePanel.querySelector('.panel-title-row h3') ||
-                                        activePanel.querySelector('h3'));
-            if (title) {
-              title.setAttribute('tabindex', '-1');
-              focusEl(title);
-            }
+            focusPanel(panelById(id));
           }
         });
 
@@ -373,6 +435,19 @@
           return !btn.hidden;
         });
         group.hidden = !visible;
+      });
+    }
+
+    var overview = byId('settingsOverviewGroups');
+    if (overview) {
+      overview.querySelectorAll('.settings-overview-group').forEach(function (group) {
+        var anyVisible = false;
+        group.querySelectorAll('button[data-panel]').forEach(function (btn) {
+          var panel = panelById(btn.dataset.panel);
+          btn.hidden = !panel || panel.hidden;
+          anyVisible = anyVisible || !btn.hidden;
+        });
+        group.hidden = !anyVisible;
       });
     }
 
@@ -482,22 +557,27 @@
     var root = mainRoot();
     if (!root) return false;
 
+    var fromOverview = root.classList.contains('is-overview');
     allPanels().forEach(function (p) {
       p.classList.toggle('is-tab-active', p === panel);
     });
 
     currentId = id;
     root.classList.add('is-tabbed');
+    root.classList.remove('is-overview');
+    var overview = byId('settingsOverview');
+    if (overview) overview.hidden = true;
 
     updateActiveStyles();
     updateToolbar();
 
-    if (options.remember !== false) writeStore(id);
-
     if (options.hash !== false) {
       try {
-        if (window.history && window.history.replaceState) {
-          window.history.replaceState(null, '', '#' + id);
+        var history = window.history;
+        if (fromOverview && !window.location.hash) {
+          history.pushState({ settingsOverviewParent: true }, '', '#' + id);
+        } else {
+          history.replaceState(history.state, '', '#' + id);
         }
       } catch (e) { /* yoksay */ }
     }
@@ -517,14 +597,15 @@
     if (!next) return;
 
     activate(next.id, {});
-    var title = next.querySelector('.panel-title-row h3') || next.querySelector('h3');
-    if (title) {
-      title.setAttribute('tabindex', '-1');
-      focusEl(title);
-    }
+    focusPanel(next);
   }
 
   function checkActiveAvailability() {
+    if (!currentId) {
+      var linked = panelFromHash();
+      if (linked && !linked.hidden) activate(linked.id, { hash: false, scroll: false });
+      return;
+    }
     var panel = panelById(currentId);
     if (!panel || panel.hidden) {
       var next = firstAvailablePanel();
@@ -661,74 +742,27 @@
     var versionEl = byId('studioMenuVersion');
     if (versionEl) versionEl.textContent = versionText();
 
+    buildOverview();
     buildMenu();
     watchPanels();
 
-    var target = null;
     var hashed = panelFromHash();
     if (hashed && !hashed.hidden) {
-      target = hashed.id;
-    } else if (currentId && panelById(currentId) && !panelById(currentId).hidden) {
-      target = currentId;
+      activate(hashed.id, { hash: false, scroll: false });
     } else {
-      var stored = readStore();
-      if (stored && panelById(stored) && !panelById(stored).hidden) target = stored;
-    }
-
-    if (!target) {
-      var first = firstAvailablePanel();
-      if (first) target = first.id;
-    }
-
-    if (target) {
-      /* Adres çubuğu görünen panelle uyuşmuyorsa (eski #h-th başlık bağlantısı,
-         bilinmeyen kimlik veya yetkiyle gizlenmiş panel) tekil kimliğe çevir. */
-      var canonical = '#' + target;
-      var currentHash = window.location.hash || '';
-      var fixHash = !!(currentHash && currentHash !== canonical);
-      activate(target, { hash: fixHash, scroll: fixHash });
-    } else {
-      updateToolbar();
+      showOverview();
     }
   }
 
   function onHashChange() {
+    if (!mainRoot()) return;
     var panel = panelFromHash();
     if (panel && !panel.hidden) {
       activate(panel.id, { hash: false, scroll: false });
       return;
     }
 
-    if (panel && panel.hidden) {
-      var next = firstAvailablePanel();
-      if (next) activate(next.id, { scroll: false });
-      return;
-    }
-
-    var active = panelById(currentId);
-    if (active) {
-      try {
-        if (window.history && window.history.replaceState) {
-          window.history.replaceState(null, '', '#' + active.id);
-        }
-      } catch (e) { /* yoksay */ }
-    }
-  }
-
-  function hookApp(name) {
-    var App = window.App;
-    if (!App || typeof App[name] !== 'function' || App[name]._studioNavHooked) return;
-
-    var original = App[name];
-    var wrapped = function () {
-      var result = original.apply(this, arguments);
-      try { sync(); } catch (e) {
-        if (window.console && console.warn) console.warn('[studio-nav] yeniden kurulamadı:', e);
-      }
-      return result;
-    };
-    wrapped._studioNavHooked = true;
-    App[name] = wrapped;
+    showOverview({ focus: !window.location.hash, scroll: !window.location.hash });
   }
 
   function boot() {
@@ -736,11 +770,8 @@
     booted = true;
 
     document.addEventListener('keydown', onKeyDown);
-    document.addEventListener('hashchange', onHashChange);
+    window.addEventListener('hashchange', onHashChange);
     window.addEventListener('resize', updateHeaderOffset);
-
-    hookApp('initSettings');
-    hookApp('initDashboard');
 
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', sync);

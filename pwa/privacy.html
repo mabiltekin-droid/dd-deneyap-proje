@@ -1,109 +1,26 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="tr" data-theme="light">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f7f2e4">
+  <meta name="theme-color" content="#faf4e9">
   <title>Gizlilik ve Veri Politikası — DD Ev Koruma</title>
   <meta name="description" content="DD Ev Koruma PWA ve Android uygulaması gizlilik, veri işleme ve hesap silme politikası.">
   <link rel="icon" href="./icons/favicon.svg" type="image/svg+xml">
-  <style>
-    @font-face {
-      font-family: "DM Sans";
-      font-style: normal;
-      font-weight: 100 1000;
-      font-display: swap;
-      src: url("./fonts/dm-sans-latin.woff2") format("woff2");
-    }
-    @font-face {
-      font-family: "Fraunces";
-      font-style: normal;
-      font-weight: 100 900;
-      font-display: swap;
-      src: url("./fonts/fraunces-latin.woff2") format("woff2");
-    }
-    :root {
-      --bg: #f6f2e9;
-      --panel: #fffdf9;
-      --panel-2: #f3eee4;
-      --border: #e4ded2;
-      --text: #1b2822;
-      --muted: #5b6a62;
-      --accent: #1f5945;
-      --accent-2: #b86a45;
-      --warn: #a76c1e;
-    }
-    * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
-    body {
-      margin: 0;
-      background:
-        radial-gradient(900px 520px at 88% -10%, rgba(207, 226, 214, .7), transparent 62%),
-        radial-gradient(700px 480px at -8% 14%, rgba(244, 220, 202, .65), transparent 58%),
-        var(--bg);
-      color: var(--text);
-      font: 16px/1.65 "DM Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
-    }
-    a { color: var(--accent); text-decoration: none; }
-    a:hover { text-decoration: underline; }
-    .wrap { width: min(920px, calc(100% - 2rem)); margin: 0 auto; }
-    header { padding: 2.25rem 0 1.5rem; }
-    .brand { display: flex; align-items: center; gap: .8rem; }
-    .brand img { width: 44px; height: 44px; border-radius: 12px; }
-    .brand strong { letter-spacing: .02em; font-size: 1rem; font-weight: 650; }
-    .brand span { color: var(--muted); font-size: .8rem; display: block; }
-    .back { display: inline-flex; align-items: center; gap: .4rem; margin-top: 1.2rem; font-size: .9rem; }
-    main { padding-bottom: 2rem; }
-    .card {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 22px;
-      padding: clamp(1.2rem, 3vw, 2.2rem);
-      box-shadow: 0 1px 2px rgba(27, 40, 34, .04), 0 24px 60px -38px rgba(27, 40, 34, .4);
-    }
-    h1 { font-family: "Fraunces", Georgia, serif; font-size: clamp(1.6rem, 4vw, 2.35rem); font-weight: 500; line-height: 1.12; letter-spacing: -.03em; margin: 0 0 .4rem; }
-    .updated { color: var(--muted); font-size: .85rem; margin: 0 0 1.6rem; }
-    h2 { font-size: 1.08rem; margin: 1.8rem 0 .55rem; color: var(--text); }
-    p, li { color: #4f5e56; }
-    ul { padding-left: 1.25rem; }
-    li { margin: .25rem 0; }
-    .note {
-      border-left: 3px solid var(--warn);
-      background: #fbf1e1;
-      padding: .8rem 1rem;
-      border-radius: 0 .6rem .6rem 0;
-      color: #6b4a13;
-      margin: 1rem 0;
-      font-size: .94rem;
-    }
-    .grid { display: grid; gap: .7rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin: .8rem 0; }
-    .mini { border: 1px solid var(--border); background: var(--panel-2); border-radius: 12px; padding: .8rem .9rem; }
-    .mini strong { color: var(--text); display: block; margin-bottom: .15rem; font-size: .92rem; }
-    .mini span { color: var(--muted); font-size: .85rem; }
-    .toc { display: flex; flex-wrap: wrap; gap: .45rem; margin: 1rem 0 0; }
-    .toc a { border: 1px solid var(--border); border-radius: 999px; padding: .3rem .7rem; font-size: .8rem; color: var(--muted); }
-    .toc a:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
-    .cta {
-      display: inline-block;
-      margin-top: .8rem;
-      background: var(--accent);
-      color: #fffdf9;
-      font-weight: 650;
-      border-radius: 10px;
-      padding: .65rem 1rem;
-    }
-    .cta:hover { text-decoration: none; filter: brightness(1.05); }
-    footer { border-top: 1px solid var(--border); margin-top: 2rem; padding: 1.4rem 0 2.5rem; color: var(--muted); font-size: .82rem; text-align: center; }
-    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
-  </style>
+  <link rel="preload" href="./fonts/dm-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="./fonts/fraunces-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="./css/redesign.css">
+  <link rel="stylesheet" href="./css/sakin-secondary.css">
+  <script src="./js/theme-boot.js"></script>
 </head>
-<body>
+<body class="privacy-body">
+  <a href="#privacy-main" class="privacy-skip">İçeriğe geç</a>
   <div class="wrap">
     <header>
       <div class="brand">
         <img src="./icons/icon-192.png" alt="">
         <div>
-          <strong>DENEYAP EV KORUMA</strong>
+          <strong>DD Ev Koruma</strong>
           <span>Gizlilik ve Veri Politikası</span>
         </div>
       </div>

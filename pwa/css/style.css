@@ -2794,7 +2794,7 @@ main {
 .header-nav .nav-item:hover,
 .settings-header-nav .nav-item:hover {
   color: #ffffff;
-  background: transparent !important;
+  background: transparent;
 }
 
 [data-theme="light"] .header-nav .nav-item:hover,
@@ -3525,7 +3525,7 @@ main {
 .settings-nav-tabs .studio-tab {
   position: relative;
   z-index: 2;
-  background: transparent !important;
+  background: transparent;
 }
 
 /* --------------------------------- Mobil SCADA ve Header Duyarlılık Kuralları */

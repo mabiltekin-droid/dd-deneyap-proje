@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Deprem · DD Ev Koruma</title>
   <meta name="description" content="AFAD son depremleri, konumunuza göre tahmini S dalgası varış süresi ve canlı deprem uyarıları.">
-  <meta name="theme-color" content="#f7f2e4" id="metaThemeColor">
+  <meta name="theme-color" content="#faf4e9" id="metaThemeColor">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Ev Koruma">
   <link rel="manifest" href="./manifest.json">
@@ -15,9 +15,10 @@
   <link rel="preload" href="./fonts/dm-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="./fonts/fraunces-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="./css/style.css">
+  <link rel="stylesheet" href="./css/mobile-app.css">
   <link rel="stylesheet" href="./css/redesign.css">
   <link rel="stylesheet" href="./css/earthquake.css">
-  <link rel="stylesheet" href="./css/mobile-app.css">
+  <link rel="stylesheet" href="./css/sakin-secondary.css">
   <script src="./js/theme-boot.js"></script>
 </head>
 <body class="mission-control-body settings-studio-body quake-body">
@@ -34,7 +35,7 @@
   <header class="glass-header">
     <div class="brand">
       <div class="brand-icon">
-        <img src="./icons/icon-192.png" alt="DD Ev Koruma" class="brand-logo-img">
+        <img src="./icons/icon-192.png" alt="" class="brand-logo-img">
       </div>
       <div class="brand-meta">
         <h1>Deprem</h1>
@@ -95,18 +96,16 @@
     <section class="quake-hero" aria-labelledby="quakeTitle">
       <div>
         <span class="quake-eyebrow"><span class="quake-pulse" aria-hidden="true"></span>AFAD canlı akış</span>
-        <h2 id="quakeTitle">Sarsıntı size ulaşmadan önce görün.</h2>
+        <h2 id="quakeTitle">Son depremler</h2>
         <p class="quake-lead">
-          AFAD'ın yayımladığı son depremleri izler. Konumunuzu eklerseniz depremin
-          merkezine olan uzaklığı ve tahmini S dalgası varış süresini hesaplar.
+          AFAD kayıtlarını görün. Konumunuzu açarsanız depremin merkezine olan uzaklığı ve tahmini S dalgası varış süresini görebilirsiniz.
         </p>
         <div class="quake-disclaimer">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
           </svg>
           <span>
-            Bu bir deprem tahmini değildir. AFAD kaydı ile uyarının size ulaşması
-            arasında gecikme olabilir; 30 saniye önceden haber verme garanti edilmez.
+            AFAD kayıtları gecikmeli ulaşabilir. Hesaplanan süre bir tahmindir ve önceden uyarı garantisi vermez.
           </span>
         </div>
       </div>
@@ -133,23 +132,23 @@
 
     <section class="quake-toolbar" aria-label="Deprem akışı ayarları">
       <div class="quake-field">
-        <label for="quakeMag">En düşük büyüklük</label>
-        <select id="quakeMag">
-          <option value="2">2.0</option>
-          <option value="2.5" selected>2.5</option>
-          <option value="3">3.0</option>
-          <option value="3.5">3.5</option>
-          <option value="4">4.0</option>
-        </select>
-      </div>
-
-      <div class="quake-field">
         <label for="quakeHours">Zaman aralığı</label>
         <select id="quakeHours">
           <option value="6">Son 6 saat</option>
           <option value="24" selected>Son 24 saat</option>
           <option value="48">Son 48 saat</option>
           <option value="72">Son 72 saat</option>
+        </select>
+      </div>
+
+      <div class="quake-field">
+        <label for="quakeMag">En düşük büyüklük</label>
+        <select id="quakeMag">
+          <option value="2">2,0</option>
+          <option value="2.5" selected>2,5</option>
+          <option value="3">3,0</option>
+          <option value="3.5">3,5</option>
+          <option value="4">4,0</option>
         </select>
       </div>
 
@@ -162,7 +161,7 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
         </svg>
-        <span>Konumu kullan</span>
+        <span>Konumumu kullan</span>
       </button>
 
       <button type="button" class="quake-btn" id="quakeLocClear" hidden>Konumu kaldır</button>
@@ -171,7 +170,7 @@
 
       <label class="quake-switch" for="quakeNotify">
         <span class="quake-switch-track" aria-hidden="true"></span>
-        <span>Sayfa açıkken bildir</span>
+        <span>Bu sayfa açıkken bildir</span>
         <input type="checkbox" id="quakeNotify">
       </label>
     </section>
@@ -181,7 +180,7 @@
     <section class="quake-feed" aria-labelledby="quakeFeedTitle">
       <div class="quake-feed-head">
         <div>
-          <h3 id="quakeFeedTitle">Son depremler</h3>
+          <h3 id="quakeFeedTitle">AFAD kayıtları</h3>
           <p id="quakeFeedCount">AFAD kayıtları yükleniyor…</p>
         </div>
         <span class="quake-live-chip" id="quakeLive" data-state="loading">Bağlanıyor</span>
@@ -201,29 +200,17 @@
   </main>
 
   <nav class="bottom-nav" aria-label="Ana gezinme">
-    <a href="./index.html#hero">
+    <a href="./#hero">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9.5 21v-6h5v6"/>
       </svg>
       <span>Panel</span>
     </a>
-    <a href="./index.html#telemetry">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M3 12h4l2-7 4 14 2-7h6"/>
+    <a href="./#eventLog">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9m-8 12a2 2 0 0 0 4 0"/>
       </svg>
-      <span>Sensörler</span>
-    </a>
-    <a href="./index.html#command-center">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/>
-      </svg>
-      <span>Kontrol</span>
-    </a>
-    <a href="./index.html#analytics">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/>
-      </svg>
-      <span>Geçmiş</span>
+      <span>Olaylar</span>
     </a>
     <a href="./earthquake.html" class="active" aria-current="page">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

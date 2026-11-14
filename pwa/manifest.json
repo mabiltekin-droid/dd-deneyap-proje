@@ -11,8 +11,8 @@
   "lang": "tr",
   "dir": "ltr",
   "categories": ["utilities", "smart-home", "lifestyle"],
-  "background_color": "#f7f2e4",
-  "theme_color": "#f7f2e4",
+  "background_color": "#faf4e9",
+  "theme_color": "#faf4e9",
   "shortcuts": [
     {
       "name": "Canlı Sensörler",

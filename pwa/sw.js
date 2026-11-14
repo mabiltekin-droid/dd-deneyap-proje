@@ -18,7 +18,7 @@
    ========================================================================== */
 
 const VERSION = '2.31.0';
-const CACHE = 'deneyap-pwa-v' + VERSION + '-r9';
+const CACHE = 'deneyap-pwa-v' + VERSION + '-r10';
 const SHELL = './index.html';
 
 const PRECACHE = [
@@ -31,6 +31,8 @@ const PRECACHE = [
   './css/mobile-app.css',
   './css/redesign.css',
   './css/earthquake.css',
+  './css/sakin-secondary.css',
+  './images/ev-kesiti.jpg',
   './fonts/dm-sans-latin.woff2',
   './fonts/dm-sans-latin-ext.woff2',
   './fonts/fraunces-latin.woff2',

@@ -15,7 +15,7 @@
   const $ = function (id) { return document.getElementById(id); };
 
   const STATE_LABEL = {
-    normal:  'Güvende',
+    normal:  'Normal',
     warning: 'Uyarı',
     danger:  'Tehlike'
   };
@@ -385,7 +385,7 @@
 
     const card = $('flameCard');
     if (card) card.setAttribute('data-state', active ? 'danger' : (enabled ? 'normal' : 'unknown'));
-    setText('flameValue', active ? 'Alev!' : (enabled ? 'Güvende' : 'Pasif'));
+    setText('flameValue', active ? 'Alev algılandı' : (enabled ? 'Algılanmadı' : 'Kapalı'));
     setChip('flameChip', active ? 'danger' : (enabled ? 'normal' : 'unknown'),
       active ? 'Yangın' : (enabled ? 'İzleniyor' : 'Kapalı'));
     setText('flameRaw', 'ölçüm ' + raw + ' · başlangıç ' + base + ' · dijital ' + (digital ? '1' : '0'));
@@ -652,14 +652,14 @@
     accessChecking = dev;
     App.Auth.checkDevice(dev).then(function () {
       accessChecking = null;
-      if (lastData && lastData.dev === dev) render(lastData);
+      if (lastData && lastData.dev === dev) render(lastData, lastUpdateTs);
     }).catch(function () { accessChecking = null; });
   }
 
   /* --- Cihaz görünürlüğü --------------------------------------------------
      Başka bir hesaba bağlı cihaz; farklı bir hesapta ya da oturum yokken
      "hiç yokmuş" gibi gösterilir: telemetri, kumanda ve alarmlar gizlenir. */
-  const DEVICE_SECTIONS = ['homeWidget', 'telemetry', 'command-center', 'analytics', 'eventLog', 'diagnostics'];
+  const DEVICE_SECTIONS = ['homeWidget', 'telemetry', 'command-center', 'analytics', 'eventCard', 'diagnostics'];
 
   function deviceVisible(dev) {
     if (!dev) return false;
@@ -670,11 +670,13 @@
   function hideDeviceSections() {
     DEVICE_SECTIONS.forEach(function (id) { const el = $(id); if (el) el.hidden = true; });
     const b = $('banner'); if (b) b.hidden = true;
+    const empty = $('eventUnavailable'); if (empty) empty.hidden = false;
     const hint = $('controlHint'); if (hint) hint.textContent = '';
   }
 
   function showDeviceSections() {
     DEVICE_SECTIONS.forEach(function (id) { const el = $(id); if (el) el.hidden = false; });
+    const empty = $('eventUnavailable'); if (empty) empty.hidden = true;
   }
 
   function paintNoDevice(dev) {
@@ -688,29 +690,28 @@
 
     const snap = (App.Auth && App.Auth.snapshot) ? App.Auth.snapshot() : {};
     const devState = (App.Auth && App.Auth.deviceState) ? App.Auth.deviceState(dev) : null;
-    let msg;
-    if (!dev) {
-      msg = 'Cihaz bağlantısı bekleniyor…';
-    } else if (App.Auth && App.Auth.needsCheck && App.Auth.needsCheck(dev)) {
-      msg = 'Cihaz durumu kontrol ediliyor…';
-    } else if (devState === 'free') {
-      msg = 'Bu cihaz henüz bir hesaba bağlı değil; telemetri gösterilmiyor. ' +
-            'Ayarlar → Hesap & Roller → "Mülkiyet & Erişim" bölümünden aktivasyon ' +
-            'kodunu girerek cihazı hesabınıza bağlayın.';
-    } else if (!snap.signedIn) {
-      msg = 'Bağlı bir cihaz yalnızca sahibine ve admine görünür. ' +
-            'Kendi cihazınızı görmek için giriş yapın.';
-    } else {
-      msg = 'Bu cihaz başka bir hesaba bağlı olduğu için burada görünmüyor. ' +
-            'Kendinize ait bir cihazı bağlamak için Ayarlar → Hesap & Roller bölümünü kullanın.';
+    let title = 'Cihaz bulunamadı';
+    let message = 'Kendi cihazınızı görmek için hesabınıza giriş yapın.';
+    let action = 'Hesaba git';
+    if (App.Auth && App.Auth.needsCheck && dev && App.Auth.needsCheck(dev)) {
+      title = 'Cihaz kontrol ediliyor';
+      message = 'Cihaz erişiminiz doğrulanıyor.';
+    } else if (snap.signedIn) {
+      title = 'Cihaz ekleyin';
+      message = devState === 'free'
+        ? 'Kartınızın aktivasyon kodunu girerek cihazı hesabınıza bağlayın.'
+        : 'Hesabınıza bağlı bir cihaz olduğunda sensör verilerini burada görebilirsiniz.';
+      action = 'Cihazı yönet';
     }
-    const msgEl = $('noDeviceMsg');
-    if (msgEl) msgEl.textContent = msg;
+    setText('noDeviceTitle', title);
+    setText('noDeviceMsg', message);
+    setText('noDeviceAction', action);
   }
 
-  function render(data) {
+  function render(data, at) {
+    const firstDeviceDisplay = $('homeWidget')?.hidden;
     lastData = data;
-    lastUpdateTs = Date.now();
+    lastUpdateTs = Number(at) || Date.now();
     ensureDeviceAccess(data && data.dev);
 
     /* Çoklu cihaz: görülen cihazın MQTT konusunu öğren; aktif cihaz yoksa
@@ -727,6 +728,10 @@
     const nd = $('noDevice');
     if (nd) nd.hidden = true;
     showDeviceSections();
+    if (firstDeviceDisplay && window.location.hash) {
+      const target = document.getElementById(window.location.hash.slice(1));
+      if (target && target.closest('.scrolly-section')) target.scrollIntoView();
+    }
 
     const state = gasStateOf(data);
     renderGas(data, state);
@@ -757,10 +762,12 @@
       window.App.Blackbox.ingest(data);
     }
 
-    /* Çevrimdışı dayanıklılık: son canlı veriyi önbelleğe yaz. */
-    try {
-      document.dispatchEvent(new CustomEvent('deneyap:telemetry', { detail: data }));
-    } catch (e) { /* yoksay */ }
+    /* Önbellekten çizim son veri zamanını ileri taşımamalı. */
+    if (!at && online) {
+      try {
+        document.dispatchEvent(new CustomEvent('deneyap:telemetry', { detail: data }));
+      } catch (e) { /* yoksay */ }
+    }
   }
 
   /* Önbellekteki son telemetriyi ekrana basar (ağ yokken ilk açılış).
@@ -768,9 +775,7 @@
   function renderCached(data, at) {
     if (!data) return false;
     try {
-      render(data);
-      lastUpdateTs = Number(at) || lastUpdateTs;
-      setText('wAge', App.fmtAgo(lastUpdateTs));
+      render(data, at);
       try {
         document.dispatchEvent(new CustomEvent('deneyap:cache', {
           detail: { at: lastUpdateTs }
@@ -798,59 +803,80 @@
       : '';
   }
 
-  /* ------------------------------------------- Ana ekran özeti (widget) -- */
-  /* Sayfanın en başında duran kompakt şerit: telefonda ana ekrana eklenen
-     PWA'da ilk görülan yer burasıdır. Karmaşık grafikler yerine yalnızca
-     dört değer ve tek satırlık durum gösterir. */
   const W_STATE = {
-    unknown: 'Bağlanıyor',
+    unknown: 'Bağlanıyor…',
     offline: 'Cihaz çevrimdışı',
     danger: 'Gaz tehlikesi',
     warning: 'Gaz uyarısı',
-    normal: 'Güvende'
+    normal: 'Sensörler normal'
   };
+  const W_SENSORS = ['wGas', 'wFlame', 'wRain', 'wVib'];
 
-  function renderWidget(data, state) {
-    const el = document.getElementById('homeWidget');
-    if (!el) return;
+  function paintWidgetSensor(id, state, label) {
+    const value = $(id);
+    if (!value) return;
+    value.textContent = label;
+    value.closest('.w-item').dataset.state = state;
+  }
 
-    let st = 'unknown';
-    if (App.api.transport() && App.deviceOnline === false) st = 'offline';
-    else if (state === 'danger') st = 'danger';
-    else if (state === 'warning') st = 'warning';
-    else if (state === 'normal') st = 'normal';
+  function paintWidgetStatus(state, label) {
+    const widget = $('homeWidget');
+    if (!widget || widget.hidden) return;
+    widget.dataset.state = state;
+    const heading = $('wState');
+    if (heading && heading.textContent !== label) heading.textContent = label;
+    const alertLink = $('wAlertLink');
+    const offlineLink = $('wOfflineLink');
+    if (alertLink) alertLink.hidden = state !== 'danger' && state !== 'warning';
+    if (offlineLink) offlineLink.hidden = state !== 'offline';
+  }
 
-    let label = W_STATE[st];
+  function renderWidgetOffline() {
+    paintWidgetStatus('offline', W_STATE.offline);
+    if (lastUpdateTs) setText('wAge', App.fmtAgo(lastUpdateTs));
+    W_SENSORS.forEach(function (id) { paintWidgetSensor(id, 'unknown', 'Veri yok'); });
+  }
 
-    /* Sel, gazdan bağımsız ve daha acildir. */
-    if (data && data.flame && st !== 'offline') {
-      st = 'danger';
-      label = 'Alev alarmı';
-    } else if (data && data.vib && st !== 'offline') {
-      st = 'danger';
-      label = 'Sarsıntı / kurcalama';
-    } else if (data && data.flood && st !== 'offline') {
-      st = 'danger';
-      label = 'Sel tehlikesi';
-    } else if (data && data.gasFault && st !== 'offline') {
-      /* ppm okunamıyor; "0 = temiz" dememek için ayrıca söylenir. */
-      st = 'warning';
-      label = 'Gaz sensörü arızalı';
+  function renderWidget(data, gasState) {
+    if (!$('homeWidget')) return;
+    if (!online || (App.api.transport() && App.deviceOnline === false)) {
+      renderWidgetOffline();
+      return;
     }
 
-    el.dataset.state = st;
-    setText('wState', label);
-    setText('wSince', (data && data.dev) ? String(data.dev) : '');
+    let state = gasState;
+    let label = W_STATE[state];
+    const flameOff = data.flameEnabled === false;
+    const vibrationOff = data.vibEnabled === false;
+    const rainAvailable = data.rainOk !== false;
+    const incomplete = !rainAvailable || flameOff || vibrationOff;
 
-    const ppm = Number(data && data.gasPpm) || 0;
-    setText('wGas', data && data.gasFault ? 'okunamıyor'
-      : ppm.toLocaleString('tr-TR') + ' ppm');
-    setText('wRain', '%' + (Number(data && data.rainPct) || 0));
+    if (data.flame) {
+      state = 'danger';
+      label = 'Alev alarmı';
+    } else if (data.vib) {
+      state = 'danger';
+      label = 'Sarsıntı algılandı';
+    } else if (data.flood) {
+      state = 'danger';
+      label = 'Su alarmı';
+    } else if (data.gasFault) {
+      state = 'warning';
+      label = 'Gaz sensörü arızalı';
+    } else if (state === 'normal' && (incomplete || data.rain)) {
+      state = 'unknown';
+      label = rainAvailable && data.rain ? 'Yağmur algılandı' : 'Sensör durumu';
+    }
 
-    const wp = Number(data && data.window);
-    setText('wWindow', isNaN(wp) ? '—'
-      : (wp > 150 ? 'Açık' : (wp > 30 ? 'Ayar' : 'Kapalı')));
-
+    paintWidgetStatus(state, label);
+    paintWidgetSensor('wGas', data.gasFault ? 'warning' : gasState,
+      data.gasFault ? 'Okunamıyor' : ({ normal: 'Normal', warning: 'Uyarı', danger: 'Tehlike' })[gasState] || 'Veri yok');
+    paintWidgetSensor('wFlame', data.flame ? 'danger' : (flameOff ? 'unknown' : 'normal'),
+      data.flame ? 'Alarm' : (flameOff ? 'Kapalı' : 'Algılanmadı'));
+    paintWidgetSensor('wRain', data.flood ? 'danger' : (data.rainOk === false ? 'unknown' : (data.rain ? 'warning' : 'normal')),
+      data.flood ? 'Su alarmı' : (data.rainOk === false ? 'Okunamıyor' : (data.rain ? 'Algılandı' : 'Yok')));
+    paintWidgetSensor('wVib', data.vib ? 'danger' : (vibrationOff ? 'unknown' : 'normal'),
+      data.vib ? 'Algılandı' : (vibrationOff ? 'Kapalı' : 'Yok'));
     if (lastUpdateTs) setText('wAge', App.fmtAgo(lastUpdateTs));
   }
 
@@ -888,6 +914,12 @@
                  : App.api.transport() && App.deviceOnline === false ? 'Cihaz Çevrimdışı'
                  : 'Bağlantı Yok';
     App.setConnBadge('offline', reason);
+    if (lastData && deviceVisible(lastData.dev)) renderWidgetOffline();
+    else {
+      paintNoDevice(lastData && lastData.dev);
+      App.setConnBadge('offline', reason);
+      return;
+    }
     if (window.App.Events && window.App.Events.setOnline) { try { window.App.Events.setOnline(false, reason); } catch (e) {} }
 
     setControlsEnabled(false);
@@ -970,14 +1002,18 @@
       }),
       App.api.onStatus(function (msg) {
         if (!msg || !msg.__relay || msg.online) return;
+        online = false;
         failStreak += 1;
         App.setConnBadge('offline', msg.msg || 'Bağlantı Yok');
+        renderWidgetOffline();
         setControlsEnabled(false);
       }),
       App.api.onStatus(function (msg) {
         if (!msg || !msg.__device || msg.online) return;
+        online = false;
         failStreak += 1;
         App.setConnBadge('offline', msg.msg || 'Cihaz Çevrimdışı');
+        renderWidgetOffline();
         setControlsEnabled(false);
       })
     );
@@ -1202,7 +1238,7 @@
       }
       /* Oturum/rol değişince cihaz görünürlüğünü yeniden hesapla:
          ör. admin çıkış yapınca başkasının cihazı anında gizlenir. */
-      if (lastData) render(lastData);
+      if (lastData) render(lastData, lastUpdateTs);
     }
 
     App.Auth.onChange(paint);
@@ -1210,7 +1246,7 @@
       paint(snap);
       try { await App.Auth.listBindings(); } catch (e) { /* şema yoksa sessiz */ }
       paint(App.Auth.snapshot());
-      if (lastData) render(lastData);
+      if (lastData) render(lastData, lastUpdateTs);
     }).catch(function () { paint(App.Auth.snapshot()); });
   }
 
@@ -1308,11 +1344,7 @@
       });
     }
 
-    console.info('%c[Deneyap Ev Koruma] Cyber-Console v' + App.VERSION + ' devrede',
-      'color:#38bdf8;font-weight:bold;font-size:12px');
-    /* Hero sürüm etiketini tek kaynaktan güncelle (bayat etiketi önler) */
-    const heroVer = document.getElementById('heroVersion');
-    if (heroVer) heroVer.textContent = 'v' + App.VERSION;
+    console.info('[Deneyap Ev Koruma] v' + App.VERSION);
   }
 
   /* --------------------------------- Sanal Klavye Yönetimi (Virtual Keyboard) */
@@ -1341,6 +1373,7 @@
     window.addEventListener('offline', function () {
       online = false;
       App.setConnBadge('offline', 'Çevrimdışı (Önbellek)');
+      renderWidgetOffline();
       App.toast('İnternet bağlantısı kesildi. Veriler yerel önbellekten okunuyor.', { kind: 'warn', duration: 4000 });
     });
 
@@ -1389,57 +1422,24 @@
     }, true);
   }
 
-  function setupFab() {
-    const main = $('ddFabMain');
-    const menu = $('ddFabMenu');
-    const siren = $('ddFabSiren');
-    const auth = $('ddFabAuth');
-    if (!main || !menu) return;
+  function setupDeviceAuthentication() {
+    const button = $('ddFabAuth');
+    const bridge = window.AndroidApp;
+    if (!button || !bridge || typeof bridge.authenticate !== 'function') return;
+    button.hidden = false;
 
-    main.addEventListener('click', function () {
-      const hidden = menu.hasAttribute('hidden');
-      if (hidden) menu.removeAttribute('hidden');
-      else menu.setAttribute('hidden', '');
-      if (typeof App.haptic === 'function') App.haptic(20);
+    button.addEventListener('click', function () {
+      button.disabled = true;
+      const callbackId = 'auth_' + Date.now();
+      window._onBiometricResult = function (id, success, message) {
+        if (id !== callbackId) return;
+        button.disabled = false;
+        App.toast(message || (success ? 'Kimlik doğrulandı' : 'Kimlik doğrulanamadı'), {
+          kind: success ? 'ok' : 'warn'
+        });
+      };
+      bridge.authenticate(callbackId);
     });
-
-    if (siren) {
-      siren.addEventListener('click', function () {
-        menu.setAttribute('hidden', '');
-        if (typeof App.showToast === 'function') {
-          App.showToast('Acil siren komutu gönderildi', 'danger');
-        } else {
-          alert('Acil siren komutu gönderildi');
-        }
-        if (window.AndroidApp && typeof window.AndroidApp.haptic === 'function') {
-          window.AndroidApp.haptic();
-        }
-      });
-    }
-
-    if (auth) {
-      auth.addEventListener('click', function () {
-        menu.setAttribute('hidden', '');
-        const cbId = 'auth_' + Math.random().toString(36).substring(2);
-        window._onBiometricResult = function (id, success, message) {
-          if (id === cbId) {
-            if (success) {
-              if (typeof App.showToast === 'function') App.showToast('Kimlik doğrulandı: ' + message, 'success');
-              else alert('Kimlik doğrulandı');
-            } else {
-              if (typeof App.showToast === 'function') App.showToast('Doğrulama başarısız: ' + message, 'warn');
-              else alert('Doğrulama başarısız');
-            }
-          }
-        };
-        if (window.AndroidApp && typeof window.AndroidApp.authenticate === 'function') {
-          window.AndroidApp.authenticate(cbId);
-        } else {
-          if (typeof App.showToast === 'function') App.showToast('Biyometrik kilit simülasyonu: Doğrulandı', 'success');
-          else alert('Biyometrik doğrulama başarılı');
-        }
-      });
-    }
   }
 
   function bootGlobalFeatures() {
@@ -1447,7 +1447,7 @@
     setupNetworkSyncHandler();
     setupSmartInstallButton();
     setupUniversalButtonFeedback();
-    setupFab();
+    setupDeviceAuthentication();
   }
 
   window.App.initDashboard = init;

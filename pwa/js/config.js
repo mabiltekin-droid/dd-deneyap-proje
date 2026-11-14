@@ -315,7 +315,7 @@
     if (meta) {
       if (resolved === 'amoled') meta.setAttribute('content', '#050806');
       else if (isDarkTheme) meta.setAttribute('content', '#0f1714');
-      else meta.setAttribute('content', '#f6f2e9');
+      else meta.setAttribute('content', '#faf4e9');
     }
 
     const toggleBtn = document.getElementById('themeToggleBtn');

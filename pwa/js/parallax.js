@@ -238,7 +238,7 @@
       targetPos = Math.max(0, Math.round(rect.top + currentScroll - headerHeight));
     }
 
-    if (hash && window.history && window.history.pushState) {
+    if (hash && hash !== window.location.hash && window.history && window.history.pushState) {
       try {
         window.history.pushState(null, '', hash);
       } catch (e) {}
@@ -264,9 +264,16 @@
     if (!targetId) return;
     var id = targetId.replace(/^#/, '');
     var navLinks = document.querySelectorAll('.header-nav .nav-item, .settings-header-nav .nav-item, .settings-nav-tabs .studio-tab, .bottom-nav a[href^="#"]');
+    var panelSections = ['hero', 'telemetry', 'gasCard', 'rainCard', 'vibCard', 'flameCard', 'command-center', 'soundControl'];
+    var eventSections = ['analytics', 'eventLog', 'diagnostics'];
     navLinks.forEach(function (link) {
       var href = link.getAttribute('href') || '';
-      if (href === '#' + id || (id === '' && (href === '#hero' || href === '#accountCard'))) {
+      var activeHash = '#' + id;
+      if (link.closest('.bottom-nav')) {
+        if (panelSections.indexOf(id) >= 0) activeHash = '#hero';
+        if (eventSections.indexOf(id) >= 0) activeHash = '#eventLog';
+      }
+      if (href === activeHash) {
         link.classList.add('active');
         link.setAttribute('aria-current', 'page');
       } else {
@@ -402,7 +409,7 @@
 
   function setupSmoothAnchorNavigation() {
     document.addEventListener('click', function (e) {
-      if (e.button && e.button !== 0) return; // Orta tuş (button 1) veya sağ tuş için varsayılan tarayıcı davranışı korunsun
+      if (e.defaultPrevented || e.button > 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
       var link = e.target.closest('a[href*="#"], [data-scroll-to]');
       if (!link) return;
 
@@ -417,7 +424,7 @@
       var currentPath = (window.location.pathname.replace(/^.*[/\\]/, '') || 'index.html').toLowerCase();
       var targetPath = pathname.replace(/^.*[/\\]/, '').replace(/^\.\//, '').toLowerCase();
 
-      // Eğer bağlantı başka sayfaya aitse SPA geçiş motoru ele alsın
+      // Başka bir belgeye giden bağlantıyı tarayıcı açar.
       if (targetPath && targetPath !== currentPath) return;
 
       var targetEl = document.querySelector(hash);
@@ -630,7 +637,7 @@
 
       /* 3. SCROLLSPY (Aktif Navigasyon Bölüm Takibi — Hem Index Hem Settings) */
       var spyTargets = [
-        'hero', 'telemetry', 'command-center', 'analytics', 'diagnostics',
+        'hero', 'telemetry', 'command-center', 'analytics', 'eventLog', 'diagnostics',
         'accountCard', 'devicesSection', 'connSection', 'thresholdSection',
         'telegramSection', 'notifySection', 'themeSection', 'backupSection'
       ];
@@ -681,292 +688,6 @@
     }
   }
 
-  /* ------------------------------- Anlık Sayfalar Arası Geçiş Motoru (Instant SPA View Switcher) */
-  var pageCache = {};
-
-  function preloadPage(url) {
-    if (!url) return Promise.resolve(null);
-    var cleanUrl = url.split('#')[0].split('?')[0];
-    if (pageCache[cleanUrl]) return Promise.resolve(pageCache[cleanUrl]);
-    return fetch(cleanUrl)
-      .then(function (res) { return res.text(); })
-      .then(function (html) {
-        pageCache[cleanUrl] = html;
-        return html;
-      })
-      .catch(function () { return null; });
-  }
-
-  /* fromHistory: popstate'ten (Geri/İleri) geldiğinde true — bu durumda
-     geçmişe tekrar yazılmaz, yoksa girdiler kopyalanır ve Geri/İleri bozulur. */
-  function switchToPage(targetUrl, fromHistory) {
-    var cleanTarget = targetUrl.split('#')[0].split('?')[0];
-    var hash = targetUrl.indexOf('#') !== -1 ? targetUrl.substring(targetUrl.indexOf('#')) : '';
-
-    var currentClean = (window.location.pathname.replace(/^.*[/\\]/, '') || 'index.html').toLowerCase();
-    var targetFile = (cleanTarget.replace(/^.*[/\\]/, '').replace(/^\.\//, '') || 'index.html').toLowerCase();
-
-    if (currentClean === targetFile) {
-      if (hash) {
-        var el = document.querySelector(hash);
-        if (el) scrollToElement(el, hash, { duration: 1.15 });
-      } else {
-        smoothScrollTo(0, 0.85);
-      }
-      return Promise.resolve();
-    }
-
-    return preloadPage(targetFile).then(function (html) {
-      if (!html) {
-        window.location.href = targetUrl;
-        return;
-      }
-
-      var parser = new DOMParser();
-      var doc = parser.parseFromString(html, 'text/html');
-
-      var newMain = doc.querySelector('main');
-      var oldMain = document.querySelector('main');
-      if (!newMain || !oldMain) {
-        window.location.href = targetUrl;
-        return;
-      }
-
-      /* 1. DOM'a yeni içerik basılmadan HEMEN ÖNCE eski sayfanın yaşam döngüsünü temizle */
-      if (currentClean.indexOf('settings') !== -1) {
-        if (window.App && typeof window.App.destroySettings === 'function') {
-          window.App.destroySettings();
-        }
-      } else {
-        if (window.App && typeof window.App.destroyDashboard === 'function') {
-          window.App.destroyDashboard();
-        }
-      }
-
-      /* Sayfa değiştiğinde Lenis kaydırmasını kesin olarak sıfırla */
-      if (lenisInstance) {
-        lenisInstance.scrollTo(0, { immediate: true });
-      }
-      window.scrollTo({ top: 0, behavior: 'instant' });
-
-      /* Temizle: Eski DOM'da main dışında kalmış olabilecek fazlalıklar */
-      var strayHero = document.querySelector('body > #hero, body > .hero-section');
-      if (strayHero) strayHero.remove();
-      var strayFooter = document.querySelector('body > .scada-footer');
-      if (strayFooter) strayFooter.remove();
-
-      document.title = doc.title || document.title;
-      document.body.className = doc.body.className;
-
-      oldMain.className = newMain.className;
-      oldMain.id = newMain.id;
-      oldMain.innerHTML = newMain.innerHTML;
-
-      /* Mobil kabuk (canlı kokpit, alt sekme durumu) yeni DOM'a yeniden bağlansın. */
-      try {
-        document.dispatchEvent(new CustomEvent('deneyap:pagechange', {
-          detail: { target: targetFile }
-        }));
-      } catch (e) { /* eski tarayıcılarda yoksay */ }
-
-      var newNav = doc.querySelector('.header-nav');
-      var oldNav = document.querySelector('.header-nav');
-      if (newNav && oldNav) {
-        oldNav.className = newNav.className;
-        oldNav.innerHTML = newNav.innerHTML;
-      } else if (newNav && !oldNav) {
-        /* Ayarlar sayfasında üst kategori çubuğu yok; geri dönerken yeniden ekle */
-        var navAnchor = document.querySelector('.header-actions');
-        if (navAnchor && navAnchor.parentNode) navAnchor.parentNode.insertBefore(newNav, navAnchor);
-      } else if (!newNav && oldNav) {
-        /* Ayarlar sayfası bölümleri hamburger menüde; eski çubuğu kaldır */
-        oldNav.remove();
-      }
-
-      var newActions = doc.querySelector('.header-actions');
-      var oldActions = document.querySelector('.header-actions');
-      if (newActions && oldActions) {
-        var newBack = newActions.querySelector('.nav-back-pill');
-        var oldBack = oldActions.querySelector('.nav-back-pill');
-        if (newBack && oldBack) {
-          oldBack.replaceWith(newBack);
-        } else if (newBack && !oldBack) {
-          oldActions.prepend(newBack);
-        } else if (!newBack && oldBack) {
-          oldBack.remove();
-        }
-        var newAcct = newActions.querySelector('#accountBtn');
-        var oldAcct = oldActions.querySelector('#accountBtn');
-        if (newAcct && oldAcct) {
-          oldAcct.replaceWith(newAcct);
-        } else if (newAcct && !oldAcct) {
-          var acctAnchor = oldActions.querySelector('#pwaInstallBtn');
-          if (acctAnchor) oldActions.insertBefore(newAcct, acctAnchor);
-          else oldActions.appendChild(newAcct);
-        } else if (!newAcct && oldAcct) {
-          oldAcct.remove();
-        }
-      }
-
-      /* Marka başlığı ve ikonu hedef sayfaya göre güncellenir; #conn rozeti
-         korunur ki bağlantı durumu "Bağlanıyor..."a dönmesin. */
-      var newBrand = doc.querySelector('.glass-header .brand') || doc.querySelector('header .brand');
-      var oldBrand = document.querySelector('.glass-header .brand') || document.querySelector('header .brand');
-      if (newBrand && oldBrand) {
-        var newH1 = newBrand.querySelector('h1');
-        var oldH1 = oldBrand.querySelector('h1');
-        if (newH1 && oldH1) oldH1.textContent = newH1.textContent;
-        var newIcon = newBrand.querySelector('.brand-icon');
-        var oldIcon = oldBrand.querySelector('.brand-icon');
-        if (newIcon && oldIcon) oldIcon.innerHTML = newIcon.innerHTML;
-      }
-
-      /* Dashboard'a özel üst çubuk kontrolleri ayarlar sayfasında gizlenir.
-         Düğümler DOM'da kalır; geri dönünce olay dinleyicileri korunur.
-         Doğrudan ayarlar sayfası açıldıysa indekse dönerken bu düğümler
-         hedef sayfanın başlığından alınır. */
-      if (newActions && oldActions) {
-        var dashboardOnly = ['modeSwitcher', 'voiceBtn', 'voiceHint'];
-        var onSettings = targetFile.indexOf('settings') !== -1;
-        var insertedDashboard = false;
-
-        if (!onSettings) {
-          var dashAnchor = oldActions.querySelector('#accountBtn') ||
-                           oldActions.querySelector('.nav-settings-pill') || null;
-          dashboardOnly.forEach(function (id) {
-            if (document.getElementById(id)) return;
-            var node = newActions.querySelector('#' + id);
-            if (!node) return;
-            if (dashAnchor) oldActions.insertBefore(node, dashAnchor);
-            else oldActions.appendChild(node);
-            insertedDashboard = true;
-          });
-        }
-
-        dashboardOnly.forEach(function (id) {
-          var el = document.getElementById(id);
-          if (!el) return;
-          el.style.display = onSettings ? 'none' : '';
-          if (onSettings) el.setAttribute('aria-hidden', 'true');
-          else el.removeAttribute('aria-hidden');
-        });
-
-        if (insertedDashboard) {
-          if (window.App && App.Automation && typeof App.Automation.init === 'function') {
-            try { App.Automation.init(); } catch (e) { /* yoksay */ }
-          }
-          if (window.App && App.Speech && typeof App.Speech.init === 'function') {
-            try { App.Speech.init(); } catch (e) { /* yoksay */ }
-          }
-        }
-      }
-
-      var newBottom = doc.querySelector('.bottom-nav');
-      var oldBottom = document.querySelector('.bottom-nav');
-      if (newBottom && oldBottom) {
-        oldBottom.innerHTML = newBottom.innerHTML;
-      }
-
-      if (!fromHistory && window.history && window.history.pushState) {
-        window.history.pushState(null, '', targetUrl);
-      }
-
-      if (targetFile.indexOf('settings') !== -1) {
-        if (window.App && typeof window.App.initSettings === 'function') {
-          window.App.initSettings();
-        }
-        if (window.App && typeof window.App.initAccount === 'function') {
-          window.App.initAccount();
-        }
-        if (window.App && typeof window.App.initProfile === 'function') {
-          window.App.initProfile();
-        }
-        if (window.App && typeof window.App.initInvites === 'function') {
-          window.App.initInvites();
-        }
-      } else {
-        if (window.App && typeof window.App.initDashboard === 'function') {
-          window.App.initDashboard();
-        }
-        if (window.App && typeof window.App.initHistory === 'function') {
-          window.App.initHistory();
-        }
-      }
-
-      if (window.App && window.App.Parallax) {
-        window.App.Parallax.reinit();
-      }
-      setupLiquidBubbleNav();
-      setupInstantPageTransitions();
-      if (window.App && window.App.init3DTilt) window.App.init3DTilt();
-      if (window.App && window.App.initRipple) window.App.initRipple();
-
-      if (hash) {
-        setTimeout(function () {
-          var targetEl = document.querySelector(hash);
-          if (targetEl) {
-            scrollToElement(targetEl, hash, { duration: 1.0 });
-          } else {
-            smoothScrollTo(0, 0.7);
-          }
-        }, 120);
-      } else {
-        smoothScrollTo(0, 0.7);
-      }
-
-      if (window.App && window.App.sound && window.App.sound.click) {
-        window.App.sound.click();
-      }
-      if (window.App && window.App.haptic) {
-        window.App.haptic(25);
-      }
-    });
-  }
-
-  function setupInstantPageTransitions() {
-    var currentFile = (window.location.pathname.replace(/^.*[/\\]/, '') || 'index.html').toLowerCase();
-    if (currentFile.indexOf('settings') !== -1) {
-      preloadPage('./index.html');
-      preloadPage('index.html');
-    } else {
-      preloadPage('./settings.html');
-      preloadPage('settings.html');
-    }
-
-    document.querySelectorAll('a[href*="index.html"], a[href*="settings.html"], .bottom-nav a, .nav-back-pill, .acct-pill').forEach(function (el) {
-      if (el._transitionBound) return;
-      el._transitionBound = true;
-
-      var href = el.getAttribute('href');
-      if (!href && el.getAttribute('onclick')) {
-        var m = el.getAttribute('onclick').match(/location\.href=['"]([^'"]+)['"]/);
-        if (m) {
-          href = m[1];
-          el.removeAttribute('onclick');
-          el.setAttribute('data-target-url', href);
-        }
-      }
-      if (!href && el.getAttribute('data-target-url')) {
-        href = el.getAttribute('data-target-url');
-      }
-      if (!href) return;
-
-      el.addEventListener('pointerenter', function () { preloadPage(href); }, { passive: true });
-      el.addEventListener('pointerdown', function () { preloadPage(href); }, { passive: true });
-
-      el.addEventListener('click', function (e) {
-        if (e.button && e.button !== 0) return;
-        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-        e.preventDefault();
-        switchToPage(href);
-      });
-    });
-  }
-
-  window.addEventListener('popstate', function () {
-    switchToPage(window.location.href, true);
-  });
-
   /* ------------------------------------------------------------- Başlatma */
 
   function init() {
@@ -975,7 +696,6 @@
 
     setupSmoothAnchorNavigation();
     setupLiquidBubbleNav();
-    setupInstantPageTransitions();
 
     var currentTier = getTier();
     applyTier(currentTier);
@@ -986,12 +706,13 @@
       });
     }
 
-    if (window.location.hash) {
-      setTimeout(function () {
-        var initEl = document.querySelector(window.location.hash);
-        if (initEl) scrollToElement(initEl, window.location.hash, { duration: 1.1 });
-      }, 300);
+    function syncPageAnchor() {
+      var hash = window.location.hash;
+      updateActiveNavLink(hash || '#hero');
     }
+
+    syncPageAnchor();
+    window.addEventListener('hashchange', syncPageAnchor);
 
     window.addEventListener('pagehide', function () {
       cleanupParallax();
