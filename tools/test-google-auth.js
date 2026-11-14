@@ -33,20 +33,29 @@ function mockBackend() {
     displayName: 'QA fixture',
     metadata: { creationTime: '2026-01-01' },
     getIdToken: async () => 'mock-firebase-session',
-    reload: async () => {}
+    reload: async () => {
+      profileReloads += 1;
+      if (profileReloads > 8) throw new Error('Profile reload loop in fixture');
+    }
   };
+  const authListeners = new Set();
   let redirectUser = null;
+  let holdLogoutAudit = false;
+  let signOutCalls = 0;
+  let profileReloads = 0;
 
   const auth = {
     currentUser: null,
     onAuthStateChanged(callback) {
+      authListeners.add(callback);
       queueMicrotask(() => callback(this.currentUser));
-      return () => {};
+      return () => authListeners.delete(callback);
     },
     authStateReady: async () => {},
     credentialError: null,
     popupError: null,
     redirectError: null,
+    signOutError: null,
     async signInWithCredential(credential) {
       calls.push({ action: 'credential', token: credential.idToken });
       if (this.credentialError) throw this.credentialError;
@@ -70,7 +79,11 @@ function mockBackend() {
       redirectUser = null;
       return { user };
     },
-    async signOut() { this.currentUser = null; }
+    async signOut() {
+      signOutCalls += 1;
+      if (this.signOutError) throw this.signOutError;
+      this.currentUser = null;
+    }
   };
 
   class GoogleAuthProvider {
@@ -92,12 +105,17 @@ function mockBackend() {
     }),
     add: async data => {
       if (data.action) calls.push({ action: data.action });
+      if (data.action === 'logout' && holdLogoutAudit) return new Promise(() => {});
       return { id: 'qa-entry' };
     }
   });
 
   return {
     auth, calls,
+    holdLogoutAudit: () => { holdLogoutAudit = true; },
+    signOutCalls: () => signOutCalls,
+    profileReloads: () => profileReloads,
+    deliverAuthState: currentUser => Promise.all([...authListeners].map(listener => listener(currentUser))),
     firebase: {
       initializeApp: () => ({
         auth: () => auth,
@@ -109,7 +127,7 @@ function mockBackend() {
   };
 }
 
-function mockPage(backend, { native = false, legacy = false, local = storage(), session = storage() } = {}) {
+function mockPage(backend, { native = false, legacy = false, profile = false, local = storage(), session = storage() } = {}) {
   const elements = new Map();
   function element(id) {
     if (!elements.has(id)) {
@@ -123,7 +141,7 @@ function mockPage(backend, { native = false, legacy = false, local = storage(), 
         },
         click() {
           if (this.disabled) return;
-          for (const handler of listeners.get('click') || []) handler();
+          for (const handler of listeners.get('click') || []) handler({ currentTarget: this });
         }
       });
     }
@@ -152,7 +170,10 @@ function mockPage(backend, { native = false, legacy = false, local = storage(), 
     },
     clearTimeout: timer => nativeTimers.delete(timer), setInterval, clearInterval,
     confirm: () => true,
-    App: { DEFAULTS: { fbConfig: { apiKey: 'test-without-network', projectId: 'example' } } },
+    App: {
+      DEFAULTS: { fbConfig: { apiKey: 'test-without-network', projectId: 'example' } },
+      settings: () => ({})
+    },
     firebase: backend.firebase
   };
   if (native || legacy) globals.AndroidApp = { openInChrome: () => { externalOpens += 1; } };
@@ -162,7 +183,7 @@ function mockPage(backend, { native = false, legacy = false, local = storage(), 
   globals.self = globals;
   const context = vm.createContext(globals);
   if (native) vm.runInContext(bridgeSource[1], context, { filename: 'GoogleSignInBridge.java' });
-  for (const name of webFiles) {
+  for (const name of profile ? webFiles.concat('profile-ui.js') : webFiles) {
     const file = path.join(root, 'pwa/js', name);
     vm.runInContext(fs.readFileSync(file, 'utf8'), context, { filename: file });
   }
@@ -291,6 +312,101 @@ async function redirectFailure() {
   assert.equal(after.app.Auth.snapshot().signedIn, false);
 }
 
+async function signedInNativePage(backend, options = {}) {
+  const page = mockPage(backend, { native: true, ...options });
+  await ready(page);
+  page.element('googleSignInBtn').click();
+  page.port.reply({ idToken: 'mock-google-id-token' });
+  await until(() => page.app.Auth.snapshot().signedIn && !page.element('googleSignInBtn').disabled,
+    'Native Google sign-in should finish before testing logout');
+  return page;
+}
+
+async function googleSignOutOffline() {
+  const backend = mockBackend();
+  backend.holdLogoutAudit();
+  const page = await signedInNativePage(backend);
+  page.element('authSignOutBtn').click();
+  await until(() => !page.app.Auth.snapshot().signedIn, 'A pending audit write must not prevent logout');
+  assert.equal(backend.signOutCalls(), 1);
+  assert.equal(page.element('authSignedOut').hidden, false);
+  assert.equal(page.element('authSignedIn').hidden, true);
+  assert.equal(page.local.getItem('deneyap.auth.v1'), null);
+  const reopened = mockPage(backend, { local: page.local, session: page.session });
+  await ready(reopened);
+  assert.equal(reopened.app.Auth.snapshot().signedIn, false, 'Reload after logout must not restore the previous user');
+
+  page.element('googleSignInBtn').click();
+  assert.deepEqual(page.posted, ['getGoogleIdToken:1', 'getGoogleIdToken:2']);
+  page.port.reply({ idToken: 'mock-google-next-login' });
+  await until(() => page.app.Auth.snapshot().signedIn && !page.element('googleSignInBtn').disabled,
+    'User should be able to sign in with Google again after logout');
+}
+
+async function googleSignOutFailure() {
+  const backend = mockBackend();
+  const page = await signedInNativePage(backend);
+  backend.auth.signOutError = authError('auth/internal-error');
+  page.element('authSignOutBtn').click();
+  await until(() => page.element('authResult').className.includes('err') || page.element('authResult').textContent === 'Çıkış yapıldı.',
+    'The UI should report the logout result');
+  assert.equal(backend.signOutCalls(), 1);
+  assert.equal(page.element('authResult').className, 'result err');
+  assert.equal(page.element('authResult').textContent, 'Çıkış yapılamadı. Tekrar deneyin.');
+  assert.equal(page.app.Auth.snapshot().signedIn, true, 'Failed Firebase logout must not report success');
+}
+
+async function staleFirebaseAuthCallback() {
+  const backend = mockBackend();
+  const page = await signedInNativePage(backend);
+  let releaseToken;
+  let started = false;
+  const previousUser = backend.auth.currentUser;
+  const tokenRead = new Promise(resolve => { releaseToken = resolve; });
+  previousUser.getIdToken = () => {
+    started = true;
+    return tokenRead;
+  };
+  const oldCallback = backend.deliverAuthState(previousUser);
+  assert.equal(started, true, 'Listener should await the previous user token before logout');
+  page.element('authSignOutBtn').click();
+  await until(() => !page.app.Auth.snapshot().signedIn, 'Logout should finish while a Firebase token read is pending');
+  releaseToken('expired-previous-session');
+  await oldCallback;
+  assert.equal(page.local.getItem('deneyap.auth.v1'), null, 'A stale Firebase callback must not recreate the logged-out session');
+}
+
+async function profileGoogleSignOut() {
+  const backend = mockBackend();
+  const page = await signedInNativePage(backend, { profile: true });
+  const tabs = [];
+  page.app.StudioNav = { show: name => tabs.push(name) };
+  await new Promise(resolve => setImmediate(resolve));
+  assert.ok(backend.profileReloads() < 3, 'Profile render should not repeatedly refresh an unchanged user');
+  const button = page.element('signOutThisDeviceBtn');
+  button.click();
+  await until(() => !page.app.Auth.snapshot().signedIn && !button.disabled, 'Profile logout should close the session');
+  assert.equal(backend.signOutCalls(), 1);
+  assert.equal(page.element('authSignedOut').hidden, false);
+  assert.equal(page.element('profileCard').hidden, true);
+  assert.deepEqual(tabs, ['accountCard']);
+  assert.equal(page.element('authResult').textContent, 'Çıkış yapıldı.');
+}
+
+async function profileGoogleSignOutFailure() {
+  const backend = mockBackend();
+  const page = await signedInNativePage(backend, { profile: true });
+  backend.auth.signOutError = authError('auth/internal-error');
+  const button = page.element('signOutThisDeviceBtn');
+  button.click();
+  assert.equal(button.disabled, true);
+  await until(() => !button.disabled, 'Profile logout error should restore the retry button');
+  assert.equal(backend.signOutCalls(), 1);
+  assert.equal(page.element('sessionResult').textContent, 'Çıkış yapılamadı. Tekrar deneyin.');
+  assert.equal(page.element('sessionResult').className, 'result err');
+  assert.equal(page.app.Auth.snapshot().signedIn, true);
+}
+
 async function legacyWebView() {
   const backend = mockBackend();
   const page = mockPage(backend, { legacy: true });
@@ -303,7 +419,7 @@ async function legacyWebView() {
 }
 
 (async () => {
-  for (const check of [nativeSuccess, nativeFailure, nativeTimeout, browserPopup, browserRedirect, redirectFailure, legacyWebView]) {
+  for (const check of [nativeSuccess, nativeFailure, nativeTimeout, browserPopup, browserRedirect, redirectFailure, legacyWebView, googleSignOutOffline, googleSignOutFailure, staleFirebaseAuthCallback, profileGoogleSignOut, profileGoogleSignOutFailure]) {
     await check();
     console.log('PASS ' + check.name);
   }

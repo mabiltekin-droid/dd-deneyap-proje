@@ -184,7 +184,8 @@
             return null;
           }
         }
-        return saveSession(user, await user.getIdToken(true));
+        const token = await user.getIdToken(true);
+        return auth.currentUser === user ? saveSession(user, token) : null;
       }
       return null;
     } catch (e) {
@@ -222,7 +223,7 @@
       await user.reload();
     } catch (e) { /* yoksay */ }
     const token = await user.getIdToken(true);
-    return saveSession(user, token);
+    return auth.currentUser === user ? saveSession(user, token) : null;
   }
 
   function saveSession(firebaseUser, idToken) {
@@ -1427,6 +1428,7 @@
       ensureFirebase();
       await auth.signOut();
       save(null);
+      saveRedirectProvider('');
       return true;
     },
 
@@ -1929,9 +1931,15 @@
   function initAuthListener() {
     ensureFirebase();
     auth.onAuthStateChanged(async (user) => {
+      if (auth.currentUser !== user) return;
       if (user) {
-        const token = await user.getIdToken();
-        saveSession(user, token);
+        try {
+          const token = await user.getIdToken();
+          if (auth.currentUser !== user) return;
+          saveSession(user, token);
+        } catch (e) {
+          return;
+        }
       } else {
         const stored = store(true);
         if (stored) save(null);

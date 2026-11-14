@@ -222,11 +222,10 @@
     if (!limit || !state.session) return;
     if (Date.now() - idleSon < limit) return;
     idleDokun();
-    if (App.toast) {
-      App.toast('Güvenlik: uzun süre işlem yapılmadı, oturum kapatıldı.',
+    App.Auth.signOut().then(function () {
+      if (App.toast) App.toast('Güvenlik: uzun süre işlem yapılmadı, oturum kapatıldı.',
         { kind: 'warn', duration: 6000 });
-    }
-    App.Auth.signOut().catch(function () { /* yoksay */ });
+    }).catch(function () { /* yoksay */ });
   }
   function stopIdleWatch() {
     if (idleTimer) { clearInterval(idleTimer); idleTimer = null; }
@@ -282,21 +281,25 @@
   /* ------------------------------------------------------- oturum ---------- */
 
   async function refreshProfile() {
-    if (!state.session) { state.profile = null; return null; }
+    const session = state.session;
+    if (!session) { state.profile = null; return null; }
     try {
       const p = await FB().profile();
+      if (state.session !== session) return null;
       if (p && p.__setupRequired) {
         // Profil dokümanı yok (ör. kullanıcı verisini sildiyse) → yeniden oluştur.
         try {
           const created = await FB().ensureOwnProfile(
-            state.session.user.id,
-            state.session.user.email,
-            state.session.user.displayName
+            session.user.id,
+            session.user.email,
+            session.user.displayName
           );
+          if (state.session !== session) return null;
           state.profile = created || null;
           state.setupRequired = !created;
           return state.profile;
         } catch (e2) {
+          if (state.session !== session) return null;
           console.warn('[auth] profil oluşturulamadı', e2);
           state.setupRequired = true;
           state.profile = null;
@@ -306,6 +309,7 @@
         state.setupRequired = false;
       }
     } catch (e) {
+      if (state.session !== session) return null;
       console.warn('[auth] profil okunamadı', e);
       state.error = e.human || e.message;
       state.profile = null;
@@ -342,11 +346,13 @@
           return null;
         }
       }));
+      if (!state.session || state.session.user !== me) return [];
       state.homes = rows.filter(Boolean).sort(function (a, b) {
         if (a.owner !== b.owner) return a.owner ? -1 : 1;
         return String(a.name || '').localeCompare(String(b.name || ''), 'tr');
       });
     } catch (e) {
+      if (!state.session || state.session.user !== me) return [];
       if (!isPermDenied(e)) console.warn('[auth] evler okunamadı', e);
       state.homes = [];
     }
@@ -595,9 +601,10 @@
       const uid = state.session && state.session.user && state.session.user.id;
       if (uid) {
         try {
-          await FB().addLoginLog({
+          // Firestore çevrimdışıyken yazma onayı bekleyebilir. Çıkış bundan bağımsızdır.
+          FB().addLoginLog({
             userId: uid, success: true, action: 'logout', userAgent: navigator.userAgent
-          });
+          }).catch(function () { /* yoksay */ });
         } catch (e) { /* yoksay */ }
       }
       await FB().signOut();
@@ -607,6 +614,8 @@
       state.homes = [];
       state.homesLoaded = false;
       state.homeMembers = {};
+      state.error = null;
+      state.redirectError = null;
       resetDeviceAccess();
       stopIdleWatch();
       state.ready = true;
@@ -1361,17 +1370,21 @@
        onaylamış olabilir; istemci önbelleği "doğrulanmamış" kalır) ve
        oturumu güncelleyip arayüzlere bildir. */
     refreshVerification: async function () {
-      if (!state.session || !state.session.user) return false;
+      const user = state.session && state.session.user;
+      if (!user) return false;
       let fresh = null;
       try { fresh = await FB().refreshUser(); } catch (e) { fresh = null; }
+      if (!state.session || state.session.user !== user) return false;
       if (fresh) {
-        state.session.user.emailVerified = !!fresh.emailVerified;
-        if (fresh.email) state.session.user.email = fresh.email;
-        if (fresh.displayName) state.session.user.displayName = fresh.displayName;
-        emit();
-        return !!fresh.emailVerified;
+        const emailVerified = !!fresh.emailVerified;
+        const email = fresh.email || user.email;
+        const displayName = fresh.displayName || user.displayName;
+        if (user.emailVerified !== emailVerified || user.email !== email || user.displayName !== displayName) {
+          Object.assign(user, { emailVerified, email, displayName });
+          emit();
+        }
       }
-      return !!state.session.user.emailVerified;
+      return !!user.emailVerified;
     }
   };
 

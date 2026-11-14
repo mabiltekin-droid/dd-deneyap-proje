@@ -95,6 +95,7 @@
     if (App.Auth && App.Auth.refreshVerification) {
       await App.Auth.refreshVerification().catch(function () { /* yoksay */ });
     }
+    if (App.Auth.snapshot().user !== snap.user) return;
 
     currentUser = snap.user || null;
     const profile = snap.profile || {};
@@ -429,9 +430,24 @@
       });
     }
     if ($('signOutThisDeviceBtn')) {
-      $('signOutThisDeviceBtn').addEventListener('click', function () {
-        App.Auth.signOut().catch(function () {});
-        setResult('Çıkış yapıldı.', 'ok');
+      $('signOutThisDeviceBtn').addEventListener('click', async function (event) {
+        const button = event.currentTarget;
+        button.disabled = true;
+        setSessionResult('Çıkış yapılıyor…');
+        try {
+          await App.Auth.signOut();
+          setSessionResult('');
+          if (App.StudioNav) App.StudioNav.show('accountCard');
+          const result = $('authResult');
+          if (result) {
+            result.textContent = 'Çıkış yapıldı.';
+            result.className = 'result ok';
+          }
+        } catch (e) {
+          setSessionResult('Çıkış yapılamadı. Tekrar deneyin.', 'err');
+        } finally {
+          button.disabled = false;
+        }
       });
     }
 

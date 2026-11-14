@@ -259,8 +259,17 @@
   }
 
   async function doSignOut() {
-    try { await App.Auth.signOut(); } catch (e) { /* yoksay */ }
-    setResult('Çıkış yapıldı.', 'ok');
+    const button = $('authSignOutBtn');
+    button.disabled = true;
+    setResult('Çıkış yapılıyor…');
+    try {
+      await App.Auth.signOut();
+      setResult('Çıkış yapıldı.', 'ok');
+    } catch (e) {
+      setResult('Çıkış yapılamadı. Tekrar deneyin.', 'err');
+    } finally {
+      button.disabled = false;
+    }
   }
 
   async function doResendVerification() {
