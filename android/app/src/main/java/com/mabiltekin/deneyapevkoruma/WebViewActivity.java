@@ -137,7 +137,6 @@ public class WebViewActivity extends FragmentActivity {
         webView = new WebView(this);
         webView.setBackgroundColor(background);
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
-        webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
         webView.setNestedScrollingEnabled(true);
         webView.setVerticalScrollBarEnabled(false);
         webView.setHorizontalScrollBarEnabled(false);
@@ -149,7 +148,6 @@ public class WebViewActivity extends FragmentActivity {
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
         settings.setDatabaseEnabled(true);
-        settings.setOffscreenPreRaster(true);
         settings.setLoadWithOverviewMode(true);
         settings.setUseWideViewPort(true);
         settings.setSupportZoom(false);
@@ -166,8 +164,7 @@ public class WebViewActivity extends FragmentActivity {
         settings.setAllowUniversalAccessFromFileURLs(false);
         settings.setGeolocationEnabled(true);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
-        settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
-        webView.clearCache(true);
+        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
         settings.setUserAgentString(settings.getUserAgentString()
                 + " DeneyapEvKoruma/" + appVersion());
 
@@ -221,12 +218,6 @@ public class WebViewActivity extends FragmentActivity {
                 if (errorView.getVisibility() != View.VISIBLE) {
                     webView.setVisibility(View.VISIBLE);
                 }
-                view.evaluateJavascript(
-                        "var style = document.createElement('style');" +
-                        "style.innerHTML = '.quake-radar { display: grid !important; width: 130px !important; height: 130px !important; margin: 0.8rem auto 0.4rem !important; } .quake-map { display: inline-flex !important; } svg { max-width: 100%; height: auto; } .quake-btn svg, .quake-disclaimer svg, .quake-item-meta svg, .quake-map svg { width: 16px !important; height: 16px !important; flex: 0 0 auto !important; } .quake-empty svg { width: 32px !important; height: 32px !important; flex: 0 0 auto !important; }';" +
-                        "document.head.appendChild(style);",
-                        null
-                );
             }
 
             @Override

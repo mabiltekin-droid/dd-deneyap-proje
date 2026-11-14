@@ -1,25 +1,8 @@
-/* ==========================================================================
-   sw.js — Service Worker
-   ----------------------------------------------------------------------------
-   ÖNEMLİ: Bu dosya "eski site açılıyor" hatasının ana kaynağıydı.
-   Önceki sürüm tüm isteklerde cache-first kullanıyordu ve cache'e yeni
-   sürümü hiç yazmıyordu; index.html kalıcı olarak ilk yüklenen haliyle
-   sunuluyordu.
-
-   Yeni strateji:
-     • Cihaz yerel ağda olduğu için ağ öncelikli (network-first) tercih
-       edildi — her açılışta güncel dosya gelir.
-     • Cihaz yanıt vermezse (çevrimdışı / kapalı) son bilinen iyi sürüm
-       cache'ten sunulur, böylece panel çalışmaya devam eder.
-     • /api/* istekleri ASLA cache'lenmez — sensör verisi her seferinde
-       cihazdan alınır.
-     • Yeni sürüm beklemeden etkinleşir; açık sayfalar otomatik yenilenir.
-     • Eski cache'ler activate sırasında tamamen silinir.
-   ========================================================================== */
-
+/* HTML stays network-first. Versioned static assets are cached for reuse. */
 const VERSION = '2.31.0';
-const CACHE = 'deneyap-pwa-v' + VERSION + '-r12';
+const CACHE = 'deneyap-pwa-v' + VERSION + '-r13';
 const SHELL = './index.html';
+const ASSET_VERSION = '';
 
 const PRECACHE = [
   './',
@@ -27,12 +10,15 @@ const PRECACHE = [
   './settings.html',
   './privacy.html',
   './earthquake.html',
+  './events.html',
   './css/style.css',
   './css/mobile-app.css',
   './css/redesign.css',
   './css/earthquake.css',
   './css/sakin-secondary.css',
-  './images/ev-kesiti.jpg',
+  './css/events-page.css',
+  './images/ev-kesiti-640.webp',
+  './images/ev-kesiti-1200.webp',
   './fonts/dm-sans-latin.woff2',
   './fonts/dm-sans-latin-ext.woff2',
   './fonts/fraunces-latin.woff2',
@@ -63,6 +49,8 @@ const PRECACHE = [
   './js/firebase.js',
   './js/auth-firebase.js',
   './js/events.js',
+  './js/events-route.js',
+  './js/vendor/mqtt-5.10.1.min.js',
   './js/automation.js',
   './js/voice.js',
   './js/account.js',
@@ -79,68 +67,56 @@ const PRECACHE = [
   './sw.js'
 ];
 
-/* ------------------------------------------------------------------ install */
+const DEFERRED = /(?:vendor\/|shaders\.js|tier\.js|1200\.webp|icon-512|logo-(mark|symbol))/;
+const VERSIONED = /^\.\/(css|js)\//;
 
-/* Güncelleme mi, ilk kurulum mu? İlk kurulumda sayfayı gereksiz yenileme. */
-let isUpdate = false;
+function precacheUrl(path) {
+  return ASSET_VERSION && VERSIONED.test(path)
+    ? path + '?v=' + ASSET_VERSION : path;
+}
 
 self.addEventListener('install', function (event) {
-  isUpdate = !!(self.registration.active || self.registration.waiting);
-  event.waitUntil(
-    caches.open(CACHE).then(function (cache) {
-      /* Tek tek ekle: bir dosya 404 olursa kurulumun tamamı başarısız olmasın */
-      return Promise.all(PRECACHE.map(function (url) {
-        return cache.add(new Request(url, { cache: 'reload' })).catch(function (err) {
-          console.warn('[sw] önbelleğe alınamadı:', url, err && err.message);
-        });
-      }));
-    }).then(function () {
-      /* Yeni sürüm beklemeden devreye girsin. */
-      return self.skipWaiting();
-    })
-  );
+  event.waitUntil(caches.open(CACHE).then(async function (cache) {
+    try {
+      await cache.add(SHELL);
+    } catch (_) {
+      await cache.add('./');
+    }
+    return self.skipWaiting();
+  }));
 });
-
-/* ----------------------------------------------------------------- activate */
 
 self.addEventListener('activate', function (event) {
-  event.waitUntil(
-    caches.keys().then(function (keys) {
-      return Promise.all(keys.map(function (k) {
-        if (k !== CACHE) {
-          console.log('[sw] eski önbellek siliniyor:', k);
-          return caches.delete(k);
-        }
-        return null;
-      }));
-    }).then(function () {
-      /* İlk açılışta da kontrol etsin */
-      if (self.registration.navigationPreload) {
-        return self.registration.navigationPreload.enable();
-      }
-      return null;
-    }).then(function () {
-      return self.clients.claim();
-    }).then(function () {
-      if (!isUpdate) return null;
-      /* Eski sürümü açık tutan sekmeleri de yeni sürüme geçir. */
-      return self.clients.matchAll({ type: 'window', includeUncontrolled: true })
-        .then(function (clients) {
-          clients.forEach(function (client) {
-            if (client && client.url && typeof client.navigate === 'function') {
-              client.navigate(client.url).catch(function () {});
-            }
-          });
-        });
-    })
-  );
+  event.waitUntil(caches.keys().then(async function (keys) {
+    await Promise.all(keys.filter(key => key.startsWith('deneyap-pwa-v') && key !== CACHE)
+      .map(key => caches.delete(key)));
+    if (self.registration.navigationPreload) await self.registration.navigationPreload.enable();
+    await self.clients.claim();
+  }));
 });
 
+async function cacheOfflinePages() {
+  const cache = await caches.open(CACHE);
+  const paths = PRECACHE.filter(path => !DEFERRED.test(path)
+    && !['./', SHELL, './sw.js'].includes(path));
+  // Small batches keep offline preparation from competing with page load.
+  for (let offset = 0; offset < paths.length; offset += 4) {
+    await Promise.all(paths.slice(offset, offset + 4).map(async function (path) {
+      const url = precacheUrl(path);
+      if (!(await cache.match(url))) await cache.add(url).catch(function () {});
+    }));
+  }
+}
+
+let warmup;
 /* ------------------------------------------------------------------ message */
 
 self.addEventListener('message', function (event) {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
+  } else if (event.data && event.data.type === 'CACHE_OFFLINE' && !warmup) {
+    warmup = cacheOfflinePages();
+    event.waitUntil(warmup);
   }
 });
 
@@ -198,44 +174,38 @@ self.addEventListener('pushsubscriptionchange', function (event) {
   event.waitUntil(Promise.resolve());
 });
 
-/* -------------------------------------------------------------------- fetch */
-
-/* Her zaman ağdan taze dosya al; çevrimdışıysa son iyi sürümü cache'ten sun. */
-function networkFirst(request) {
-  return fetch(request, { cache: 'no-cache' }).then(function (res) {
-    if (res && res.ok && res.type === 'basic') {
-      const clone = res.clone();
-      caches.open(CACHE).then(function (cache) {
-        cache.put(request, clone);
-      });
+/* Navigation and unversioned assets are checked against the server. */
+async function serve(event, url) {
+  const request = event.request;
+  const cache = await caches.open(CACHE);
+  const navigation = request.mode === 'navigate';
+  const versioned = !navigation && ASSET_VERSION && url.searchParams.get('v') === ASSET_VERSION;
+  if (versioned) {
+    const cached = await cache.match(request);
+    if (cached) return cached;
+  }
+  try {
+    const response = (navigation && await event.preloadResponse) || await fetch(request);
+    if (response.ok && response.type === 'basic') {
+      event.waitUntil(cache.put(request, response.clone()).catch(function () {}));
     }
-    return res;
-  }).catch(function () {
-    /* HTML'deki ?v=... sürüm anahtarı çevrimdışı eşleşmeyi engellemesin. */
-    return caches.match(request, { ignoreSearch: true }).then(function (cached) {
-      return cached || caches.match(SHELL, { ignoreSearch: true });
-    });
-  });
+    return response;
+  } catch (error) {
+    let fallback = await cache.match(request, { ignoreSearch: navigation });
+    if (!fallback && navigation) {
+      const path = url.pathname.replace(/\/$/, '');
+      const page = new URL(path.endsWith('.html') ? path : path + '.html', url.origin);
+      fallback = await cache.match(page) || await cache.match(SHELL);
+    }
+    if (!fallback && !navigation && url.search) fallback = await cache.match(request, { ignoreSearch: true });
+    return fallback || Response.error();
+  }
 }
 
 self.addEventListener('fetch', function (event) {
   const request = event.request;
-
-  /* Sadece GET önbelleklenir */
   if (request.method !== 'GET') return;
-
   const url = new URL(request.url);
-
-  /* Başka bir kaynak — dokunma */
-  if (url.origin !== self.location.origin) return;
-
-  /* Cihaz API'si asla cache'e girmez — her zaman anlık canlı veri */
-  if (url.pathname.indexOf('/api/') === 0) return;
-
-  /* Service Worker'ın kendisi de cache'e girmez */
-  if (url.pathname === '/sw.js') return;
-
-  /* HTML, JS, CSS, ikon ve fontlar: ağ öncelikli, çevrimdışı cache yedeği. */
-  event.respondWith(networkFirst(request));
+  if (url.origin !== self.location.origin || url.pathname.startsWith('/api/') || url.pathname === '/sw.js') return;
+  event.respondWith(serve(event, url));
 });
-

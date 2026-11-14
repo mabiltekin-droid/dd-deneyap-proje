@@ -108,6 +108,19 @@
     } catch (e) { /* kota dolu — sessiz geç */ }
   }
 
+  function canReadLocalEvent(event, owner) {
+    if (!owner) {
+      return !event.owner && !!event.dev && !!(App.Auth && App.Auth.canView && App.Auth.canView(event.dev));
+    }
+    if (event.owner === owner) return true;
+    return !!(event.home && App.Auth && App.Auth.canViewHome && App.Auth.canViewHome(event.home));
+  }
+
+  function readVisible() {
+    const owner = me();
+    return readLocal().filter(function (event) { return canReadLocalEvent(event, owner); });
+  }
+
   function loadState() {
     try { return JSON.parse(localStorage.getItem(STATE_KEY) || '{}') || {}; }
     catch (e) { return {}; }
@@ -139,19 +152,25 @@
     return ev;
   }
 
+  const writesInProgress = new Set();
+
   async function cloudWrite(ev) {
-    if (!ev || ev.syn) return;
+    if (!ev || ev.syn) return true;
     if (!App.Auth || !App.Auth.logEvent) return;
     const mine = me();
     if (!mine || ev.owner !== mine) return;   /* yalnızca kendi olayımı buluta yaz */
     if (ev.dev && App.Auth.canView && !App.Auth.canView(ev.dev)) return;
+    if (writesInProgress.has(ev.id)) return;
+    writesInProgress.add(ev.id);
     try {
-      await App.Auth.logEvent({
+      const id = await App.Auth.logEvent({
         dev: ev.dev, type: ev.type, severity: ev.sev,
         message: ev.msg, at: ev.at, local_id: ev.id
       });
-      markSynced(ev.id);
-    } catch (e) { /* çevrimdışı; syncPending() sonra dener */ }
+      if (id) markSynced(ev.id);
+      return true;
+    } catch (e) { return false; /* çevrimdışı; syncPending() sonra dener */ }
+    finally { writesInProgress.delete(ev.id); }
   }
 
   function markSynced(id) {
@@ -170,19 +189,10 @@
     const arr = readLocal();
     const pending = arr.filter(function (e) { return !e.syn && e.owner === mine; }).reverse();
     if (!pending.length) return;
-    let any = false;
     for (let i = 0; i < pending.length; i++) {
-      const e = pending[i];
-      if (e.dev && App.Auth.canView && !App.Auth.canView(e.dev)) continue;
-      try {
-        await App.Auth.logEvent({
-          dev: e.dev, type: e.type, severity: e.sev,
-          message: e.msg, at: e.at, local_id: e.id
-        });
-        e.syn = true; any = true;
-      } catch (err) { break; }
+      if (me() !== mine) break;
+      if (await cloudWrite(pending[i]) === false) break;
     }
-    if (any) { writeLocal(arr); renderAll(); }
   }
 
   /* Buluttan kendi olaylarımı çeker, yerelde olmayanları ekler. */
@@ -192,19 +202,18 @@
     let rows;
     try { rows = await App.Auth.listMyEvents(CLOUD_LIMIT); }
     catch (e) { return; }
-    if (!Array.isArray(rows) || !rows.length) return;
+    if (me() !== mine || !Array.isArray(rows) || !rows.length) return;
 
     const arr = readLocal();
-    const have = {};
+    const have = new Map();
     arr.forEach(function (e) {
-      have[e.id] = true;
-      if (e.cloudId) have[e.cloudId] = true;
+      if (e.id) have.set(e.id, e);
+      if (e.cloudId) have.set(e.cloudId, e);
     });
-    let added = 0;
+    let changed = false;
     rows.forEach(function (r) {
       const localKey = r.local_id || ('c' + r.id);
-      if (have[localKey] || have[r.id]) return;
-      arr.push({
+      const record = {
         id: localKey,
         cloudId: r.id,
         at: Number(r.at) || 0,
@@ -213,11 +222,22 @@
         sev: r.severity || meta(r.type).sev,
         msg: r.message || meta(r.type).label,
         owner: r.owner_id || mine,
+        home: r.home_id || '',
         syn: true
-      });
-      added += 1;
+      };
+      if (!canReadLocalEvent(record, mine)) return;
+      const existing = have.get(r.id) || have.get(localKey);
+      if (existing && existing.owner === record.owner) {
+        if (existing.home !== record.home || existing.cloudId !== record.cloudId || !existing.syn) {
+          Object.assign(existing, record);
+          changed = true;
+        }
+        return;
+      }
+      arr.push(record);
+      changed = true;
     });
-    if (added) {
+    if (changed) {
       arr.sort(function (a, b) { return b.at - a.at; });
       writeLocal(arr);
       renderAll();
@@ -331,7 +351,7 @@
     const list = $('eventList');
     if (!list) return;
 
-    const all = readLocal();
+    const all = readVisible();
     const today = startOfToday();
     const counts = { all: all.length, today: 0, gas: 0, flame: 0, vib: 0, flood: 0, system: 0 };
     all.forEach(function (e) {
@@ -355,7 +375,10 @@
     }
 
     document.querySelectorAll('[data-evfilter]').forEach(function (b) {
-      b.classList.toggle('active', b.getAttribute('data-evfilter') === filter);
+      const active = b.getAttribute('data-evfilter') === filter;
+      b.classList.toggle('active', active);
+      b.classList.toggle('primary', active);
+      b.setAttribute('aria-pressed', String(active));
     });
 
     const items = all.filter(groupMatches).slice(0, 120);
@@ -378,13 +401,16 @@
 
   async function loadAdminEvents() {
     const body = $('eventTableBody');
-    if (!body) return;
+    const owner = me();
+    if (!body || !owner || !App.Auth.isAdmin()) return;
     body.innerHTML = '<tr><td colspan="5">Yükleniyor…</td></tr>';
     try {
       const rows = await App.Auth.listAllEvents(300);
+      if (owner !== me() || !App.Auth.isAdmin()) return;
       cloudAll = Array.isArray(rows) ? rows.slice() : [];
       renderAdmin();
     } catch (e) {
+      if (owner !== me() || !App.Auth.isAdmin()) return;
       const msg = (App.FB && App.FB.human) ? App.FB.human(e) : (e && e.message) || 'Hata';
       body.innerHTML = '<tr><td colspan="5">Yüklenemedi: ' + esc(msg) + '</td></tr>';
     }
@@ -416,7 +442,11 @@
   /* --------------------------------------------------------- eylemler ---- */
 
   function exportCsv() {
-    const rows = readLocal();
+    const rows = readVisible();
+    if (!rows.length) {
+      if (App.toast) App.toast('İndirmek için henüz olay kaydı yok.', { kind: 'warn' });
+      return;
+    }
     const head = ['Zaman', 'Cihaz', 'Tur', 'Onem', 'Mesaj'];
     const lines = [head.join(';')];
     rows.forEach(function (e) {
@@ -447,7 +477,7 @@
      paylaşım sayfası sorunsuz). Tarayıcıda yazdırma penceresi açılır:
      kullanıcı "PDF olarak kaydet" seçebilir. */
   function pdfModel() {
-    const rows = readLocal().slice(0, 1000);
+    const rows = readVisible().slice(0, 1000);
     const tr = function (ms) {
       try {
         return new Date(ms).toLocaleString('tr-TR', {
@@ -556,10 +586,15 @@
     printFallback(model);
   }
 
+  function clearVisible() {
+    const owner = me();
+    writeLocal(readLocal().filter(function (event) { return !canReadLocalEvent(event, owner); }));
+    renderAll();
+  }
+
   function clearLocalAsk() {
     if (!window.confirm('Yerel olay günlüğü temizlensin mi? (Bulut kayıtları silinmez.)')) return;
-    writeLocal([]);
-    renderAll();
+    clearVisible();
     if (App.toast) App.toast('Yerel olay günlüğü temizlendi.', { kind: 'ok' });
   }
 
@@ -608,8 +643,10 @@
     const clr = $('evClearBtn');
     if (clr) clr.addEventListener('click', clearLocalAsk);
     const ref = $('evRefreshBtn');
-    if (ref) ref.addEventListener('click', function () {
-      Promise.all([syncPending(), pullMine()]).then(renderIndex);
+    if (ref) ref.addEventListener('click', async function () {
+      ref.disabled = true;
+      try { await refreshCloud(); }
+      finally { ref.disabled = false; }
     });
 
     const aref = $('adminEventRefresh');
@@ -626,27 +663,57 @@
     }
   }
 
+  const refreshes = new Map();
+
+  function cloudScope(snap) {
+    if (!snap || !snap.ready || !snap.user) return '';
+    const homes = (snap.homes || []).map(function (home) { return home.id; }).sort();
+    return JSON.stringify([snap.user.id, homes]);
+  }
+
+  function refreshCloud(snap) {
+    if (!snap && App.Auth && App.Auth.snapshot) snap = App.Auth.snapshot();
+    const scope = cloudScope(snap);
+    if (!$('eventList') || !scope) return Promise.resolve();
+    if (refreshes.has(scope)) return refreshes.get(scope);
+    const refresh = Promise.all([syncPending(), pullMine()]).finally(function () {
+      refreshes.delete(scope);
+      renderIndex();
+    });
+    refreshes.set(scope, refresh);
+    return refresh;
+  }
+
+  let initialized = false;
+
   function init() {
-    const hasUi = $('eventList') || $('eventTableBody');
-    if (!hasUi) return;
+    if (initialized || (!$('eventList') && !$('eventTableBody'))) return;
+    initialized = true;
     prev = loadState() || {};
     bindUi();
     renderIndex();
 
-    if (App.Auth && App.Auth.onChange) {
-      App.Auth.onChange(function () {
-        syncPending();
-        pullMine();
-        if (App.Auth.isAdmin && App.Auth.isAdmin() && $('eventTableBody')) loadAdminEvents();
-        else renderAll();
-      });
+    if (App.Auth && App.Auth.onChange && App.Auth.snapshot) {
+      let previousScope = '';
+      let previousAdmin = false;
+      const onAuthChange = function (snap) {
+        const nextScope = cloudScope(snap);
+        const admin = !!(snap.ready && snap.isAdmin && $('eventTableBody'));
+        if (nextScope !== previousScope) refreshCloud(snap);
+        if (admin && (!previousAdmin || nextScope !== previousScope)) loadAdminEvents();
+        if (!admin) {
+          cloudAll = [];
+          const body = $('eventTableBody');
+          if (body) body.replaceChildren();
+        }
+        previousScope = nextScope;
+        previousAdmin = admin;
+        renderAll();
+      };
+      App.Auth.onChange(onAuthChange);
+      onAuthChange(App.Auth.snapshot());
+      window.addEventListener('online', function () { refreshCloud(); });
     }
-
-    /* Açılışta kısa gecikmeyle buluttan tazele */
-    setTimeout(function () {
-      syncPending();
-      pullMine();
-    }, 1500);
   }
 
   App.Events = {
@@ -654,10 +721,10 @@
     note: note,
     setOnline: setOnline,
     record: record,
-    list: readLocal,
+    list: readVisible,
     exportCsv: exportCsv,
     exportPdf: exportPdf,
-    clearLocal: function () { writeLocal([]); renderAll(); },
+    clearLocal: clearVisible,
     syncPending: syncPending,
     pullMine: pullMine,
     loadAdminEvents: loadAdminEvents,

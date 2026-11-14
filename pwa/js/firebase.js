@@ -102,18 +102,25 @@
          reCAPTCHA v3 kanıtı eklenir. Konsolda "Enforce" açılana kadar istek
          engellenmez; bu yüzden güvenle kademeli açılabilir.
          Anahtar boşsa hiçbir şey değişmez. Kurulum: FIREBASE.md §8 */
-      if (App.APP_CHECK_KEY && typeof firebase.appCheck === 'function') {
-        try {
-          const yerel = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-          if (yerel && App.APP_CHECK_DEBUG !== false) {
-            /* Geliştirmede hata ayıklama jetonu üretilir ve konsola yazılır;
-               bir kez App Check > Uygulamalar > hata ayıklama jetonlarına
-               eklenmesi gerekir (yoksa yerelde istekler reddedilir). */
-            self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+      if (App.APP_CHECK_KEY) {
+        function activateAppCheck() {
+          try {
+            if (/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)
+                && App.APP_CHECK_DEBUG !== false) {
+              self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+            }
+            firebase.appCheck().activate(App.APP_CHECK_KEY, true);
+          } catch (e) {
+            console.warn('[fb] App Check başlatılamadı:', e);
           }
-          firebase.appCheck().activate(App.APP_CHECK_KEY, true);
-        } catch (e) {
-          console.warn('[fb] App Check başlatılamadı:', e);
+        }
+        if (typeof firebase.appCheck === 'function') activateAppCheck();
+        else {
+          const sdk = document.createElement('script');
+          sdk.src = 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check-compat.js';
+          sdk.onload = activateAppCheck;
+          sdk.onerror = function () { console.warn('[fb] App Check yüklenemedi.'); };
+          document.head.appendChild(sdk);
         }
       }
 

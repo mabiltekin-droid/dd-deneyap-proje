@@ -1,5 +1,35 @@
 /* Secondary pages share the palette and fonts defined in redesign.css. */
 
+.secondary-events-link {
+  display: none;
+}
+
+@media (min-width: 981px) {
+  .glass-header .secondary-events-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 38px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0 0.75rem;
+    color: var(--primary);
+    font-weight: 700;
+    text-decoration: none;
+  }
+}
+
+@media (max-width: 980px) {
+  .bottom-nav.product-nav > a {
+    min-width: 0;
+    margin-inline: 0;
+    border-radius: 9px;
+  }
+
+  .bottom-nav.product-nav > a > span {
+    max-width: 100% !important;
+  }
+}
+
 .settings-studio-body:not(.quake-body) .settings-studio-main {
   max-width: 960px;
   padding: clamp(1.25rem, 4vw, 3rem) clamp(1rem, 4vw, 2rem) 2rem;

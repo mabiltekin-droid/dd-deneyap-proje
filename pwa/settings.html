@@ -11,8 +11,6 @@
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" href="./icons/favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
-  <link rel="prefetch" href="./">
-  <link rel="preconnect" href="https://unpkg.com">
   <link rel="preload" href="./fonts/dm-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="./fonts/fraunces-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="./css/style.css">
@@ -58,6 +56,8 @@
         </svg>
         <span>Panele dön</span>
       </a>
+
+      <a href="./events.html" class="secondary-events-link">Olaylar</a>
 
       <button id="pwaInstallBtn" class="pwa-install-btn" type="button" aria-label="Uygulamayı İndir" title="Ev Koruma Uygulamasını Cihazınıza İndirin">
         <svg class="install-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -1941,7 +1941,7 @@
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
   <!-- Mobil Alt Navigasyon -->
-  <nav class="bottom-nav" aria-label="Ana gezinme">
+  <nav class="bottom-nav product-nav" aria-label="Ana gezinme">
     <a href="./#hero">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M3 10.5 12 3l9 7.5"/>
@@ -1950,10 +1950,20 @@
       </svg>
       <span>Panel</span>
     </a>
-    <a href="./#eventLog">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9m-8 12a2 2 0 0 0 4 0"/>
-      </svg>
+    <a href="./#telemetry">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l2-7 4 14 2-7h6"/></svg>
+      <span>Sensörler</span>
+    </a>
+    <a href="./#command-center">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 17h16M9 4v6m6 4v6"/></svg>
+      <span>Kontrol</span>
+    </a>
+    <a href="./#analytics">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18M7 15l4-4 3 3 5-6"/></svg>
+      <span>Geçmiş</span>
+    </a>
+    <a href="./events.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9m-8 12a2 2 0 0 0 4 0"/></svg>
       <span>Olaylar</span>
     </a>
     <a href="./earthquake.html">
@@ -1971,46 +1981,30 @@
     </a>
   </nav>
 
-  <script src="./js/config.js"></script>
-
-  <!-- GSAP & Lenis Kütüphaneleri -->
-  <script src="./js/vendor/gsap.min.js"></script>
-  <script src="./js/vendor/ScrollTrigger.min.js"></script>
-  <script src="./js/vendor/lenis.min.js"></script>
-
+  <script defer src="./js/config.js"></script>
   <!-- Firebase SDK (CDN) -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check-compat.js"></script>
-
-  <!-- MQTT Taşıması -->
-  <script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
-
-  <script src="./js/tier.js"></script>
-  <script src="./js/parallax.js"></script>
-  <script src="./js/shaders.js"></script>
-  <script src="./js/blackbox.js"></script>
-  <script src="./js/api.js"></script>
-  <script src="./js/mqtt.js"></script>
-  <script src="./js/notify.js"></script>
-  <script src="./js/devices.js"></script>
-  <script src="./js/firebase.js"></script>
-  <script src="./js/auth-firebase.js"></script>
-  <script src="./js/events.js"></script>
-  <script src="./js/automation.js"></script>
-  <script src="./js/voice.js"></script>
-  <script src="./js/history.js"></script>
-  <script src="./js/app.js"></script>
-  <script src="./js/native-push.js"></script>
-  <script src="./js/emergency.js"></script>
-  <script src="./js/settings.js"></script>
-  <script src="./js/homes.js"></script>
-  <script src="./js/ota.js"></script>
-  <script src="./js/studio-nav.js"></script>
-  <script src="./js/account.js"></script>
-  <script src="./js/profile-ui.js"></script>
-  <script src="./js/admin-invite-ui.js"></script>
-  <script src="./js/mobile-app.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script defer src="./js/parallax.js"></script>
+  <script defer src="./js/api.js"></script>
+  <script defer src="./js/mqtt.js"></script>
+  <script defer src="./js/notify.js"></script>
+  <script defer src="./js/devices.js"></script>
+  <script defer src="./js/firebase.js"></script>
+  <script defer src="./js/auth-firebase.js"></script>
+  <script defer src="./js/events.js"></script>
+  <script defer src="./js/automation.js"></script>
+  <script defer src="./js/app.js"></script>
+  <script defer src="./js/native-push.js"></script>
+  <script defer src="./js/emergency.js"></script>
+  <script defer src="./js/settings.js"></script>
+  <script defer src="./js/homes.js"></script>
+  <script defer src="./js/ota.js"></script>
+  <script defer src="./js/studio-nav.js"></script>
+  <script defer src="./js/account.js"></script>
+  <script defer src="./js/profile-ui.js"></script>
+  <script defer src="./js/admin-invite-ui.js"></script>
+  <script defer src="./js/mobile-app.js"></script>
 </body>
 </html>

@@ -188,5 +188,11 @@ walk(PUBLIC)
     if (after !== before) fs.writeFileSync(f, after, 'utf8');
   });
 
+const outputWorker = path.join(PUBLIC, 'sw.js');
+const outputWorkerCode = fs.readFileSync(outputWorker, 'utf8');
+fs.writeFileSync(outputWorker,
+  outputWorkerCode.replace("const ASSET_VERSION = '';", "const ASSET_VERSION = '" + ASSET_VERSION + "';"),
+  'utf8');
+
 console.log('  ✓ Web yayını hazır: public/ oluşturuldu');
 console.log('  ✓ Varlık sürümü: ' + ASSET_VERSION + ' (CSS/JS önbellek anahtarı)');

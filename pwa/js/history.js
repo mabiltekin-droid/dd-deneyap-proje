@@ -437,7 +437,7 @@
   /* --------------------------------------------------------- yükle ------- */
 
   async function load(force) {
-    if (busy) return;
+    if (busy || (!force && !historyVisible)) return;
     busy = true;
     const chip = $('histChip');
     if (chip && force) { chip.dataset.state = 'unknown'; chip.textContent = 'ÇEKİLİYOR'; }
@@ -475,6 +475,7 @@
 
   let lastPts = [];
   let eventsBound = false;
+  let historyVisible = false;
 
   /* ---------------------- Dokunmatik Parmak Gezintisi (Touch Scrubber) --- */
 
@@ -575,6 +576,14 @@
 
     if (!eventsBound) {
       eventsBound = true;
+      if ('IntersectionObserver' in window) {
+        new IntersectionObserver(function ([entry]) {
+          historyVisible = entry.isIntersecting;
+          if (historyVisible) load(false);
+        }, { rootMargin: '240px 0px' }).observe($('historyCard'));
+      } else {
+        historyVisible = true;
+      }
       /* Cihazdan gelen her durum örneğe dönüşsün (yerel önbellek). */
       if (App.api && typeof App.api.onStatus === 'function') {
         App.api.onStatus(function (s) { if (s && s.ok) noteSample(s); });

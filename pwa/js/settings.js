@@ -752,8 +752,21 @@
 
     /* Yeni cihaz görülürse (MQTT durumu) liste kendiliğinden güncellensin;
        değişiklik yoksa form yeniden çizilmez. */
-    refreshDevices(true);
-    setInterval(function () { refreshDevices(false); }, 10000);
+    const panel = $('devicesSection');
+    if (!panel) return;
+    if (!('IntersectionObserver' in window)) {
+      refreshDevices(true);
+      return;
+    }
+    let timer = null;
+    new IntersectionObserver(function ([entry]) {
+      clearInterval(timer);
+      if (!entry.isIntersecting) return;
+      refreshDevices(true);
+      timer = setInterval(function () {
+        if (!document.hidden) refreshDevices(false);
+      }, 10000);
+    }).observe(panel);
   }
 
   async function testConnection() {
@@ -1094,10 +1107,6 @@
     fillForm();
     App.applyTheme();
 
-    if (App.init3DTilt) App.init3DTilt();
-    /* Eski App.initParallax() kaldırıldı; tüm scroll/lerp yönetimi parallax.js motorunda */
-    if (App.initRipple) App.initRipple();
-
     $('settingsForm').addEventListener('submit', save);
     $('testBtn').addEventListener('click', testConnection);
     $('transport').addEventListener('change', applyTransportVisibility);
@@ -1221,9 +1230,21 @@
     if (window.App && typeof window.App.initInvites === 'function') {
       window.App.initInvites();
     }
-    refreshDeviceInfo().then(refreshTgInfo).catch(function () {
-      refreshTgInfo().catch(function () {});
-    });
+    const devicePanels = ['accountCard', 'devicesSection', 'connSection',
+      'thresholdSection', 'otaSection', 'telegramSection'];
+    for (const id of devicePanels) {
+      const panel = $(id);
+      if (!panel) continue;
+      const refresh = id === 'telegramSection' ? refreshTgInfo : refreshDeviceInfo;
+      if (!('IntersectionObserver' in window)) {
+        refresh();
+        continue;
+      }
+      const observer = new IntersectionObserver(function ([entry]) {
+        if (entry.isIntersecting) refresh();
+      });
+      observer.observe(panel);
+    }
   }
 
   window.App.initSettings = init;

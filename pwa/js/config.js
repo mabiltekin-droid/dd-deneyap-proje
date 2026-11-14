@@ -531,136 +531,6 @@
     isMuted: function () { return voiceMuted; }
   };
 
-  /* ---------------------------------- 3D Card Tilt, Glare & Parallaks */
-
-  App.init3DTilt = function () {
-    const hasCoarsePointer = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
-    const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-    if (hasCoarsePointer || isTouch) {
-      return; // Dokunmatik ekranlarda kart tilt olaylarını hiç bağlama
-    }
-
-    const reducedMotion = window.matchMedia &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reducedMotion) return;
-
-    const cards = document.querySelectorAll('.tilt-card');
-    if (!cards.length) return;
-
-    cards.forEach(function (card) {
-      let glare = card.querySelector('.card-glare');
-      if (!glare) {
-        glare = document.createElement('div');
-        glare.className = 'card-glare';
-        card.appendChild(glare);
-      }
-
-      let ticking = false;
-      let lastX = 0, lastY = 0;
-
-      function updateCardTransform() {
-        if (App.Tier && App.Tier.isLow()) {
-          ticking = false;
-          return;
-        }
-
-        const isUltra = App.Tier && App.Tier.isUltra();
-        const maxDeg = isUltra ? 5.5 : 2.5;
-        const zDepth = isUltra ? 8 : 2;
-        const glareOpacity = isUltra ? 0.16 : 0.08;
-
-        const rect = card.getBoundingClientRect();
-        const px = ((lastX - rect.left) / rect.width) * 2 - 1;   // -1 .. +1
-        const py = ((lastY - rect.top) / rect.height) * 2 - 1;  // -1 .. +1
-
-        const rotX = -py * maxDeg;
-        const rotY = px * maxDeg;
-
-        card.style.transition = 'none';
-        card.style.transform = 'perspective(900px) rotateX(' + rotX.toFixed(2) + 'deg) rotateY(' + rotY.toFixed(2) + 'deg) translateZ(' + zDepth + 'px)';
-        glare.style.background = 'radial-gradient(circle at ' + (lastX - rect.left) + 'px ' + (lastY - rect.top) + 'px, rgba(255,255,255,' + glareOpacity + ') 0%, transparent 60%)';
-        glare.style.opacity = '1';
-
-        ticking = false;
-      }
-
-      function onMouseMove(e) {
-        if (App.Tier && App.Tier.isLow()) return;
-        lastX = e.clientX;
-        lastY = e.clientY;
-
-        if (!ticking) {
-          ticking = true;
-          requestAnimationFrame(updateCardTransform);
-        }
-      }
-
-      function onMouseEnter(e) {
-        if (App.Tier && App.Tier.isLow()) return;
-        card.style.transition = 'none';
-        lastX = e.clientX;
-        lastY = e.clientY;
-        updateCardTransform();
-      }
-
-      function onMouseLeave() {
-        ticking = false;
-        card.style.transition = 'transform 0.55s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease';
-        card.style.transform = 'perspective(900px) rotateX(0deg) rotateY(0deg) translateZ(0)';
-        glare.style.transition = 'opacity 0.4s ease';
-        glare.style.opacity = '0';
-      }
-
-      card.addEventListener('mouseenter', onMouseEnter, { passive: true });
-      card.addEventListener('mousemove', onMouseMove, { passive: true });
-      card.addEventListener('mouseleave', onMouseLeave, { passive: true });
-    });
-
-    if (App.Tier && App.Tier.onChange) {
-      App.Tier.onChange(function (tier) {
-        if (tier === 'low') {
-          cards.forEach(function (card) {
-            card.style.transform = 'none';
-            const glare = card.querySelector('.card-glare');
-            if (glare) glare.style.opacity = '0';
-          });
-        }
-      });
-    }
-  };
-
-  /* Parallax ve scroll yönetimi tek motor olarak parallax.js'e devredilmiştir */
-  App.initParallax = function () {
-    if (App.Parallax && typeof App.Parallax.reinit === 'function') {
-      App.Parallax.reinit();
-    }
-  };
-
-  let rippleBound = false;
-  App.initRipple = function () {
-    if (rippleBound) return;
-    rippleBound = true;
-    document.addEventListener('click', function (e) {
-      const btn = e.target.closest('.btn, .icon-btn');
-      if (!btn) return;
-      App.sound.click();
-      App.haptic(15);
-
-      const circle = document.createElement('span');
-      circle.className = 'ripple-effect';
-      const rect = btn.getBoundingClientRect();
-      const diameter = Math.max(rect.width, rect.height);
-      circle.style.width = circle.style.height = diameter + 'px';
-      circle.style.left = (e.clientX - rect.left - diameter / 2) + 'px';
-      circle.style.top = (e.clientY - rect.top - diameter / 2) + 'px';
-      btn.appendChild(circle);
-
-      setTimeout(function () {
-        if (circle.parentNode) circle.parentNode.removeChild(circle);
-      }, 550);
-    }, { passive: true });
-  };
-
   /* ------------------------------------------------------- Service Worker */
 
   App.registerServiceWorker = function () {
@@ -681,15 +551,27 @@
       updateViaCache: 'none'
     })
       .then(function (reg) {
-        checkForUpdate(reg);
-        if (App._swCheckTimer) clearInterval(App._swCheckTimer);
-        App._swCheckTimer = setInterval(function () { checkForUpdate(reg); }, 5 * 60 * 1000);
         if (!App._swVisibilityBound) {
           App._swVisibilityBound = true;
+          let checkedAt = Date.now();
           document.addEventListener('visibilitychange', function () {
+            if (document.hidden || Date.now() - checkedAt < 5 * 60 * 1000) return;
+            checkedAt = Date.now();
             checkForUpdate(reg);
           });
         }
+        const afterLoad = function () {
+          const warmCache = function () {
+            if (document.hidden || navigator.connection?.saveData) return;
+            navigator.serviceWorker.ready.then(function (registration) {
+              registration.active?.postMessage({ type: 'CACHE_OFFLINE' });
+            });
+          };
+          if ('requestIdleCallback' in window) window.requestIdleCallback(warmCache);
+          else setTimeout(warmCache, 2500);
+        };
+        if (document.readyState === 'complete') afterLoad();
+        else window.addEventListener('load', afterLoad, { once: true });
         return reg;
       })
       .catch(function (err) {

@@ -1,0 +1,46 @@
+.events-main {
+  width: min(100% - 2rem, 60rem);
+  margin-inline: auto;
+  padding-block: clamp(1.5rem, 4vw, 3.5rem) 2rem;
+}
+
+.events-main .eventlog-section {
+  padding: 0;
+  margin: 0;
+}
+
+.events-main .section-badge-header {
+  margin-block: 0 1.2rem;
+}
+
+.events-main .sec-title {
+  font: 600 clamp(2.45rem, 6.5vw, 4.2rem) / 1.05 var(--font-display);
+  letter-spacing: -0.055em;
+}
+
+.events-main .eventlog-card {
+  min-width: 0;
+}
+
+.events-main .event-shortcuts {
+  margin-top: 1rem;
+}
+
+.events-main .events-unavailable p {
+  margin: 0 0 0.75rem;
+}
+
+.events-main .ev-list {
+  max-height: none;
+}
+
+.events-main .ev-filters button,
+.events-main .ev-actions button {
+  min-height: 44px;
+}
+
+@media (max-width: 980px) {
+  .events-main {
+    padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 1rem);
+  }
+}

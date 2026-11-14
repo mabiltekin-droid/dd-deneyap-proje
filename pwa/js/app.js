@@ -237,7 +237,7 @@
 
   function setText(id, value) {
     const el = $(id);
-    if (el) el.textContent = value;
+    if (el && el.textContent !== String(value)) el.textContent = value;
   }
 
   function setChip(id, state, text) {
@@ -274,9 +274,7 @@
         deltaBadge.removeAttribute('data-state');
       }
     }
-    if (!App.Tier || !App.Tier.isLow()) {
-      updateTelemetryWave(rawVal, filtVal);
-    }
+    updateTelemetryWave(rawVal, filtVal);
 
     const card = $('gasCard');
     if (card) card.setAttribute('data-state', state);
@@ -754,10 +752,6 @@
       try { window.App.Events.note(data, state); } catch (e) { /* günlük hatası çizimi bozmasın */ }
     }
 
-    /* SCADA WebGL Shader Motoru & Telemetri Kara Kutusu */
-    if (window.App.Shaders && window.App.Shaders.update) {
-      window.App.Shaders.update(data);
-    }
     if (window.App.Blackbox && window.App.Blackbox.ingest) {
       window.App.Blackbox.ingest(data);
     }
@@ -956,21 +950,28 @@
     return Math.min(10000, steps[Math.min(failStreak, steps.length - 1)]);
   }
 
+  let polling = false;
+
   async function poll() {
+    if (polling || document.hidden) return;
+    polling = true;
     const t0 = performance.now();
     try {
       const data = await App.api.status();
       const latency = Math.round(performance.now() - t0);
       setText('pingMs', latency + ' ms');
-      markOnline();
-      render(data);
+      if (data !== lastData || !online) {
+        markOnline();
+        render(data, data === lastData ? lastUpdateTs : undefined);
+      }
     } catch (err) {
       markOffline(err);
       if (err && err.legacy) {
         App.toast(err.message, { kind: 'danger', duration: 9000 });
       }
     } finally {
-      schedule();
+      polling = false;
+      if (!document.hidden) schedule();
     }
   }
 
@@ -996,7 +997,6 @@
         if (lastData && Number(msg.t) && Number(msg.t) <= Number(lastData.t) &&
             Number(msg.uptime) <= Number(lastData.uptime)) return;  /* eski kopyayı yut */
         setText('pingMs', Math.max(0, Date.now() - at + (msg.__rtt || 0)) + ' ms');
-        lastData = msg;
         markOnline();
         render(msg);
       }),
@@ -1204,6 +1204,7 @@
   function startTicker() {
     clearInterval(tickTimer);
     tickTimer = setInterval(function () {
+      if (document.hidden) return;
       if (lastUpdateTs) {
         setText('lastUpdate', 'son veri: ' + App.fmtAgo(lastUpdateTs));
         setText('wAge', App.fmtAgo(lastUpdateTs));
@@ -1246,7 +1247,6 @@
       paint(snap);
       try { await App.Auth.listBindings(); } catch (e) { /* şema yoksa sessiz */ }
       paint(App.Auth.snapshot());
-      if (lastData) render(lastData, lastUpdateTs);
     }).catch(function () { paint(App.Auth.snapshot()); });
   }
 
@@ -1269,12 +1269,8 @@
       } catch (e) {}
     });
     pushUnsubs = [];
-    if (lastData && lastData.pump) disarmPump();
+    if ($('homeWidget') && lastData && lastData.pump) disarmPump();
 
-    /* WebGL Shader Motoru & Kara Kutu Yaşam Döngüsü Temizliği */
-    if (window.App.Shaders && window.App.Shaders.destroy) {
-      window.App.Shaders.destroy();
-    }
     if (window.App.Blackbox && window.App.Blackbox.destroy) {
       window.App.Blackbox.destroy();
     }
@@ -1293,7 +1289,7 @@
 
   function init() {
     destroy();
-    if (!$('homeWidget')) return;
+    if (!$('homeWidget') && !$('eventLog')) return;
     setupTheme();
     setupServiceWorker();
     App.setupPwaInstall();
@@ -1302,15 +1298,6 @@
     setupAccountPill();
     startTicker();
 
-    if (App.init3DTilt) App.init3DTilt();
-    /* Eski App.initParallax() kaldırıldı; tüm scroll/lerp yönetimi parallax.js motorunda */
-    if (App.initRipple) App.initRipple();
-    if (App.initHistory) App.initHistory();
-
-    /* Donanım Gücüne Duyarlı WebGL Shader Motoru ve Olay Kara Kutusu */
-    if (window.App.Shaders && window.App.Shaders.init) {
-      window.App.Shaders.init(window.App.Tier && window.App.Tier.get());
-    }
     if (window.App.Blackbox && window.App.Blackbox.init) {
       window.App.Blackbox.init();
     }
@@ -1335,12 +1322,12 @@
           clearTimeout(pollTimer);
         } else {
           clearTimeout(pollTimer);
-          if ($('homeWidget')) poll();
+          if ($('homeWidget') || $('eventLog')) poll();
         }
       });
 
       window.addEventListener('pagehide', function () {
-        if (lastData && lastData.pump) disarmPump();
+        if ($('homeWidget') && lastData && lastData.pump) disarmPump();
       });
     }
 
@@ -1380,14 +1367,7 @@
     window.addEventListener('online', function () {
       App.setConnBadge('connecting', 'Canlıya Geçiliyor…');
       App.toast('Ağ bağlantısı kuruldu. Telemetri senkronize ediliyor...', { kind: 'ok', duration: 3000 });
-      if (App.api && typeof App.api.status === 'function') {
-        App.api.status().then(function (data) {
-          markOnline();
-          render(data);
-        }).catch(function (err) {
-          markOffline(err);
-        });
-      }
+      if ($('homeWidget') || $('eventLog')) poll();
       if (App.api && App.api.transport() && typeof App.api.startMqtt === 'function') {
         try { App.api.startMqtt(); } catch (e) {}
       }
@@ -1469,10 +1449,10 @@
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () {
       bootGlobalFeatures();
-      if ($('homeWidget')) init();
+      if ($('homeWidget') || $('eventLog')) init();
     });
   } else {
     bootGlobalFeatures();
-    if ($('homeWidget')) init();
+    if ($('homeWidget') || $('eventLog')) init();
   }
 })();

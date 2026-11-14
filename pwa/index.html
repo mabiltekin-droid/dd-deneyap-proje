@@ -11,15 +11,13 @@
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" href="./icons/favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
-  <link rel="prefetch" href="./settings.html">
-  <link rel="prefetch" href="./earthquake.html">
-  <link rel="preconnect" href="https://unpkg.com">
   <link rel="preload" href="./fonts/dm-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="./fonts/fraunces-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="./css/style.css">
   <link rel="stylesheet" href="./css/mobile-app.css">
   <link rel="stylesheet" href="./css/redesign.css">
   <link rel="stylesheet" href="./css/sakin-secondary.css">
+  <script defer src="./js/events-route.js"></script>
   <script src="./js/theme-boot.js"></script>
 </head>
 <body class="mission-control-body">
@@ -61,7 +59,7 @@
       <a href="#telemetry" class="nav-item">Sensörler</a>
       <a href="#command-center" class="nav-item">Kontrol</a>
       <a href="#analytics" class="nav-item">Geçmiş</a>
-      <a href="#eventLog" class="nav-item">Olaylar</a>
+      <a href="./events.html" class="nav-item">Olaylar</a>
       <a href="#diagnostics" class="nav-item">Sistem</a>
       <a href="./earthquake.html" class="nav-item">Deprem</a>
     </nav>
@@ -163,9 +161,9 @@
           </div>
         </div>
         <figure class="home-visual">
-          <img src="./images/ev-kesiti.jpg" width="1200" height="800" alt="" fetchpriority="high">
+          <img src="./images/ev-kesiti-640.webp" srcset="./images/ev-kesiti-640.webp 640w, ./images/ev-kesiti-1200.webp 1200w" sizes="(max-width: 700px) calc(100vw - 32px), 620px" width="1200" height="800" alt="">
         </figure>
-        <a id="wAlertLink" class="btn home-alert-link" href="#eventLog" hidden>Olayları incele</a>
+        <a id="wAlertLink" class="btn home-alert-link" href="./events.html" hidden>Olayları incele</a>
         <a id="wOfflineLink" class="btn ghost home-alert-link" href="./settings.html#connSection" hidden>Bağlantıyı kontrol et</a>
         <div class="w-sensors">
           <h3>Sensörler</h3>
@@ -202,7 +200,7 @@
       <section id="noDevice" class="no-device" aria-live="polite">
         <div class="no-device-inner">
           <figure class="home-visual">
-            <img src="./images/ev-kesiti.jpg" width="1200" height="800" alt="">
+            <img src="./images/ev-kesiti-640.webp" srcset="./images/ev-kesiti-640.webp 640w, ./images/ev-kesiti-1200.webp 1200w" sizes="(max-width: 700px) calc(100vw - 32px), 620px" width="1200" height="800" alt="" fetchpriority="high">
           </figure>
           <div class="no-device-copy">
             <div class="w-hero-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5M5 9.5V21h14V9.5M9.5 21v-6h5v6"/></svg></div>
@@ -719,60 +717,6 @@
       </article>
     </section>
 
-    <!-- 5. SİSTEM TEŞHİSİ & BULUT AĞI -->
-    <!-- 4. OLAY GÜNLÜĞÜ & ALARM GEÇMİŞİ -->
-    <section class="scrolly-section eventlog-section" id="eventLog" aria-label="Olay Günlüğü ve Alarm Geçmişi">
-      <div class="section-badge-header">
-        <h2 class="sec-title">Olay geçmişi</h2>
-      </div>
-
-      <p class="card events-unavailable" id="eventUnavailable">Cihazınıza erişim sağlandığında olay kayıtları burada görünür.</p>
-      <article class="card span-2 eventlog-card" id="eventCard" hidden>
-        <div class="event-shortcuts"><a href="#analytics">Sensör geçmişi</a><a href="#diagnostics">Sistem sağlığı</a></div>
-        <div class="card-head">
-          <div class="head-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M12 8v4l3 2"/>
-              <path d="M3.05 11a9 9 0 1 1 .5 4"/>
-              <path d="M3 4v4h4"/>
-            </svg>
-            <h3>Olay akışı</h3>
-          </div>
-          <span class="chip" id="evChip" data-state="unknown">—</span>
-        </div>
-
-        <div class="ev-summary">
-          <div class="ev-stat"><span>Bugün</span><strong id="evCountToday">0</strong></div>
-          <div class="ev-stat"><span>Toplam</span><strong id="evCountAll">0</strong></div>
-          <div class="ev-stat" data-sev="danger"><span>Gaz</span><strong id="evCountGas">0</strong></div>
-          <div class="ev-stat" data-sev="danger"><span>Alev</span><strong id="evCountFlame">0</strong></div>
-          <div class="ev-stat" data-sev="danger"><span>Sarsıntı</span><strong id="evCountVib">0</strong></div>
-          <div class="ev-stat" data-sev="warn"><span>Su</span><strong id="evCountFlood">0</strong></div>
-          <div class="ev-stat" data-sev="info"><span>Sistem</span><strong id="evCountSystem">0</strong></div>
-        </div>
-
-        <div class="ev-filters" role="group" aria-label="Olay filtresi">
-          <button class="btn sm primary" type="button" data-evfilter="all">Tümü</button>
-          <button class="btn sm" type="button" data-evfilter="gas">Gaz</button>
-          <button class="btn sm" type="button" data-evfilter="flame">Alev</button>
-          <button class="btn sm" type="button" data-evfilter="vib">Sarsıntı</button>
-          <button class="btn sm" type="button" data-evfilter="flood">Su</button>
-          <button class="btn sm" type="button" data-evfilter="system">Sistem</button>
-        </div>
-
-        <ul class="ev-list" id="eventList"></ul>
-        <p class="ev-empty" id="evEmpty">Henüz kayıtlı olay yok. Alarmlar oluştuğunda burada listelenir.</p>
-
-        <div class="btn-row ev-actions">
-          <button class="btn ghost" type="button" id="evRefreshBtn">Buluttan Yenile</button>
-          <button class="btn ghost" type="button" id="evPdfBtn">PDF Rapor</button>
-          <button class="btn ghost" type="button" id="evExportBtn">CSV İndir</button>
-          <button class="btn ghost" type="button" id="evClearBtn">Yereli Temizle</button>
-        </div>
-        <p class="help">Olaylar panel açıkken tespit edilir; giriş yapıldığında buluta (Firestore) yedeklenir ve yalnızca size görünür.</p>
-      </article>
-    </section>
-
     <section class="scrolly-section diagnostics-section" id="diagnostics" hidden aria-label="Sistem Teşhisi ve Bulut Ağı">
       <div class="section-badge-header">
         <h2 class="sec-title">Sistem sağlığı</h2>
@@ -930,6 +874,7 @@
         <a href="#telemetry">Sensörler</a>
         <a href="#command-center">Kontrol</a>
         <a href="#analytics">Geçmiş</a>
+        <a href="./events.html">Olaylar</a>
         <a href="#diagnostics">Sistem</a>
         <a href="./earthquake.html">Deprem izleme</a>
         <a href="./privacy.html">Gizlilik ve hesap silme</a>
@@ -954,8 +899,8 @@
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
   <!-- Mobil Hızlı Alt Navigasyon Barı -->
-  <nav class="bottom-nav" aria-label="Ana gezinme">
-    <a href="#hero" class="active" data-nav="hero" aria-current="page">
+  <nav class="bottom-nav product-nav" aria-label="Ana gezinme">
+    <a href="#hero" data-nav="hero" class="active" aria-current="page">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M3 10.5 12 3l9 7.5"/>
         <path d="M5 9.5V21h14V9.5"/>
@@ -963,7 +908,19 @@
       </svg>
       <span>Panel</span>
     </a>
-    <a href="#eventLog" data-nav="eventLog">
+    <a href="#telemetry">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l2-7 4 14 2-7h6"/></svg>
+      <span>Sensörler</span>
+    </a>
+    <a href="#command-center">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 17h16M9 4v6m6 4v6"/></svg>
+      <span>Kontrol</span>
+    </a>
+    <a href="#analytics">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18M7 15l4-4 3 3 5-6"/></svg>
+      <span>Geçmiş</span>
+    </a>
+    <a href="./events.html">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9m-8 12a2 2 0 0 0 4 0"/></svg>
       <span>Olaylar</span>
     </a>
@@ -982,44 +939,27 @@
     </a>
   </nav>
 
-  <!-- Komut ve Altyapı Betikleri -->
-  <script src="./js/config.js"></script>
-
-  <!-- GSAP & Lenis Kütüphaneleri -->
-  <script src="./js/vendor/gsap.min.js"></script>
-  <script src="./js/vendor/ScrollTrigger.min.js"></script>
-  <script src="./js/vendor/lenis.min.js"></script>
-
+  <script defer src="./js/config.js"></script>
   <!-- Firebase SDK (CDN) -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check-compat.js"></script>
-
-  <!-- MQTT Taşıyıcısı -->
-  <script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
-
-  <script src="./js/tier.js"></script>
-  <script src="./js/parallax.js"></script>
-  <script src="./js/shaders.js"></script>
-  <script src="./js/blackbox.js"></script>
-  <script src="./js/api.js"></script>
-  <script src="./js/mqtt.js"></script>
-  <script src="./js/notify.js"></script>
-  <script src="./js/devices.js"></script>
-  <script src="./js/firebase.js"></script>
-  <script src="./js/auth-firebase.js"></script>
-  <script src="./js/events.js"></script>
-  <script src="./js/automation.js"></script>
-  <script src="./js/voice.js"></script>
-  <script src="./js/history.js"></script>
-  <script src="./js/app.js"></script>
-  <script src="./js/offline.js"></script>
-  <script src="./js/native-push.js"></script>
-  <script src="./js/settings.js"></script>
-  <script src="./js/studio-nav.js"></script>
-  <script src="./js/account.js"></script>
-  <script src="./js/mobile-app.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script defer src="./js/parallax.js"></script>
+  <script defer src="./js/blackbox.js"></script>
+  <script defer src="./js/api.js"></script>
+  <script defer src="./js/mqtt.js"></script>
+  <script defer src="./js/notify.js"></script>
+  <script defer src="./js/devices.js"></script>
+  <script defer src="./js/firebase.js"></script>
+  <script defer src="./js/auth-firebase.js"></script>
+  <script defer src="./js/events.js"></script>
+  <script defer src="./js/automation.js"></script>
+  <script defer src="./js/voice.js"></script>
+  <script defer src="./js/history.js"></script>
+  <script defer src="./js/app.js"></script>
+  <script defer src="./js/offline.js"></script>
+  <script defer src="./js/native-push.js"></script>
+  <script defer src="./js/mobile-app.js"></script>
 
 </body>
 </html>

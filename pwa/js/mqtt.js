@@ -61,9 +61,30 @@
   const waiters = new Map();   /* cmdId -> {resolve, reject, timer} */
   const histWaiters = new Map(); /* geçmiş isteği id -> {resolve, reject, timer} */
 
-  /* mqtt.js CDN'den gelir. Panel çevrimdışıyken (kapalı AP'de) dosya
-     yüklenemez; bu durumda sessizce HTTP moduna düşülür. */
+  let libraryLoad = null;
+  let connectionRequested = false;
+
   function lib() { return window.mqtt; }
+
+  function loadLibrary() {
+    if (lib()) return Promise.resolve(lib());
+    if (!libraryLoad) {
+      libraryLoad = new Promise(function (resolve, reject) {
+        const script = document.createElement('script');
+        script.src = new URL('./js/vendor/mqtt-5.10.1.min.js', document.baseURI);
+        script.onload = function () { resolve(lib()); };
+        script.onerror = function () {
+          script.remove();
+          reject(new Error('MQTT kitaplığı yüklenemedi'));
+        };
+        document.head.appendChild(script);
+      }).catch(function (error) {
+        libraryLoad = null;
+        throw error;
+      });
+    }
+    return libraryLoad;
+  }
 
   function topicBase() {
     const s = App.settings();
@@ -202,8 +223,25 @@
   function reconnect() { dropClient(); connect(); }
 
   function connect() {
+    const settings = App.settings();
+    if (settings.transport === 'http' || !brokerUrls().some(Boolean)) return;
+    connectionRequested = true;
     const M = lib();
-    if (!M) { console.warn('[mqtt] mqtt.js yüklenemedi'); return; }    /* Kimlik koruması: elde zaten bağlanan ya da bağlı bir istemci varken
+    if (!M) {
+      if (connecting) return;
+      connecting = true;
+      loadLibrary().then(function (loaded) {
+        connecting = false;
+        if (loaded) connect();
+        else App.api._setRelayOnline(false, 'MQTT kitaplığı yüklenemedi');
+      }, function () {
+        connecting = false;
+        App.api._setRelayOnline(false, 'MQTT kitaplığı yüklenemedi');
+        scheduleReconnect();
+      });
+      return;
+    }
+    /* Kimlik koruması: elde zaten bağlanan ya da bağlı bir istemci varken
        yeniden kurmak, canlı bağlantıyı düşürür ve hemen ardından yapılan
        yayınların "Yayıncıya bağlı değil" diye geri dönmesine yol açar
        (ayarlar sayfasında test/deneme düğmelerinde görüldü).
@@ -324,7 +362,7 @@
   }
 
   document.addEventListener('visibilitychange', function () {
-    if (!document.hidden && (!connected || !client || !client.connected)) {
+    if (connectionRequested && !document.hidden && !connecting && (!connected || !client || !client.connected)) {
       console.info('[mqtt] Mobil uyku sonrasi baglanti tazeleniyor...');
       reconnect();
     }
@@ -357,6 +395,7 @@
 
     /* Durum okuma: itme tabanlı. Son durumu dondurup aynen döner. */
     status: function () {
+      if (!client && !connecting && !reconnectTimer) connect();
       if (lastStatus && !isStale()) return Promise.resolve(lastStatus);
       if (lastStatus) {
         const e = new Error('Cihazdan uzun süredir veri gelmiyor');

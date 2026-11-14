@@ -140,10 +140,16 @@
       });
     }
 
-    fetchLatest();
-    setTimeout(fetchCurrent, 800);
-    if (App.Auth && App.Auth.onChange) {
-      App.Auth.onChange(function () { setTimeout(fetchCurrent, 500); });
+    if ('IntersectionObserver' in window) {
+      const observer = new IntersectionObserver(function ([entry]) {
+        if (!entry.isIntersecting) return;
+        fetchLatest();
+        fetchCurrent();
+      });
+      observer.observe($('otaSection'));
+    } else {
+      fetchLatest();
+      fetchCurrent();
     }
   }
 
