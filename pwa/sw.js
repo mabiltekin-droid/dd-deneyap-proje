@@ -18,7 +18,7 @@
    ========================================================================== */
 
 const VERSION = '2.31.0';
-const CACHE = 'deneyap-pwa-v' + VERSION + '-r10';
+const CACHE = 'deneyap-pwa-v' + VERSION + '-r11';
 const SHELL = './index.html';
 
 const PRECACHE = [

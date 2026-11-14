@@ -214,8 +214,9 @@
 
   async function doSocialSignIn(provider) {
     const android = window.AndroidApp;
-    const nativeGoogle = provider === 'google' && android
-      && typeof android.getGoogleIdToken === 'function';
+    const nativeBridge = window.DeneyapGoogleSignIn || android;
+    const nativeGoogle = provider === 'google' && nativeBridge
+      && typeof nativeBridge.getGoogleIdToken === 'function';
     if (!nativeGoogle && android && typeof android.openInChrome === 'function') {
       if (confirm('Tarayıcı açılacak ve oturum orada devam edecek. Devam edilsin mi?')) {
         android.openInChrome();
@@ -229,7 +230,7 @@
     setResult(def.label + ' ile giriş yapılıyor…');
     try {
       const r = nativeGoogle
-        ? await App.Auth.signInWithProvider('google', await android.getGoogleIdToken())
+        ? await App.Auth.signInWithProvider('google', await nativeBridge.getGoogleIdToken())
         : await App.Auth.signInWithProvider(provider);
       if (r && r.redirect) {
         setResult(def.label + ' sayfasına yönlendiriliyorsunuz…');

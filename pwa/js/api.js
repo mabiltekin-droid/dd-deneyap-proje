@@ -126,6 +126,15 @@
 
   /* -------------------------------------------------------- genel arayüz */
 
+  function currentDeviceId() {
+    if (App.Devices && typeof App.Devices.currentId === 'function') {
+      const selected = App.Devices.currentId();
+      if (selected) return selected;
+    }
+    const telemetry = typeof App.lastTelemetry === 'function' ? App.lastTelemetry() : null;
+    return (telemetry && telemetry.dev) || App.settings().activeDeviceId || '';
+  }
+
   function roleBlock(device) {
     if (!App.Auth || !App.Auth.signedIn || !App.Auth.signedIn()) return null;
     if (!device) return null;
@@ -148,9 +157,10 @@
     },
 
     control: function (device, action, value) {
-      const blocked = roleBlock(device);
+      const deviceId = currentDeviceId();
+      const blocked = roleBlock(deviceId);
       if (blocked) return Promise.reject(blocked);
-      const lockKey = String(device) + ':' + String(action) + ':' + (value !== undefined ? String(value) : '');
+      const lockKey = deviceId + ':' + String(device) + ':' + String(action) + ':' + (value !== undefined ? String(value) : '');
       const existing = inFlightControls.get(lockKey);
       const now = Date.now();
       if (existing && (now - existing.time < CONTROL_THROTTLE_MS)) {
@@ -180,10 +190,7 @@
     },
 
     saveSettings: function (payload) {
-      const dev = (App.Devices && App.Devices.currentId)
-        ? App.Devices.currentId()
-        : (App.settings ? App.settings().activeDeviceId : '');
-      const blocked = roleBlock(dev);
+      const blocked = roleBlock(currentDeviceId());
       if (blocked) return Promise.reject(blocked);
       if (usingMqtt()) return App.mqtt.saveSettings(payload);
       return httpRequest('/api/settings', {
