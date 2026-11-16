@@ -22,6 +22,14 @@
       if (current) link.setAttribute('aria-current', 'location');
       else link.removeAttribute('aria-current');
     }
+    const moreBtn = document.getElementById('mobileMoreBtn');
+    if (moreBtn) {
+      moreBtn.classList.toggle('active', view === 'analytics' || view === 'diagnostics');
+    }
+    const moreDlg = document.getElementById('mobileMoreDialog');
+    if (moreDlg && moreDlg.open) {
+      try { moreDlg.close(); } catch (e) { /* yoksay */ }
+    }
     if (window.scrollY) window.scrollTo({top:0,behavior:'instant'});
     if (target && target.id !== view && !target.closest('[hidden]')) target.scrollIntoView();
     document.dispatchEvent(new CustomEvent('deneyap:panel-view', { detail: view }));
@@ -31,7 +39,11 @@
   show(document.getElementById(location.hash.slice(1)));
   window.addEventListener('pageshow', () => {
     const target = document.getElementById(location.hash.slice(1));
-    if (viewFor(target) && viewFor(target) !== main.dataset.panelView) show(target);
+    const view = viewFor(target);
+    if (view && view !== main.dataset.panelView) show(target);
+    else if (target && target.id === (main.dataset.panelView || 'hero') && window.scrollY) {
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    }
   });
   window.addEventListener('hashchange', () => show(document.getElementById(location.hash.slice(1))));
 

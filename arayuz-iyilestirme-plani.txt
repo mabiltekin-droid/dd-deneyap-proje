@@ -1,0 +1,175 @@
+DD EV KORUMA PWA (v2.31.0) — ARAYÜZ, MENÜ VE UX İNCELEME RAPORU & İYİLEŞTİRME PLANI
+====================================================================================
+İncelenen Sayfalar:
+- Ana Panel (index.html — #hero, #telemetry, #command-center, #analytics, #diagnostics)
+- Ayarlar (settings.html)
+- Olaylar (events.html)
+- Deprem (earthquake.html)
+- Gizlilik (privacy.html)
+Test Edilen Görünümler: Masaüstü ve Mobil (390x844), Aydınlık ve Karanlık Tema
+
+
+====================================================================================
+1. TESPİT EDİLEN KRİTİK HATALAR VE İŞLEV EKSİKLERİ
+====================================================================================
+
+[1.1] Cihaz/Oturum Yokken Mod Butonlarının Çalışıyor Gibi Görünmesi (index.html)
+- Sorun: "Bağlantı Yok" ve "Cihaz bulunamadı" durumu varken başlıktaki
+  Evde / Gece / Tatil / İzleme butonlarına tıklanabiliyor; buton seçili
+  (aria-pressed="true") hale geliyor ve "Mod: Gece" bildirimi (toast) çıkıyor.
+- Etki: Kullanıcı cihazı bağlı veya modu değişmiş sanabilir.
+
+[1.2] earthquake.html Sayfasında "Uygulamayı İndir" Butonunun Çalışmaması
+- Sorun: Ana panelde PWA yükleme bildirimi tetiklenirken earthquake.html
+  üst menüsündeki "İndir" butonuna tıklanınca hiçbir modal, toast veya işlem
+  gerçekleşmiyor.
+
+[1.3] "Sesli komut" Butonunda Geri Bildirim Olmaması ve Mobilde Gizli Olması
+- Sorun 1: Masaüstünde mikrofon butonuna basıldığında "Dinleniyor..." gibi bir
+  anlık görsel gösterge veya modal açılmıyor; birkaç saniye sessizce bekleyip
+  "Ses algılanamadı, tekrar deneyin." uyarısı veriyor.
+- Sorun 2: Mobil görünümde (390x844) "Sesli komut" butonu başlıktan tamamen
+  kaldırılmış ve alternatif bir erişim noktası yok.
+
+[1.4] Bağlantı Durumu Rozeti ve Mesajının Yanıltıcı Olması
+- Sorun: Konsolda MQTT bağlantısının kurulduğu (wss://broker.emqx.io:8084/mqtt)
+  görülürken arayüzde doğrudan kırmızı "Bağlantı Yok" rozeti ve
+  "Cihaz bulunamadı" yazıyor.
+- Etki: "Sunucuya/MQTT'ye bağlı", "Oturum açılmadı" ve "Cihaz eşleştirilmedi"
+  durumları birbirinden ayırt edilemiyor.
+
+[1.5] Anında Uygulanan Ayar Bölümlerinde Gereksiz Kaydet/İptal Çubuğu (settings.html)
+- Sorun: #themeSection (Aydınlık, Karanlık, AMOLED siyah, Sistem) ve
+  #backupSection içindeki seçimler anında uygulanmasına rağmen sayfa altında
+  hâlâ "Ayarları kaydet" ve anasayfaya yönlendiren "İptal" butonları görünüyor.
+
+
+====================================================================================
+2. NAVİGASYON, MOBİL ARAYÜZ VE TASARIM TUTARSIZLIKLARI
+====================================================================================
+
+[2.1] Sayfalar Arası Tutarsız Üst Menü (Header)
+- index.html    : Genel bakış | Sensörler | Kontrol | Geçmiş | Olaylar | Sistem | Deprem
+                  + Mod çubuğu + Sesli komut + Ayarlar + Hesap + İndir + Tema
+- events.html   : İlk öğe "Genel bakış" yerine "Panel", "Sistem" yok, "Ayarlar"
+                  sağdaki aksiyon butonu yerine hap menü içinde yer alıyor.
+- settings.html : "Deprem" ve "Hesap" bağlantıları yok.
+- earthquake.html: "Ayarlar" ve "Hesap" bağlantıları yok.
+
+[2.2] Mobil Alt Menü (390x844) Sıkışıklığı ve İkon Çakışması
+- Alt menüde 7 öğe (Panel, Sensörler, Kontrol, Geçmiş, Olaylar, Deprem, Ayarlar)
+  yan yana sıkışmış durumda.
+- "Sensörler" ve "Deprem" birebir aynı dalga/nabız ikonunu kullanıyor; ilk
+  bakışta ayırt edilemiyor.
+- "Sistem" (#diagnostics) bölümü mobilde menüden tamamen eksik.
+
+[2.3] Buton Görünümlü Linklerde Alt Çizgi (text-decoration: underline)
+- "Hesaba git" ve events.html içindeki "Hesap ve roller" gibi <a> etiketli
+  CTA butonlarının metinlerinde alt çizgi görünüyor; buton estetiğini bozuyor.
+
+[2.4] Ayarlar Menüsü ve "Bölümler" Çekmecesinde İsimlendirme Tutarsızlığı
+- Ana akordeon başlıkları ile "Bölümler" çekmecesi farklı isimler kullanıyor:
+  * "Ev ve aile erişimi"         vs. "Ev ve aile"
+  * "Ev ağı bağlantısı"           vs. "Cihaz ve ağ"
+  * "Sensör eşikleri ve otomasyon" vs. "Eşikler"
+  * "Çalışma modları ve zamanlama" vs. "Modlar"
+  * "Telegram bildirimleri"       vs. "Telegram"
+  * "Yedekleme ve bakım"          vs. "Bakım"
+- Üst menüdeki "Panele dön" linki ile çekmece altındaki "Sensörler" linki
+  aynı amaca hizmet etmesine rağmen farklı adlandırılmış.
+- Büyük/küçük harf kullanımı tutarsız: "Uygulama Bildirimleri" /
+  "Acil Durum E-postaları" (Başlık Düzeni) vs. "Telegram bildirimleri" /
+  "Ev ağı bağlantısı" (Cümle Düzeni).
+
+[2.5] Sayı Formatı Tutarsızlığı (earthquake.html)
+- En düşük büyüklük seçim kutusunda Türkçe virgül ("2,5") kullanılırken,
+  hemen altındaki özet satırında nokta ("M ≥ 2.5") gösteriliyor.
+
+
+====================================================================================
+3. ERİŞİLEBİLİRLİK (a11y) VE KONSOL UYARILARI
+====================================================================================
+
+[3.1] settings.html Form Erişilebilirlik Sorunları (Chrome DevTools Issues)
+- Etiketi (<label>) bağlı olmayan form alanı uyarısı ("No label associated with a form field").
+- Standart dışı autocomplete niteliği uyarısı ("Non-standard autocomplete attribute value").
+- <form> etiketi dışında bırakılmış 7 adet şifre (password) alanı uyarısı.
+
+[3.2] Eskimiş Meta/API Uyarıları
+- Tüm sayfalarda <meta name="apple-mobile-web-app-capable" content="yes">
+  deprecation uyarısı.
+- @firebase/firestore tarafında enableMultiTabIndexedDbPersistence() deprecation uyarısı.
+
+
+====================================================================================
+4. ÇÖZÜM ADIMLARI VE YAPILACAKLAR PLANI
+====================================================================================
+
+FAZ 1 — KRİTİK BUTON VE DURUM HATALARI (Öncelik: Yüksek)
+------------------------------------------------------------------------------------
+[ ] 1. Mod butonlarını bağlantı/oturum durumuna kilitle:
+       - Cihaz bağlı değilken veya oturum açılmamışken Evde/Gece/Tatil/İzleme
+         butonlarını disabled yap (veya tıklanınca "Önce cihaz bağlayın / giriş
+         yapın" uyarısı ver).
+       - Cihaz/oturum yokken "Mod: ..." başarı toast'ının tetiklenmesini engelle.
+
+[ ] 2. Bağlantı durumu rozetini ve mesajlarını ayrıştır:
+       - "Bağlantı Yok" yerine gerçek durumu yansıtan net durumlar tanımla:
+         "Oturum açılmadı", "Cihaz eşleşmedi", "Cihaz çevrimdışı", "Bağlı".
+
+[ ] 3. earthquake.html "İndir" butonunu düzelt:
+       - Diğer sayfalardaki ortak PWA yükleme / yönlendirme mantığını
+         earthquake.html üst menüsündeki "İndir" butonuna da bağla.
+
+[ ] 4. Sesli komut geri bildirimini ve mobil erişimini ekle:
+       - Mikrofon butonuna basıldığında anlık "Dinleniyor..." göstergesi /
+         animasyonlu durum ve iptal seçeneği ekle.
+       - Mobil görünümde Sesli komut için uygun bir erişim noktası ekle
+         (ör. Kontrol bölümü veya hızlı aksiyon alanı).
+
+
+FAZ 2 — NAVİGASYON VE MOBİL DENEYİM BİRLİĞİ (Öncelik: Orta-Yüksek)
+------------------------------------------------------------------------------------
+[ ] 5. Tüm sayfalarda ortak üst menü (Header) yapısı kur:
+       - index.html, events.html, settings.html ve earthquake.html için aynı
+         ana navigasyon sırasını ve aynı sağ aksiyon grubunu (Ayarlar, Hesap,
+         İndir, Tema) uygula.
+       - "Panel" ve "Genel bakış" adlandırmasını tek bir standartta birleştir.
+
+[ ] 6. Mobil alt menüyü sadeleştir:
+       - 7 sıkışık öğe yerine 4-5 ana öğe kullan (ör. Panel, Sensörler, Kontrol,
+         Olaylar, Menü/Diğer).
+       - "Sistem", "Deprem" ve "Ayarlar" gibi ikincil sayfaları düzenli bir
+         çekmece/menü altında topla (böylece "Sistem" mobilden eksik kalmaz).
+
+[ ] 7. "Deprem" ve "Sensörler" ikonlarını ayır:
+       - Deprem sekmesi için sensör dalga ikonundan farklı, ayırt edici bir
+         ikon (ör. sismik uyarı / harita / titreşim ikonu) kullan.
+
+[ ] 8. Buton görünümlü linklerdeki alt çizgiyi kaldır:
+       - .btn ve benzeri buton sınıflarında <a> etiketleri için
+         text-decoration: none; kuralını kesinleştir.
+
+
+FAZ 3 — AYARLAR UX, METİN TUTARLILIĞI VE ERİŞİLEBİLİRLİK (Öncelik: Orta)
+------------------------------------------------------------------------------------
+[ ] 9. Anında uygulanan ayarlarda kaydet çubuğunu gizle:
+       - #themeSection ve #backupSection görünürken alt kısımdaki "Ayarları kaydet"
+         ve "İptal" barını gizle.
+
+[ ] 10. Ayarlar etiketlerini ve yazım formatını standartlaştır:
+        - Ana liste başlıkları ile "Bölümler" çekmecesindeki başlıkları birebir
+          eşleştir.
+        - Tüm başlıklarda tek bir büyük/küçük harf kuralı (cümle düzeni) uygula.
+        - Çekmece altındaki "Sensörler" ile üstteki "Panele dön" etiketini eşitle.
+        - earthquake.html özet satırında "M ≥ 2.5" yerine "M ≥ 2,5" kullan.
+
+[ ] 11. Form erişilebilirliği ve konsol uyarılarını temizle:
+        - settings.html içindeki şifre ve giriş alanlarını uygun <form>
+          etiketleri içine al.
+        - Tüm form alanlarına <label> (veya aria-label) ve geçerli autocomplete
+          nitelikleri (email, current-password, new-password vb.) ekle.
+        - <meta name="mobile-web-app-capable" content="yes"> ekle / eski meta
+          uyarısını gider.
+        - Firestore tarafında enableMultiTabIndexedDbPersistence() yerine güncel
+          persistentLocalCache yapısına geçiş yap.

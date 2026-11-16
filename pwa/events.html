@@ -6,7 +6,7 @@
   <title>Olaylar · DD Ev Koruma</title>
   <meta name="description" content="Sensör uyarıları, bağlantı kesintileri ve cihaz olayları.">
   <meta name="theme-color" content="#faf4e9" id="metaThemeColor">
-  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Ev Koruma">
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" href="./icons/favicon.svg" type="image/svg+xml">
@@ -41,18 +41,25 @@
       <a class="nav-item" href="./#command-center">Kontrol</a>
       <a class="nav-item" href="./#analytics">Geçmiş</a>
       <a class="nav-item active" href="./events.html" aria-current="page">Olaylar</a>
+      <a class="nav-item" href="./#diagnostics">Sistem</a>
       <a class="nav-item" href="./earthquake.html">Deprem</a>
-      <a class="nav-item" href="./settings.html">Ayarlar</a>
     </nav>
     <div class="header-actions">
+      <a href="./settings.html" class="nav-settings-pill" title="Sistem ayarlarına git">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+        <span>Ayarlar</span>
+      </a>
       <a href="./settings.html#accountCard" id="accountBtn" class="acct-pill"
-         role="button" aria-label="Hesap" title="Hesap & Roller">
+         aria-label="Hesap" title="Hesap ve roller">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
         </svg>
         <span id="accountBtnText">Hesap</span>
       </a>
-      <button id="pwaInstallBtn" class="pwa-install-btn" type="button" aria-label="Uygulamayı İndir" title="Ev Koruma Uygulamasını Cihazınıza İndirin">
+      <button id="pwaInstallBtn" class="pwa-install-btn" type="button" aria-label="İndir — Ev Koruma uygulamasını yükleyin" title="Ev Koruma uygulamasını cihazınıza indirin">
         <svg class="install-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
           <polyline points="7 10 12 15 17 10"/>
@@ -165,33 +172,23 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 17h16M9 4v6m6 4v6"/></svg>
       <span>Kontrol</span>
     </a>
-    <a href="./#analytics">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18M7 15l4-4 3 3 5-6"/></svg>
-      <span>Geçmiş</span>
-    </a>
     <a href="./events.html" class="active" aria-current="page">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9m-8 12a2 2 0 0 0 4 0"/></svg>
       <span>Olaylar</span>
     </a>
-    <a href="./earthquake.html">
+    <button type="button" class="bottom-nav-more" id="mobileMoreBtn" aria-haspopup="dialog" aria-expanded="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M2 12h4l2-7 4 14 2-7h8"/>
+        <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+        <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+        <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+        <rect x="14" y="14" width="7" height="7" rx="1.5"/>
       </svg>
-      <span>Deprem</span>
-    </a>
-    <a href="./settings.html">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
-        <circle cx="12" cy="12" r="3"/>
-      </svg>
-      <span>Ayarlar</span>
-    </a>
+      <span>Diğer</span>
+    </button>
   </nav>
 
   <script defer src="./js/config.js"></script>
-  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script defer src="./js/firebase-modular-compat.js"></script>
   <script defer src="./js/blackbox.js"></script>
   <script defer src="./js/api.js"></script>
   <script defer src="./js/mqtt.js"></script>

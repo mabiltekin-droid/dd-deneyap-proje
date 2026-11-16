@@ -6,7 +6,7 @@
   <title>DD Ev Koruma</title>
   <meta name="description" content="Gaz, duman, su ve hareket sensörlerini tek ekranda izleyin. Deneyap Kart tabanlı ev güvenlik sistemi.">
   <meta name="theme-color" content="#faf4e9" id="metaThemeColor">
-  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Ev Koruma">
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" href="./icons/favicon.svg" type="image/svg+xml">
@@ -56,7 +56,7 @@
     <!-- Web Sitesi Bölüm Gezintisi (Desktop SCADA Links) -->
     <nav class="header-nav" aria-label="Bölüm gezintisi">
       <div class="nav-liquid-bubble" aria-hidden="true"></div>
-      <a href="#hero" class="nav-item active">Genel bakış</a>
+      <a href="#hero" class="nav-item active" aria-current="page">Panel</a>
       <a href="#telemetry" class="nav-item">Sensörler</a>
       <a href="#command-center" class="nav-item">Kontrol</a>
       <a href="#analytics" class="nav-item">Geçmiş</a>
@@ -70,7 +70,7 @@
       <div class="mode-switch" id="modeSwitcher" data-mode-mount role="group" aria-label="Çalışma modu"></div>
 
       <!-- Sesli Komut (Web Speech) -->
-      <button id="voiceBtn" class="voice-btn" type="button" aria-pressed="false" aria-label="Sesli komut" title="Sesli komut (mikrofon)">
+      <button id="voiceBtn" class="voice-btn" data-voice-trigger type="button" aria-pressed="false" aria-label="Sesli komut" title="Sesli komut (mikrofon)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <rect x="9" y="2" width="6" height="12" rx="3"/>
           <path d="M5 10v1a7 7 0 0 0 14 0v-1"/>
@@ -80,7 +80,7 @@
       <span id="voiceHint" class="voice-hint" role="status" aria-live="polite"></span>
 
       <!-- Ayarlar Sayfasına Hızlı Geçiş -->
-      <a href="./settings.html" class="nav-back-pill nav-settings-pill" title="Sistem Ayarlarına Git">
+      <a href="./settings.html" class="nav-settings-pill" title="Sistem ayarlarına git">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
           <circle cx="12" cy="12" r="3"/>
@@ -89,13 +89,13 @@
       </a>
 
       <a href="./settings.html#accountCard" id="accountBtn" class="acct-pill"
-         role="button" aria-label="Hesap" title="Hesap & Roller">
+         aria-label="Hesap" title="Hesap ve roller">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
         </svg>
         <span id="accountBtnText">Hesap</span>
       </a>
-      <button id="pwaInstallBtn" class="pwa-install-btn" type="button" aria-label="Uygulamayı İndir" title="Ev Koruma Uygulamasını Cihazınıza İndirin">
+      <button id="pwaInstallBtn" class="pwa-install-btn" type="button" aria-label="İndir — Ev Koruma uygulamasını yükleyin" title="Ev Koruma uygulamasını cihazınıza indirin">
         <svg class="install-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
           <polyline points="7 10 12 15 17 10"/>
@@ -103,7 +103,7 @@
         </svg>
         <span class="install-text">İndir</span>
       </button>
-      <button id="themeToggleBtn" class="sky-pill" type="button" role="switch" aria-label="Tema Değiştir" aria-checked="true">
+      <button id="themeToggleBtn" class="sky-pill" type="button" role="switch" aria-label="Tema değiştir" aria-checked="true">
         <span class="sky-track">
           <span class="sky-stars" aria-hidden="true">
             <span class="star star-1"></span>
@@ -133,9 +133,17 @@
   </header>
 
   <!-- Mobil uygulama: başparmakla erişilen çalışma modu şeridi -->
-  <div class="mobile-quickbar" aria-label="Hızlı çalışma modu">
+  <div class="mobile-quickbar" aria-label="Hızlı çalışma modu ve sesli komut">
     <div class="mobile-quickbar-inner">
       <div class="mode-switch" id="modeSwitcherMobile" data-mode-mount role="group" aria-label="Çalışma modu"></div>
+      <button id="voiceBtnMobile" class="mobile-voice-btn" data-voice-trigger type="button" aria-pressed="false" aria-label="Ses — sesli komut" title="Sesli komut">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="9" y="2" width="6" height="12" rx="3"/>
+          <path d="M5 10v1a7 7 0 0 0 14 0v-1"/>
+          <line x1="12" y1="19" x2="12" y2="22"/>
+        </svg>
+        <span>Ses</span>
+      </button>
       <button id="mobileNativeMenu" class="mobile-native-menu" type="button" aria-label="Uygulama menüsü" title="Uygulama menüsü">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <circle cx="5" cy="12" r="1.2" fill="currentColor" stroke="none"/>
@@ -144,6 +152,21 @@
         </svg>
       </button>
     </div>
+  </div>
+
+  <div id="voiceStatusBanner" class="voice-status-banner" role="status" aria-live="polite" hidden>
+    <span class="vsb-pulse" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="9" y="2" width="6" height="12" rx="3"/>
+        <path d="M5 10v1a7 7 0 0 0 14 0v-1"/>
+        <line x1="12" y1="19" x2="12" y2="22"/>
+      </svg>
+    </span>
+    <div class="vsb-copy">
+      <strong id="voiceStatusTitle">Dinleniyor…</strong>
+      <span id="voiceStatusSub">Komut söyleyin — örn. “Pencereyi kapat”, “Gece moduna geç”</span>
+    </div>
+    <button type="button" class="btn sm ghost vsb-cancel" id="voiceCancelBtn">İptal</button>
   </div>
 
   <main id="main" class="page-container mission-control-page" data-panel-view="hero">
@@ -895,7 +918,7 @@
 
       <div class="footer-col links-col">
         <span class="f-heading">Sayfalar</span>
-        <a href="#hero">Genel bakış</a>
+        <a href="#hero">Panel</a>
         <a href="#telemetry">Sensörler</a>
         <a href="#command-center">Kontrol</a>
         <a href="#analytics">Geçmiş</a>
@@ -941,34 +964,24 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 17h16M9 4v6m6 4v6"/></svg>
       <span>Kontrol</span>
     </a>
-    <a href="#analytics">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18M7 15l4-4 3 3 5-6"/></svg>
-      <span>Geçmiş</span>
-    </a>
     <a href="./events.html">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9m-8 12a2 2 0 0 0 4 0"/></svg>
       <span>Olaylar</span>
     </a>
-    <a href="./earthquake.html">
+    <button type="button" class="bottom-nav-more" id="mobileMoreBtn" aria-haspopup="dialog" aria-expanded="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M2 12h4l2-7 4 14 2-7h8"/>
+        <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+        <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+        <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+        <rect x="14" y="14" width="7" height="7" rx="1.5"/>
       </svg>
-      <span>Deprem</span>
-    </a>
-    <a href="./settings.html">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
-        <circle cx="12" cy="12" r="3"/>
-      </svg>
-      <span>Ayarlar</span>
-    </a>
+      <span>Diğer</span>
+    </button>
   </nav>
 
   <script defer src="./js/config.js"></script>
-  <!-- Firebase SDK (CDN) -->
-  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <!-- Firebase SDK (Modüler ESM) -->
+  <script defer src="./js/firebase-modular-compat.js"></script>
   <script defer src="./js/blackbox.js"></script>
   <script defer src="./js/api.js"></script>
   <script defer src="./js/mqtt.js"></script>

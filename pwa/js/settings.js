@@ -419,10 +419,14 @@
          başlatılır; HTTP modunda startMqtt() zaten bir iş yapmaz. */
       App.api.startMqtt();
       const s = await App.api.status();
-      /* Durum taze geldiyse cihaz canlıdır; LWT tersini söylemişsa rozet
-         "canlı" diyemez (bkz. app.js markOnline). */
-      if (App.deviceOnline === false) App.setConnBadge('offline', 'Cihaz Çevrimdışı');
-      else App.setConnBadge('live', 'Canlı Telemetri');
+      /* Durum taze geldiyse cihaz canlıdır; LWT tersini söylemişse rozet
+         "Bağlı" diyemez (bkz. app.js markOnline). */
+      if (App.deviceOnline === false) {
+        const cs = App.resolveConnectionStatus ? App.resolveConnectionStatus({ live: false }) : { state: 'offline', label: 'Cihaz çevrimdışı' };
+        App.setConnBadge(cs.state, cs.label);
+      } else {
+        App.setConnBadge('live', 'Bağlı');
+      }
 
       // ESP32'den dönen gerçek eşikleri forma aktar (kullanıcı alanı düzenlemiyorsa)
       if (s) {
@@ -506,7 +510,14 @@
 
       return s;
     } catch (err) {
-      App.setConnBadge('offline', err.legacy ? 'Eski Firmware' : 'Bağlantı Yok');
+      if (err && err.legacy) {
+        App.setConnBadge('offline', 'Eski yazılım sürümü');
+      } else if (App.resolveConnectionStatus) {
+        const cs = App.resolveConnectionStatus({ live: false });
+        App.setConnBadge(cs.state, cs.label);
+      } else {
+        App.setConnBadge('offline', 'Cihaz çevrimdışı');
+      }
       throw err;
     }
   }
@@ -783,8 +794,12 @@
       : 'Cihaz aranıyor: ' + App.baseUrl() + ' …');
     try {
       const r = await App.api.ping();
-      if (App.deviceOnline === false) App.setConnBadge('offline', 'Cihaz Çevrimdışı');
-      else App.setConnBadge('live', 'Bağlantı Canlı');
+      if (App.deviceOnline === false) {
+        const cs = App.resolveConnectionStatus ? App.resolveConnectionStatus({ live: false }) : { state: 'offline', label: 'Cihaz çevrimdışı' };
+        App.setConnBadge(cs.state, cs.label);
+      } else {
+        App.setConnBadge('live', 'Bağlı');
+      }
       App.sound.chime();
       App.haptic(25);
       setResult(out,
@@ -793,7 +808,8 @@
           ? (r.status.mqtt ? ' · MQTT: bağlı' : ' · MQTT: bağlı değil')
           : (r.status.fs ? ' · LittleFS devrede' : ' · LittleFS bulunamadı (API-only)')), 'ok');
     } catch (err) {
-      App.setConnBadge('offline', 'Bağlantı Yok');
+      const cs = App.resolveConnectionStatus ? App.resolveConnectionStatus({ live: false }) : { state: 'offline', label: 'Cihaz çevrimdışı' };
+      App.setConnBadge(cs.state, cs.label);
       App.sound.alarm();
       setResult(out, 'Bağlantı kurulamadı: ' + err.message, 'fail');
     } finally {
@@ -1221,6 +1237,16 @@
 
     App.registerServiceWorker().then(function (r) { reg = r; });
     App.setupPwaInstall();
+    if (App.Auth && App.Auth.onChange && App.resolveConnectionStatus) {
+      const syncConnFromAuth = function () {
+        const badge = document.getElementById('conn');
+        if (badge && badge.dataset.state === 'live') return;
+        const cs = App.resolveConnectionStatus({ live: false });
+        App.setConnBadge(cs.state, cs.label);
+      };
+      App.Auth.onChange(syncConnFromAuth);
+      syncConnFromAuth();
+    }
     if (window.App && typeof window.App.initAccount === 'function') {
       window.App.initAccount();
     }
@@ -1236,12 +1262,15 @@
       const panel = $(id);
       if (!panel) continue;
       const refresh = id === 'telegramSection' ? refreshTgInfo : refreshDeviceInfo;
+      const runRefresh = function () {
+        Promise.resolve(refresh()).catch(function () {});
+      };
       if (!('IntersectionObserver' in window)) {
-        refresh();
+        runRefresh();
         continue;
       }
       const observer = new IntersectionObserver(function ([entry]) {
-        if (entry.isIntersecting) refresh();
+        if (entry.isIntersecting) runRefresh();
       });
       observer.observe(panel);
     }

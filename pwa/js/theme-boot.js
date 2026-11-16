@@ -30,6 +30,9 @@
         }
       });
     }
+    if (!window.location.hash) {
+      document.documentElement.classList.add('js-no-hash');
+    }
   } catch (e) {
     document.documentElement.setAttribute('data-theme', 'light');
   }

@@ -681,6 +681,76 @@
     badge.innerHTML = '<span class="dot" aria-hidden="true"></span><span id="connText">' + String(text).replace(/</g, '&lt;') + '</span>';
   };
 
+  /* Bağlantı / oturum / eşleştirme durumunu gerçek ağa ve yetkiye göre ayrıştır */
+  App.resolveConnectionStatus = function (opts) {
+    const o = opts || {};
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      return { state: 'offline', label: 'İnternet yok', code: 'no_network' };
+    }
+    if (o.live && App.deviceOnline !== false) {
+      return { state: 'live', label: 'Bağlı', code: 'connected' };
+    }
+    const auth = App.Auth;
+    const snap = (auth && typeof auth.snapshot === 'function') ? auth.snapshot() : null;
+    const devState = (o.dev && auth && typeof auth.deviceState === 'function') ? auth.deviceState(o.dev) : null;
+    const usingMqtt = !!(App.api && typeof App.api.transport === 'function' && App.api.transport());
+
+    if (snap && !snap.ready) {
+      return { state: 'connecting', label: 'Bağlanıyor…', code: 'connecting' };
+    }
+    if (snap && !snap.signedIn && devState !== 'local_mine') {
+      if (usingMqtt) {
+        return { state: 'unauthenticated', label: 'Oturum açılmadı', code: 'unauthenticated' };
+      }
+      return { state: 'offline', label: 'Cihaz çevrimdışı', code: 'device_offline' };
+    }
+    if (snap && snap.signedIn) {
+      const myId = snap.user && snap.user.id;
+      const bindings = Array.isArray(snap.bindings) ? snap.bindings : [];
+      const hasBound = bindings.some(function (b) {
+        return b && (!myId || b.owner_id === myId || snap.isAdmin || b.home_id);
+      });
+      const listedDevs = (App.Devices && typeof App.Devices.list === 'function') ? App.Devices.list() : [];
+      const knownOwn = hasBound || listedDevs.some(function (d) {
+        return d && d.owner_id && (!myId || d.owner_id === myId);
+      });
+      if (devState === 'free' || devState === 'hidden' || devState === 'other' || (!knownOwn && !bindings.length)) {
+        return { state: 'unbound', label: 'Cihaz eşleşmedi', code: 'unbound' };
+      }
+    }
+    return { state: 'offline', label: 'Cihaz çevrimdışı', code: 'device_offline' };
+  };
+
+  App.setupAccountBadge = function (onUpdate) {
+    const btn = document.getElementById('accountBtn');
+    const txt = document.getElementById('accountBtnText');
+    if (!App.Auth) return;
+
+    function paint(snap) {
+      if (btn && txt && snap) {
+        if (snap.setupRequired) { btn.dataset.state = ''; txt.textContent = 'Kurulum'; }
+        else if (snap.isAdmin) { btn.dataset.state = 'admin'; txt.textContent = 'Admin'; }
+        else if (snap.signedIn) {
+          btn.dataset.state = 'user';
+          txt.textContent = ((snap.user && snap.user.email) || 'Hesap').split('@')[0];
+        } else {
+          btn.dataset.state = '';
+          txt.textContent = 'Hesap';
+        }
+      }
+      if (typeof onUpdate === 'function') onUpdate(snap);
+    }
+
+    App.Auth.onChange(paint);
+    App.Auth.init().then(async function (snap) {
+      paint(snap);
+      try { await App.Auth.listBindings(); } catch (e) { /* şema yoksa sessiz */ }
+      paint(App.Auth.snapshot());
+    }).catch(function () {
+      try { paint(App.Auth.snapshot()); } catch (e) { /* yoksay */ }
+    });
+  };
+
   App.renderDeviceInfo = function (s) {
     const put = function (id, value) {
       const el = document.getElementById(id);
@@ -723,7 +793,7 @@
 
     btn.addEventListener('click', async function () {
       if (typeof App.haptic === 'function') App.haptic(25);
-      if (typeof App.sound === 'function') App.sound('toggle');
+      if (App.sound && typeof App.sound.click === 'function') App.sound.click();
 
       const promptEvent = window.__pwaDeferredPrompt;
       if (promptEvent) {

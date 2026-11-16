@@ -114,7 +114,15 @@
             console.warn('[fb] App Check başlatılamadı:', e);
           }
         }
-        if (typeof firebase.appCheck === 'function') activateAppCheck();
+        if (typeof firebase._activateAppCheck === 'function') {
+          if (/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)
+              && App.APP_CHECK_DEBUG !== false) {
+            self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+          }
+          firebase._activateAppCheck(App.APP_CHECK_KEY, firebaseApp._raw).catch(function (e) {
+            console.warn('[fb] App Check başlatılamadı:', e);
+          });
+        } else if (typeof firebase.appCheck === 'function') activateAppCheck();
         else {
           const sdk = document.createElement('script');
           sdk.src = 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check-compat.js';
@@ -126,15 +134,32 @@
 
       auth = firebaseApp.auth();
       db = firebaseApp.firestore();
-      
-      // Offline persistence (IndexedDB)
-      db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
-      
+
+      // Offline persistence (IndexedDB): modüler köprü persistentLocalCache ile başlatır;
+      // yalnızca klasik compat / mock ortamlarında eski enablePersistence'a düş.
+      if (!db._persistentCacheConfigured && typeof db.enablePersistence === 'function') {
+        db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
+      }
+
       return true;
     } catch (e) {
       console.error('[fb] init hatası:', e);
       throw toError(e);
     }
+  }
+
+  async function ensureFirebaseReady() {
+    if (typeof firebase === 'undefined' && typeof window !== 'undefined' && window.__firebaseReady) {
+      try { await window.__firebaseReady; } catch (e) { /* ensureFirebase sdk_missing hatası üretir */ }
+    }
+    return ensureFirebase();
+  }
+
+  function needFirebase() {
+    if (typeof firebase !== 'undefined') {
+      return ensureFirebase(), null;
+    }
+    return ensureFirebaseReady();
   }
 
   /* -------------------------------------------------- Oturum Yönetimi -------- */
@@ -165,7 +190,7 @@
   }
 
   async function ensureSession() {
-    ensureFirebase();
+    var _fbP = needFirebase(); if (_fbP) await _fbP;
     
     const live = current();
     if (live) return live;
@@ -216,7 +241,7 @@
   /* Token'i zorla yenile (claim'ler guncellenir; auth_time DEGISMEZ —
      gercek adim yukseltme icin reauthenticate gerekir). */
   async function refreshToken() {
-    ensureFirebase();
+    var _fbP = needFirebase(); if (_fbP) await _fbP;
     const user = auth.currentUser;
     if (!user) return null;
     try {
@@ -248,7 +273,7 @@
      yalnizca reload() sonrasi tazelenir; bu yuzden rozet icin bu fonksiyon
      kullanilir. Kayitli oturumu da gunceller. */
   async function refreshUser() {
-    ensureFirebase();
+    var _fbP = needFirebase(); if (_fbP) await _fbP;
     const user = auth.currentUser;
     if (!user) return null;
     await user.reload();
@@ -310,6 +335,7 @@
   }
 
   async function savePushSubscription(uid, sub) {
+    const _fbP = needFirebase(); if (_fbP) await _fbP;
     if (!uid || !sub || !sub.endpoint) {
       const e = new Error('Abonelik bilgisi eksik.');
       e.code = 'invalid'; e.human = e.message;
@@ -330,6 +356,7 @@
   }
 
   async function deletePushSubscription(uid) {
+    const _fbP = needFirebase(); if (_fbP) await _fbP;
     if (!uid) return false;
     /* Özel anahtar yalnızca bu tarayıcıda olduğundan uç noktayı oradan alıp
        ilgili kaydı sileriz; bulunamazsa hesabın tüm kayıtları taranmaz
@@ -349,6 +376,7 @@
      Web Push aboneliğinden ayrı koleksiyon: token'lar cihaz başına değişir ve
      sunucu tarafında Firebase Admin ile gönderilir (bkz. api/_lib.js). */
   async function saveFcmToken(uid, token, meta) {
+    const _fbP = needFirebase(); if (_fbP) await _fbP;
     if (!uid || !token) {
       const e = new Error('FCM token bilgisi eksik.');
       e.code = 'invalid'; e.human = e.message;
@@ -369,6 +397,7 @@
   }
 
   async function deleteFcmToken(uid, token) {
+    const _fbP = needFirebase(); if (_fbP) await _fbP;
     if (!uid || !token) return false;
     try {
       await fcmRef().doc(pushDocId(uid, 'fcm:' + token)).delete();
@@ -392,6 +421,7 @@
   }
 
   async function listEmergencyContacts(uid) {
+    const _fbP = needFirebase(); if (_fbP) await _fbP;
     if (!uid) return [];
     const snap = await emergencyRef().where('uid', '==', uid).limit(20).get();
     const list = snap.docs.map(function (d) {
@@ -404,6 +434,7 @@
   }
 
   async function saveEmergencyContact(uid, contact) {
+    const _fbP = needFirebase(); if (_fbP) await _fbP;
     if (!uid) {
       const e = new Error('Oturum gerekli.');
       e.code = 'auth'; e.human = e.message;
@@ -445,6 +476,7 @@
   }
 
   async function deleteEmergencyContact(uid, contactId) {
+    const _fbP = needFirebase(); if (_fbP) await _fbP;
     if (!uid || !contactId) return false;
     const ref = emergencyRef().doc(String(contactId));
     const cur = await ref.get();
@@ -479,7 +511,7 @@
   // Ilk-kurulum isareti: yalnizca ILK kayit olan kullanici basarili olur
   // (kurallar dokumanin bir kez olusturulmasina izin verir).
   async function claimBootstrap(uid) {
-    ensureFirebase();
+    var _fbP = needFirebase(); if (_fbP) await _fbP;
     await db.collection('config').doc('bootstrap').set({
       uid: uid,
       created_at: firebase.firestore.FieldValue.serverTimestamp()
@@ -584,20 +616,20 @@
 
   async function listHomeMemberships(uid) {
     if (!uid) return [];
-    ensureFirebase();
+    var _fbP = needFirebase(); if (_fbP) await _fbP;
     const snap = await homeMembersRef().where('uid', '==', uid).get();
     return snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
   }
 
   async function getHome(homeId) {
     if (!homeId) return null;
-    ensureFirebase();
+    var _fbP = needFirebase(); if (_fbP) await _fbP;
     const snap = await homesRef().doc(String(homeId)).get();
     return snap.exists ? Object.assign({ id: snap.id }, snap.data()) : null;
   }
 
   async function createHome(name, uid, email, displayName) {
-    ensureFirebase();
+    var _fbP = needFirebase(); if (_fbP) await _fbP;
     const clean = String(name || '').trim().replace(/\s+/g, ' ').slice(0, 80);
     if (clean.length < 2) {
       const e = new Error('Ev adı en az 2 karakter olmalı.');
@@ -634,7 +666,7 @@
   }
 
   async function updateHomeName(homeId, name) {
-    ensureFirebase();
+    var _fbP = needFirebase(); if (_fbP) await _fbP;
     const clean = String(name || '').trim().replace(/\s+/g, ' ').slice(0, 80);
     if (clean.length < 2) {
       const e = new Error('Ev adı en az 2 karakter olmalı.');
@@ -650,13 +682,13 @@
 
   async function listHomeMembers(homeId) {
     if (!homeId) return [];
-    ensureFirebase();
+    var _fbP = needFirebase(); if (_fbP) await _fbP;
     const snap = await homeMembersRef().where('home_id', '==', String(homeId)).get();
     return snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
   }
 
   async function updateHomeMemberRole(homeId, uid, role) {
-    ensureFirebase();
+    var _fbP = needFirebase(); if (_fbP) await _fbP;
     role = (role === 'admin' || role === 'maintainer' || role === 'viewer') ? role : 'viewer';
     await homeMembersRef().doc(homeMemberId(homeId, uid)).update({
       role: role,
@@ -666,13 +698,13 @@
   }
 
   async function removeHomeMember(homeId, uid) {
-    ensureFirebase();
+    var _fbP = needFirebase(); if (_fbP) await _fbP;
     await homeMembersRef().doc(homeMemberId(homeId, uid)).delete();
   }
 
   async function listHomeInvites(homeId) {
     if (!homeId) return [];
-    ensureFirebase();
+    var _fbP = needFirebase(); if (_fbP) await _fbP;
     const snap = await homeInvitesRef().where('home_id', '==', String(homeId)).get();
     const rows = snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
     rows.sort(function (a, b) { return timestampLabel(b.created_at) - timestampLabel(a.created_at); });
@@ -680,7 +712,7 @@
   }
 
   async function createHomeInvite(homeId, homeName, role, email, createdBy) {
-    ensureFirebase();
+    var _fbP = needFirebase(); if (_fbP) await _fbP;
     role = (role === 'admin' || role === 'maintainer' || role === 'viewer') ? role : 'viewer';
     const code = homeCode();
     const now = Date.now();
@@ -711,7 +743,7 @@
   }
 
   async function verifyHomeInvite(code) {
-    ensureFirebase();
+    var _fbP = needFirebase(); if (_fbP) await _fbP;
     code = String(code || '').trim().toUpperCase();
     if (!code) return null;
     const snap = await homeInvitesRef().doc(code).get();
@@ -724,14 +756,14 @@
   }
 
   async function revokeHomeInvite(code) {
-    ensureFirebase();
+    var _fbP = needFirebase(); if (_fbP) await _fbP;
     if (!code) return false;
     await homeInvitesRef().doc(String(code)).delete();
     return true;
   }
 
   async function joinHomeByInvite(code, uid, email, displayName) {
-    ensureFirebase();
+    var _fbP = needFirebase(); if (_fbP) await _fbP;
     code = String(code || '').trim().toUpperCase();
     if (!code) {
       const e = new Error('Davet kodu gerekli.');
@@ -798,13 +830,13 @@
 
   async function listHomeBindings(homeId) {
     if (!homeId) return [];
-    ensureFirebase();
+    var _fbP = needFirebase(); if (_fbP) await _fbP;
     const snap = await bindingsRef().where('home_id', '==', String(homeId)).get();
     return snap.docs.map(d => d.data());
   }
 
   async function updateBindingHome(deviceId, homeId, homeName) {
-    ensureFirebase();
+    var _fbP = needFirebase(); if (_fbP) await _fbP;
     const data = {
       home_id: homeId ? String(homeId) : firebase.firestore.FieldValue.delete(),
       home_name: homeName ? String(homeName).slice(0, 80) : firebase.firestore.FieldValue.delete()
@@ -814,7 +846,7 @@
   }
 
   async function listAlarmEventsForHomes(homeIds, limit) {
-    ensureFirebase();
+    var _fbP = needFirebase(); if (_fbP) await _fbP;
     const ids = (homeIds || []).filter(Boolean);
     if (!ids.length) return [];
     const out = [];
@@ -932,6 +964,7 @@
 
   async function addAuditLog(action, target, detail) {
     try {
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       const me = auth && auth.currentUser;
       await auditRef().add({
         action: action || 'unknown',
@@ -1117,7 +1150,7 @@
 
   // Admin tarafından kullanıcı oluşturma — İKİNCİL app ile, admin oturumu korunur.
   async function adminCreateUser(email, password, role, displayName) {
-    ensureFirebase();
+    var _fbP = needFirebase(); if (_fbP) await _fbP;
     const cfg = getFirebaseConfig();
     const name = 'dd-admin-create-' + Date.now();
     const secondary = firebase.initializeApp(cfg, name);
@@ -1155,7 +1188,7 @@
   }
 
   async function updatePassword(currentPassword, newPassword) {
-    ensureFirebase();
+    var _fbP = needFirebase(); if (_fbP) await _fbP;
     const user = await reauth(currentPassword);
     try {
       await user.updatePassword(newPassword);
@@ -1164,7 +1197,7 @@
   }
 
   async function updateEmail(currentPassword, newEmail) {
-    ensureFirebase();
+    var _fbP = needFirebase(); if (_fbP) await _fbP;
     const user = await reauth(currentPassword);
     try {
       await user.updateEmail(newEmail.trim());
@@ -1174,7 +1207,7 @@
   }
 
   async function sendPasswordResetEmail(email) {
-    ensureFirebase();
+    var _fbP = needFirebase(); if (_fbP) await _fbP;
     try {
       await auth.sendPasswordResetEmail(email.trim());
     } catch (e) { throw toError(e); }
@@ -1250,7 +1283,7 @@
   }
 
   async function signInWithProvider(name, googleIdToken) {
-    ensureFirebase();
+    var _fbP = needFirebase(); if (_fbP) await _fbP;
     const def = SOCIAL[name];
     if (!def) {
       const e = new Error('Bilinmeyen sağlayıcı: ' + name);
@@ -1294,7 +1327,7 @@
     if (!Object.prototype.hasOwnProperty.call(SOCIAL, provider)) return null;
     const def = SOCIAL[provider];
     try {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       const result = await auth.getRedirectResult();
       if (!result || !result.user) {
         const error = new Error('Yönlendirme sonucu bulunamadı.');
@@ -1358,7 +1391,7 @@
     },
 
     signIn: async function (email, password) {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       const cred = await auth.signInWithEmailAndPassword(email.trim(), password);
       
       // E-posta doğrulanmış mı?
@@ -1380,7 +1413,7 @@
     signInWithApple: signInWithApple,
 
     signUp: async function (email, password, data) {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       const cred = await auth.createUserWithEmailAndPassword(email.trim(), password);
 
       // İlk kullanıcı mı? (profil oluşturulmadan önce) — hata olursa 'user' varsay
@@ -1425,7 +1458,7 @@
     },
 
     signOut: async function () {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       await auth.signOut();
       save(null);
       saveRedirectProvider('');
@@ -1443,7 +1476,7 @@
     probeSetup: async function () {
       if (!App.FB.hasConfig()) return false;
       try {
-        ensureFirebase();
+        var _fbP = needFirebase(); if (_fbP) await _fbP;
         // Profiles koleksiyonu var mı kontrol et (en az bir doc oku)
         await profilesRef().limit(1).get();
         return true;
@@ -1471,7 +1504,7 @@
 
     rest: async function (path, opts) {
       opts = opts || {};
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       const sess = await ensureSession();
       
       // Path format: "profiles?select=*&limit=1" veya "device_bindings"
@@ -1610,73 +1643,73 @@
     /* ---------------------------------------------- Cihaz mülkiyeti ------ */
 
     listBindings: async function () {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       try { return await listBindings(); } catch (e) { throw toError(e); }
     },
 
     listOwnBindings: async function (uid) {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       try { return await listOwnBindings(uid); } catch (e) { throw toError(e); }
     },
 
     /* ------------------------------------------------ Ev / aile ---------- */
     listHomeMemberships: async function (uid) {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       try { return await listHomeMemberships(uid); } catch (e) { throw toError(e); }
     },
 
     getHome: async function (homeId) {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       try { return await getHome(homeId); } catch (e) { throw toError(e); }
     },
 
     createHome: async function (name, uid, email, displayName) {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       try { return await createHome(name, uid, email, displayName); } catch (e) { throw toError(e); }
     },
 
     updateHomeName: async function (homeId, name) {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       try { return await updateHomeName(homeId, name); } catch (e) { throw toError(e); }
     },
 
     listHomeMembers: async function (homeId) {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       try { return await listHomeMembers(homeId); } catch (e) { throw toError(e); }
     },
 
     updateHomeMemberRole: async function (homeId, uid, role) {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       try { return await updateHomeMemberRole(homeId, uid, role); } catch (e) { throw toError(e); }
     },
 
     removeHomeMember: async function (homeId, uid) {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       try { return await removeHomeMember(homeId, uid); } catch (e) { throw toError(e); }
     },
 
     listHomeInvites: async function (homeId) {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       try { return await listHomeInvites(homeId); } catch (e) { throw toError(e); }
     },
 
     createHomeInvite: async function (homeId, homeName, role, email, createdBy) {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       try { return await createHomeInvite(homeId, homeName, role, email, createdBy); } catch (e) { throw toError(e); }
     },
 
     verifyHomeInvite: async function (code) {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       try { return await verifyHomeInvite(code); } catch (e) { return null; }
     },
 
     revokeHomeInvite: async function (code) {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       try { return await revokeHomeInvite(code); } catch (e) { throw toError(e); }
     },
 
     joinHomeByInvite: async function (code, uid, email, displayName) {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       try { return await joinHomeByInvite(code, uid, email, displayName); } catch (e) {
         if (e && e.code && e.human) throw e;
         throw toError(e);
@@ -1684,45 +1717,45 @@
     },
 
     listHomeBindings: async function (homeId) {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       try { return await listHomeBindings(homeId); } catch (e) { throw toError(e); }
     },
 
     updateBindingHome: async function (deviceId, homeId, homeName) {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       try { return await updateBindingHome(deviceId, homeId, homeName); } catch (e) { throw toError(e); }
     },
 
     getBinding: async function (deviceId) {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       try { return await getBinding(deviceId); } catch (e) { throw toError(e); }
     },
 
     bindDevice: async function (deviceId, ownerId, label, boundBy, topic) {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       try { await setBinding(deviceId, ownerId, label, boundBy, topic); return await getBinding(deviceId); }
       catch (e) { throw toError(e); }
     },
 
     requestRelease: async function (deviceId, byUid) {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       try { return await requestRelease(deviceId, byUid); } catch (e) { throw toError(e); }
     },
 
     cancelRelease: async function (deviceId) {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       try { return await cancelRelease(deviceId); } catch (e) { throw toError(e); }
     },
 
     // Onay = cihazi serbest birak (dokumani sil) → yeni hesap baglanabilir.
     approveRelease: async function (deviceId) {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       try { return await deleteBinding(deviceId); } catch (e) { throw toError(e); }
     },
 
     // Admin: cihazi belirli bir hesaba ata (hesap degistirme).
     reassignBinding: async function (deviceId, ownerId, byUid, topic) {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       try {
         const patch = {
           owner_id: ownerId,
@@ -1739,50 +1772,50 @@
     /* ------------------------------------------- Aktivasyon kodlari ------ */
 
     listDeviceCodes: async function () {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       try { return await listDeviceCodes(); } catch (e) { throw toError(e); }
     },
 
     setDeviceCode: async function (deviceId, code, label, byUid) {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       try { return await setDeviceCode(deviceId, code, label, byUid); } catch (e) { throw toError(e); }
     },
 
     getDeviceCode: async function (deviceId) {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       try { return await getDeviceCode(deviceId); } catch (e) { throw toError(e); }
     },
 
     deleteDeviceCode: async function (deviceId) {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       try { await deleteDeviceCode(deviceId); } catch (e) { throw toError(e); }
     },
 
     unlockDevice: async function (deviceId, code, uid) {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       try { await unlockDevice(deviceId, code, uid); } catch (e) { throw toError(e); }
     },
 
     clearUnlock: async function (deviceId) {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       try { await clearUnlock(deviceId); } catch (e) { /* yoksay */ }
     },
 
     /* ---------------------------------------------- Profil / hesap --------- */
 
     updateProfile: async function (uid, data) {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       try { return await updateProfile(uid, data); }
       catch (e) { throw toError(e); }
     },
 
     createUserProfile: async function (uid, email, role, displayName, inviteCode) {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       return createUserProfile(uid, email, role, displayName, inviteCode);
     },
 
     ensureOwnProfile: async function (uid, email, displayName, role, inviteCode) {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       return ensureOwnProfile(uid, email, displayName, role, inviteCode);
     },
 
@@ -1795,13 +1828,13 @@
     /* ---------------------------------------------- Giriş logları ---------- */
 
     addLoginLog: async function (log) {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       try { return await addLoginLog(log); }
       catch (e) { return null; }
     },
 
     getLoginLogs: async function (uid, limit) {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       try { return await getLoginLogs(uid, limit); }
       catch (e) { throw toError(e); }
     },
@@ -1811,7 +1844,7 @@
     addAuditLog: addAuditLog,
 
     listAuditLogs: async function (limit) {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       try { return await listAuditLogs(limit); }
       catch (e) { throw toError(e); }
     },
@@ -1819,36 +1852,36 @@
     /* ---------------------------------------------- Olay günlüğü ---------- */
 
     addAlarmEvent: async function (ev) {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       return addAlarmEvent(ev);
     },
 
     listAlarmEvents: async function (ownerId, limit) {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       try { return await listAlarmEvents(ownerId, limit); }
       catch (e) { throw toError(e); }
     },
 
     listAllAlarmEvents: async function (limit) {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       try { return await listAllAlarmEvents(limit); }
       catch (e) { throw toError(e); }
     },
 
     listAlarmEventsForHomes: async function (homeIds, limit) {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       try { return await listAlarmEventsForHomes(homeIds, limit); }
       catch (e) { throw toError(e); }
     },
 
     deleteAlarmEvent: async function (id) {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       try { await deleteAlarmEvent(id); return true; }
       catch (e) { throw toError(e); }
     },
 
     clearAllAlarmEvents: async function () {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       try { return await clearAllAlarmEvents(); }
       catch (e) { throw toError(e); }
     },
@@ -1856,31 +1889,31 @@
     /* ---------------------------------------------- Davetler -------------- */
 
     createInvite: async function (email, role, createdBy) {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       try { return await createInvite(email, role, createdBy); }
       catch (e) { throw toError(e); }
     },
 
     listInvites: async function () {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       try { return await listInvites(); }
       catch (e) { throw toError(e); }
     },
 
     verifyInvite: async function (code) {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       try { return await verifyInvite(code); }
       catch (e) { return null; }
     },
 
     consumeInvite: async function (code, uid) {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       try { return await consumeInvite(code, uid); }
       catch (e) { return false; }
     },
 
     revokeInvite: async function (code) {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       try { return await revokeInvite(code); }
       catch (e) { throw toError(e); }
     },
@@ -1891,7 +1924,7 @@
     //    kapatıldığı için): e-posta + şifre ile GEÇİCİ giriş yapıp gönderir,
     //    ardından oturumu kapatır. Böylece "doğrulanmamış" kilitlenmesi çözülür.
     resendVerificationEmail: async function (email, password) {
-      ensureFirebase();
+      var _fbP = needFirebase(); if (_fbP) await _fbP;
       let user = auth.currentUser;
       let tempSignIn = false;
 
@@ -1928,8 +1961,7 @@
   };
 
   // Auth state listener - oturum değişikliklerini dinle
-  function initAuthListener() {
-    ensureFirebase();
+  function attachAuthListener() {
     auth.onAuthStateChanged(async (user) => {
       if (auth.currentUser !== user) return;
       if (user) {
@@ -1949,6 +1981,12 @@
         App.Auth._onAuthChange();
       }
     });
+  }
+
+  function initAuthListener() {
+    const p = needFirebase();
+    if (p) p.then(attachAuthListener).catch(function () {});
+    else attachAuthListener();
   }
 
   // İlk yüklemede dinleyiciyi başlat

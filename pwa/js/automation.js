@@ -121,6 +121,33 @@
 
   /* --------------------------------------------------------- mod uygulama */
 
+  function modeLockReason() {
+    if (!document.getElementById('homeWidget') && !document.querySelector('#modeSwitcher, #modeSwitcherMobile')) {
+      return null;
+    }
+    if (typeof App.canControlDevice === 'function' && App.canControlDevice()) {
+      return null;
+    }
+    let t = null;
+    try { t = App.lastTelemetry ? App.lastTelemetry() : null; } catch (e) { t = null; }
+    if (t && t.dev && App.Auth && App.Auth.canControl && !App.Auth.canControl(t.dev)) {
+      const role = App.Auth.deviceRole ? App.Auth.deviceRole(t.dev) : '';
+      return role === 'viewer'
+        ? 'İzleyici rolünde çalışma modu değiştirilemez.'
+        : 'Bu cihaz başka bir hesaba bağlı — mod değiştirilemez.';
+    }
+    const cs = (typeof App.resolveConnectionStatus === 'function')
+      ? App.resolveConnectionStatus({ live: false })
+      : null;
+    if (cs && cs.code === 'unauthenticated') {
+      return 'Önce giriş yapın / cihaz bağlayın.';
+    }
+    if (cs && cs.code === 'unbound') {
+      return 'Önce cihazınızı hesabınıza eşleştirin.';
+    }
+    return 'Cihaz çevrimdışı — çalışma modu şu anda değiştirilemez.';
+  }
+
   /* Başka bir hesaba bağlı (görünmez) cihaza komut gönderilmesin. */
   function deviceControllable() {
     let t = null;
@@ -158,12 +185,37 @@
   /* Sadece görsel durumu tazele (cihaza komut göndermez) */
   function syncUI() {
     const cur = currentMode();
+    const lockReason = modeLockReason();
     document.body.setAttribute('data-mode', cur);
-    const btns = document.querySelectorAll('.mode-btn[data-mode]');
-    for (let i = 0; i < btns.length; i++) {
-      const on = btns[i].getAttribute('data-mode') === cur;
-      btns[i].classList.toggle('active', on);
-      btns[i].setAttribute('aria-pressed', on ? 'true' : 'false');
+    const mounts = document.querySelectorAll('.mode-switch[data-mode-mount]');
+    for (let m = 0; m < mounts.length; m++) {
+      const mount = mounts[m];
+      const liveMount = mount.id === 'modeSwitcher' || mount.id === 'modeSwitcherMobile';
+      const locked = !!(liveMount && lockReason);
+      if (locked) mount.setAttribute('data-locked', 'true');
+      else mount.removeAttribute('data-locked');
+
+      const btns = mount.querySelectorAll('.mode-btn[data-mode]');
+      for (let i = 0; i < btns.length; i++) {
+        const b = btns[i];
+        const baseDesc = MODES[b.getAttribute('data-mode')]
+          ? MODES[b.getAttribute('data-mode')].label + ' — ' + MODES[b.getAttribute('data-mode')].desc
+          : '';
+        if (locked) {
+          b.setAttribute('aria-disabled', 'true');
+          b.classList.add('is-locked');
+          b.classList.remove('active');
+          b.setAttribute('aria-pressed', 'false');
+          b.title = lockReason;
+        } else {
+          b.removeAttribute('aria-disabled');
+          b.classList.remove('is-locked');
+          const on = b.getAttribute('data-mode') === cur;
+          b.classList.toggle('active', on);
+          b.setAttribute('aria-pressed', on ? 'true' : 'false');
+          if (baseDesc) b.title = baseDesc;
+        }
+      }
     }
     const lbl = $('modeLabel');
     if (lbl) lbl.textContent = profile(cur).label;
@@ -177,6 +229,11 @@
 
   function applyMode(mode, opts) {
     opts = opts || {};
+    if (opts.source !== 'schedule' && modeLockReason()) {
+      if (opts.toast !== false && App.toast) App.toast(modeLockReason(), { kind: 'warn', duration: 3800 });
+      syncUI();
+      return currentMode();
+    }
     if (!MODES[mode]) mode = 'home';
     const prev = currentMode();
     const patch = { mode: mode };
@@ -184,7 +241,7 @@
     App.saveSettings(patch);
     syncUI();
     if (prev !== mode) {
-      if (opts.toast !== false) {
+      if (opts.toast !== false && !modeLockReason()) {
         if (App.toast) App.toast('Mod: ' + profile(mode).label +
           (opts.source === 'schedule' ? ' (zamanlanmış)' : ''), { kind: 'ok' });
       }
@@ -198,12 +255,13 @@
   /* Zamanlanmış geçiş motoru */
   function tick() {
     if (!autoEnabled()) return;
+    const quiet = !!modeLockReason();
     const sm = scheduledMode(new Date());
     if (sm) {
-      if (sm !== currentMode()) applyMode(sm, { source: 'schedule', push: true });
+      if (sm !== currentMode()) applyMode(sm, { source: 'schedule', push: true, toast: !quiet });
     } else if (currentMode() !== manualMode()) {
       /* Aktif kural yok → kullanıcının seçtiği moda dön */
-      applyMode(manualMode(), { source: 'schedule', manual: false, push: true });
+      applyMode(manualMode(), { source: 'schedule', manual: false, push: true, toast: !quiet });
     }
   }
 
@@ -233,6 +291,17 @@
     document.addEventListener('click', function (e) {
       const b = e.target && e.target.closest ? e.target.closest('.mode-btn[data-mode]') : null;
       if (!b) return;
+      const mount = b.closest('.mode-switch[data-mode-mount]');
+      const liveMount = mount && (mount.id === 'modeSwitcher' || mount.id === 'modeSwitcherMobile');
+      if (liveMount || b.getAttribute('aria-disabled') === 'true') {
+        const reason = modeLockReason();
+        if (reason) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (App.toast) App.toast(reason, { kind: 'warn', duration: 3800 });
+          return;
+        }
+      }
       applyMode(b.getAttribute('data-mode'), { source: 'manual', push: true });
     });
   }
@@ -499,6 +568,7 @@
     start: start,
     stop: stop,
     syncUI: syncUI,
+    syncLockState: syncUI,
     renderSchedule: renderSchedule
   };
 

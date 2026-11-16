@@ -18,7 +18,15 @@
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   let recog = null;
   let listening = false;
+  let cancelledByUser = false;
+  let bannerTimer = null;
   let bound = false;
+
+  function triggerButtons() {
+    return Array.prototype.slice.call(
+      document.querySelectorAll('#voiceBtn, [data-voice-trigger]')
+    );
+  }
 
   /* ------------------------------------------------------------ yardımcılar */
 
@@ -51,16 +59,25 @@
   }
 
   function deviceAllowed() {
-    /* Görünmez (başka hesaba bağlı) cihazı sesle de yönetemeyiz. */
+    /* Görünmez (başka hesaba bağlı) cihazı veya bağlantısız/oturumsuz cihazı sesle yönetemeyiz. */
     let t = null;
     try { t = App.lastTelemetry ? App.lastTelemetry() : null; } catch (e) { t = null; }
-    if (t && t.dev && App.Auth && App.Auth.canControl) return App.Auth.canControl(t.dev);
+    if (t && t.dev && App.Auth && App.Auth.canControl && !App.Auth.canControl(t.dev)) return false;
+    if (typeof App.canControlDevice === 'function' && !App.canControlDevice()) return false;
     return true;
   }
 
   function refuse() {
-    if (App.toast) App.toast('Bu cihaz başka bir hesaba bağlı — komut reddedildi.', { kind: 'warn' });
-    speakFeedback('Bu cihazı yönetme yetkiniz yok.');
+    let t = null;
+    try { t = App.lastTelemetry ? App.lastTelemetry() : null; } catch (e) { t = null; }
+    if (t && t.dev && App.Auth && App.Auth.canControl && !App.Auth.canControl(t.dev)) {
+      if (App.toast) App.toast('Bu cihaz başka bir hesaba bağlı — komut reddedildi.', { kind: 'warn' });
+      speakFeedback('Bu cihazı yönetme yetkiniz yok.');
+      return;
+    }
+    const msg = 'Komut göndermek için önce giriş yapıp cihazınızı bağlayın.';
+    if (App.toast) App.toast(msg, { kind: 'warn', duration: 3800 });
+    speakFeedback('Cihaz bağlı değil.');
   }
 
   function run(device, action, value, okMsg) {
@@ -215,14 +232,35 @@
 
   /* ------------------------------------------------------------------ mikrofon */
 
-  function setListening(on, note) {
+  function setBanner(visible, title, sub) {
+    const banner = $('voiceStatusBanner');
+    const titleEl = $('voiceStatusTitle');
+    const subEl = $('voiceStatusSub');
+    clearTimeout(bannerTimer);
+    if (!banner) return;
+    if (!visible) {
+      banner.hidden = true;
+      banner.classList.remove('is-listening', 'is-error');
+      return;
+    }
+    if (titleEl && title !== undefined) titleEl.textContent = title;
+    if (subEl && sub !== undefined) subEl.textContent = sub;
+    banner.hidden = false;
+    banner.classList.toggle('is-listening', listening);
+  }
+
+  function setListening(on, note, subNote) {
     listening = on;
-    const btn = $('voiceBtn');
-    if (btn) {
+    triggerButtons().forEach(function (btn) {
       btn.classList.toggle('listening', on);
       btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+    if (on) {
+      setBanner(true, note || 'Dinleniyor…', subNote || 'Komut söyleyin — örn. “Pencereyi kapat”, “Gece moduna geç”');
+      hint(note || 'Dinleniyor… konuşun');
+    } else {
+      hint(note || '');
     }
-    hint(note || (on ? 'Dinliyorum… konuşun' : ''));
   }
 
   function hint(msg) {
@@ -237,14 +275,41 @@
   }
 
   function start() {
-    if (!recog || listening) return;
-    try { recog.start(); }
-    catch (e) { /* InvalidStateError — zaten çalışıyor */ }
+    if (!SR) {
+      const msg = 'Bu tarayıcı sesli komutu desteklemiyor (Chrome veya Edge önerilir).';
+      if (App.toast) App.toast(msg, { kind: 'warn', duration: 4000 });
+      return;
+    }
+    if (!recog) {
+      try { initRecognition(); }
+      catch (e) {
+        if (App.toast) App.toast('Sesli komut başlatılamadı.', { kind: 'warn' });
+        return;
+      }
+    }
+    if (listening) return;
+    cancelledByUser = false;
+    /* Kullanıcıya tıklar tıklamaz anlık görsel geri bildirim göster */
+    setListening(true, 'Dinleniyor…', 'Komut söyleyin — örn. “Pencereyi kapat”, “Gece moduna geç”');
+    try {
+      recog.start();
+    } catch (e) {
+      /* InvalidStateError vb. */
+    }
+  }
+
+  function cancel() {
+    cancelledByUser = true;
+    setListening(false, '');
+    setBanner(false);
+    if (recog) {
+      try { recog.abort(); }
+      catch (e) { try { recog.stop(); } catch (e2) {} }
+    }
   }
 
   function stop() {
-    if (!recog) return;
-    try { recog.stop(); } catch (e) { /* yoksay */ }
+    cancel();
   }
 
   function initRecognition() {
@@ -254,7 +319,10 @@
     recog.interimResults = true;
     recog.maxAlternatives = 1;
 
-    recog.onstart = function () { setListening(true, 'Dinliyorum… konuşun'); };
+    recog.onstart = function () {
+      if (cancelledByUser) return;
+      setListening(true, 'Dinleniyor…', 'Komut söyleyin — örn. “Pencereyi kapat”, “Gece moduna geç”');
+    };
 
     recog.onresult = function (ev) {
       let interim = '', finalTxt = '';
@@ -263,47 +331,97 @@
         if (r.isFinal) finalTxt += r[0].transcript;
         else interim += r[0].transcript;
       }
-      if (interim) hint('“' + interim.trim() + '…');
+      if (interim) {
+        const clean = '“' + interim.trim() + '…”';
+        hint(clean);
+        setBanner(true, 'Dinleniyor…', clean);
+      }
       if (finalTxt) {
         const text = finalTxt.trim();
         hint('“' + text + '”');
+        setListening(false, '“' + text + '”');
+        setBanner(true, 'Komut algılandı', '“' + text + '”');
+        clearTimeout(bannerTimer);
+        bannerTimer = setTimeout(function () { setBanner(false); }, 2200);
         handle(text);
       }
     };
 
     recog.onerror = function (ev) {
       const code = ev && ev.error;
+      if (cancelledByUser || code === 'aborted') {
+        setListening(false, '');
+        setBanner(false);
+        return;
+      }
       const msg = code === 'not-allowed' || code === 'service-not-allowed'
         ? 'Mikrofon izni reddedildi.'
         : code === 'no-speech' ? 'Ses algılanamadı, tekrar deneyin.'
         : code === 'audio-capture' ? 'Mikrofon bulunamadı.'
         : 'Ses tanıma hatası (' + code + ').';
-      hint(msg);
+      setListening(false, msg);
+      setBanner(true, 'Dinleme durduruldu', msg);
+      const b = $('voiceStatusBanner');
+      if (b) b.classList.add('is-error');
+      clearTimeout(bannerTimer);
+      bannerTimer = setTimeout(function () { setBanner(false); }, 3200);
       if (App.toast) App.toast(msg, { kind: 'warn' });
     };
 
-    recog.onend = function () { setListening(false); };
+    recog.onend = function () {
+      if (listening) {
+        setListening(false);
+        if (cancelledByUser) {
+          setBanner(false);
+        } else {
+          clearTimeout(bannerTimer);
+          bannerTimer = setTimeout(function () { setBanner(false); }, 1800);
+        }
+      }
+    };
+  }
+
+  function toggle() {
+    if (window.speechSynthesis && window.speechSynthesis.cancel) {
+      try { window.speechSynthesis.cancel(); } catch (e) {}
+    }
+    if (listening) cancel();
+    else start();
   }
 
   function bind() {
     if (bound) return;
     bound = true;
-    const btn = $('voiceBtn');
-    if (!btn) return;
-    btn.addEventListener('click', function () {
-      if (window.speechSynthesis && window.speechSynthesis.cancel) {
-        try { window.speechSynthesis.cancel(); } catch (e) {}
+    document.addEventListener('click', function (e) {
+      const cancelBtn = e.target && e.target.closest ? e.target.closest('#voiceCancelBtn') : null;
+      if (cancelBtn) {
+        e.preventDefault();
+        cancel();
+        return;
       }
-      if (listening) { stop(); setListening(false, ''); }
-      else start();
+      const btn = e.target && e.target.closest ? e.target.closest('#voiceBtn, [data-voice-trigger]') : null;
+      if (!btn) return;
+      e.preventDefault();
+      toggle();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (listening && (e.key === 'Escape' || e.keyCode === 27)) {
+        cancel();
+      }
     });
   }
 
   function init() {
-    const btn = $('voiceBtn');
-    if (!btn) return;
-    if (!SR) { btn.hidden = true; btn.setAttribute('aria-hidden', 'true'); return; }
-    try { initRecognition(); } catch (e) { btn.hidden = true; return; }
+    const btns = triggerButtons();
+    if (!btns.length) return;
+    if (!SR) {
+      btns.forEach(function (btn) {
+        btn.setAttribute('aria-disabled', 'true');
+        btn.title = 'Bu tarayıcı sesli komutu desteklemiyor (Chrome önerilir)';
+      });
+    } else {
+      try { initRecognition(); } catch (e) { /* tıklamada tekrar dener */ }
+    }
     bind();
   }
 
@@ -312,6 +430,8 @@
     handle: handle,
     start: start,
     stop: stop,
+    cancel: cancel,
+    toggle: toggle,
     available: function () { return !!SR; }
   };
 

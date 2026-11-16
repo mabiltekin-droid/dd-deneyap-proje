@@ -110,6 +110,11 @@
 
     const mailEl = $('profileEmail');
     if (mailEl) mailEl.value = (currentUser && currentUser.email) || '';
+    if (typeof document.querySelectorAll === 'function') {
+      document.querySelectorAll('.pw-form-username').forEach(function (inp) {
+        inp.value = (currentUser && currentUser.email) || '';
+      });
+    }
 
     const badge = $('emailVerifiedBadge');
     if (badge) {
@@ -399,24 +404,34 @@
     if ($('avatarInput')) $('avatarInput').addEventListener('change', onAvatarChange);
     if ($('changeEmailBtn')) $('changeEmailBtn').addEventListener('click', function () { toggle('changeEmailRow'); });
     if ($('cancelEmailBtn')) $('cancelEmailBtn').addEventListener('click', function () { toggle('changeEmailRow', false); });
-    if ($('saveEmailBtn')) $('saveEmailBtn').addEventListener('click', saveEmail);
+    if ($('changeEmailRow')) {
+      $('changeEmailRow').addEventListener('submit', function (e) {
+        e.preventDefault();
+        saveEmail();
+      });
+    }
     if ($('changePasswordBtn')) $('changePasswordBtn').addEventListener('click', function () { toggle('changePasswordRow'); });
     if ($('cancelPasswordBtn')) $('cancelPasswordBtn').addEventListener('click', function () { toggle('changePasswordRow', false); });
-    if ($('savePasswordBtn')) $('savePasswordBtn').addEventListener('click', savePassword);
+    if ($('changePasswordRow')) {
+      $('changePasswordRow').addEventListener('submit', function (e) {
+        e.preventDefault();
+        savePassword();
+      });
+    }
     if ($('sendResetBtn')) $('sendResetBtn').addEventListener('click', sendReset);
 
     /* --- Oturum güvenliği --- */
     if ($('stepUpStartBtn')) $('stepUpStartBtn').addEventListener('click', function () { openStepUp(); });
-    if ($('stepUpBtn')) $('stepUpBtn').addEventListener('click', doStepUp);
+    if ($('stepUpRow')) {
+      $('stepUpRow').addEventListener('submit', function (e) {
+        e.preventDefault();
+        doStepUp();
+      });
+    }
     if ($('stepUpCancelBtn')) {
       $('stepUpCancelBtn').addEventListener('click', function () {
         toggle('stepUpRow', false);
         setSessionResult('');
-      });
-    }
-    if ($('stepUpPass')) {
-      $('stepUpPass').addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') { e.preventDefault(); doStepUp(); }
       });
     }
     if ($('sessionIdleSel')) {

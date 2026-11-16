@@ -111,7 +111,7 @@
       const self = me && u.id === me.id;
       return '<tr data-id="' + esc(u.id) + '">' +
         '<td class="u-mail">' + esc(u.email) + (self ? ' <em>(sen)</em>' : '') + '</td>' +
-        '<td><select class="role-select"' + (self ? ' disabled title="Kendi rolünüzü buradan değiştiremezsiniz"' : '') + '>' +
+        '<td><select class="role-select" aria-label="' + esc(u.email) + ' rolü"' + (self ? ' disabled title="Kendi rolünüzü buradan değiştiremezsiniz"' : '') + '>' +
           '<option value="user"' + (u.role === 'user' ? ' selected' : '') + '>Kullanıcı</option>' +
           '<option value="admin"' + (u.role === 'admin' ? ' selected' : '') + '>Yönetici</option>' +
         '</select></td>' +
@@ -158,6 +158,7 @@
   /* ------------------------------------------------ kayıt / giriş --------- */
 
   async function doSignIn() {
+    if (busy) return;
     const email = $('authEmail').value.trim();
     const pass = $('authPass').value;
     if (!email || !pass) return setResult('E-posta ve şifre girin.', 'err');
@@ -348,6 +349,7 @@
   }
 
   async function doCreateUser() {
+    if (busy) return;
     const email = $('newUserEmail').value.trim();
     const pass = $('newUserPass').value;
     const role = $('newUserRole').value;
@@ -608,7 +610,7 @@
         '<td class="d-owner">' + esc(ownerEmail(b.owner_id)) + '</td>' +
         '<td class="d-state">' + (pending ? 'Bağlantı kesme talebi' : 'Bağlı') + '</td>' +
         '<td class="d-act">' + actions +
-          '<select class="assign-select" title="Hesaba ata"><option value="">Ata…</option>' +
+          '<select class="assign-select" aria-label="' + esc(b.device_id) + ' hesabına ata" title="Hesaba ata"><option value="">Ata…</option>' +
           opts + '</select></td>' +
         '</tr>';
     }).join('');
@@ -762,7 +764,14 @@
       }
     } catch (e) { /* yoksay */ }
 
-    $('authSignInBtn').addEventListener('click', doSignIn);
+    if ($('authSignInForm')) {
+      $('authSignInForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        doSignIn();
+      });
+    } else {
+      $('authSignInBtn').addEventListener('click', doSignIn);
+    }
     $('authSignUpBtn').addEventListener('click', doSignUp);
     ['google', 'github', 'apple'].forEach(function (p) {
       const id = SOCIAL_BTN[p].id;
@@ -782,7 +791,14 @@
       });
     }
     $('forgotPasswordBtn').addEventListener('click', doForgotPassword);
-    $('createUserBtn').addEventListener('click', doCreateUser);
+    if ($('adminCreateForm')) {
+      $('adminCreateForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        doCreateUser();
+      });
+    } else {
+      $('createUserBtn').addEventListener('click', doCreateUser);
+    }
     $('claimBtn').addEventListener('click', doClaim);
     $('releaseBtn').addEventListener('click', doRelease);
     $('resendVerificationBtn').addEventListener('click', doResendVerification);

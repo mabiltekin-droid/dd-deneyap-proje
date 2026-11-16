@@ -46,6 +46,7 @@ const PRECACHE = [
   './js/settings.js',
   './js/mobile-app.js',
   './js/studio-nav.js',
+  './js/firebase-modular-compat.js',
   './js/firebase.js',
   './js/auth-firebase.js',
   './js/events.js',

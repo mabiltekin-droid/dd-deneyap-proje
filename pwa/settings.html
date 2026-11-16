@@ -6,7 +6,7 @@
   <title>Ayarlar · DD Ev Koruma</title>
   <meta name="description" content="DD Ev Koruma ayarları: sensörler, bildirimler, hesap ve bağlantı.">
   <meta name="theme-color" content="#faf4e9" id="metaThemeColor">
-  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Ev Koruma">
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" href="./icons/favicon.svg" type="image/svg+xml">
@@ -47,19 +47,34 @@
       </div>
     </div>
 
+    <nav class="header-nav" aria-label="Bölüm gezintisi">
+      <a class="nav-item" href="./#hero">Panel</a>
+      <a class="nav-item" href="./#telemetry">Sensörler</a>
+      <a class="nav-item" href="./#command-center">Kontrol</a>
+      <a class="nav-item" href="./#analytics">Geçmiş</a>
+      <a class="nav-item" href="./events.html">Olaylar</a>
+      <a class="nav-item" href="./#diagnostics">Sistem</a>
+      <a class="nav-item" href="./earthquake.html">Deprem</a>
+    </nav>
+
     <div class="header-actions">
-      <!-- Sensörler Ekranına Hızlı Dönüş -->
-      <a href="./" class="nav-back-pill" aria-label="Panele dön" title="Panele dön">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <line x1="19" y1="12" x2="5" y2="12"></line>
-          <polyline points="12 19 5 12 12 5"></polyline>
+      <a href="./settings.html" class="nav-settings-pill active" aria-current="page" title="Sistem ayarları">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+          <circle cx="12" cy="12" r="3"/>
         </svg>
-        <span>Panele dön</span>
+        <span>Ayarlar</span>
       </a>
 
-      <a href="./events.html" class="secondary-events-link">Olaylar</a>
+      <a href="./settings.html#accountCard" id="accountBtn" class="acct-pill"
+         aria-label="Hesap" title="Hesap ve roller">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+        </svg>
+        <span id="accountBtnText">Hesap</span>
+      </a>
 
-      <button id="pwaInstallBtn" class="pwa-install-btn" type="button" aria-label="Uygulamayı İndir" title="Ev Koruma Uygulamasını Cihazınıza İndirin">
+      <button id="pwaInstallBtn" class="pwa-install-btn" type="button" aria-label="İndir — Ev Koruma uygulamasını yükleyin" title="Ev Koruma uygulamasını cihazınıza indirin">
         <svg class="install-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
           <polyline points="7 10 12 15 17 10"/>
@@ -126,11 +141,11 @@
       <div class="stb-progress" aria-hidden="true"><span id="studioProgress"></span></div>
     </div>
 
-    <!-- ==================== GRUP: HESAP & GÜVENLİK ==================== -->
+    <!-- ==================== GRUP: HESAP VE GÜVENLİK ==================== -->
     <div class="settings-group">
       <h2 class="settings-group-label">
         <span class="sgl-line" aria-hidden="true"></span>
-        <span class="sgl-text">Hesap &amp; Güvenlik</span>
+        <span class="sgl-text">Hesap ve güvenlik</span>
         <span class="sgl-line" aria-hidden="true"></span>
       </h2>
 
@@ -169,38 +184,40 @@
             </svg>
             <span>Google ile devam et</span>
           </button>
-          <div class="field-row">
-            <div class="field">
-              <label for="authEmail">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="field-icon"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                <span>E-posta</span>
-              </label>
-              <input type="email" id="authEmail" autocomplete="username"
-                     inputmode="email" spellcheck="false" placeholder="ornek@eposta.com">
+          <form id="authSignInForm" novalidate>
+            <div class="field-row">
+              <div class="field">
+                <label for="authEmail">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="field-icon"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                  <span>E-posta</span>
+                </label>
+                <input type="email" id="authEmail" name="email" autocomplete="username"
+                       inputmode="email" spellcheck="false" placeholder="ornek@eposta.com">
+              </div>
+              <div class="field">
+                <label for="authPass">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="field-icon"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  <span>Şifre</span>
+                </label>
+                <input type="password" id="authPass" name="password" autocomplete="current-password"
+                       placeholder="••••••••">
+              </div>
             </div>
-            <div class="field">
-              <label for="authPass">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="field-icon"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                <span>Şifre</span>
-              </label>
-              <input type="password" id="authPass" autocomplete="current-password"
-                     placeholder="••••••••">
+            <div class="btn-row">
+              <button class="btn primary" type="submit" id="authSignInBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                <span>Giriş yap</span>
+              </button>
+              <button class="btn ghost" type="button" id="forgotPasswordBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <span>Şifremi unuttum</span>
+              </button>
+              <button class="btn" type="button" id="authSignUpBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+                <span>Hesap oluştur</span>
+              </button>
             </div>
-          </div>
-          <div class="btn-row">
-            <button class="btn primary" type="button" id="authSignInBtn">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-              <span>Giriş yap</span>
-            </button>
-            <button class="btn ghost" type="button" id="forgotPasswordBtn">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-              <span>Şifremi unuttum</span>
-            </button>
-            <button class="btn" type="button" id="authSignUpBtn">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
-              <span>Hesap oluştur</span>
-            </button>
-          </div>
+          </form>
           <div class="auth-or" aria-hidden="true"><span>veya</span></div>
           <div class="social-row">
             <button class="btn social github" type="button" id="githubSignInBtn" aria-label="GitHub ile devam et">
@@ -332,28 +349,28 @@
             </table>
           </div>
 
-          <div class="admin-create">
+          <form class="admin-create" id="adminCreateForm" autocomplete="off" novalidate>
             <div class="field-row">
               <div class="field">
-                <label for="newUserEmail">Yeni Hesap — E-posta</label>
-                <input type="email" id="newUserEmail" autocomplete="off"
+                <label for="newUserEmail">Yeni hesap — E-posta</label>
+                <input type="email" id="newUserEmail" name="newUserEmail" autocomplete="email"
                        inputmode="email" spellcheck="false" placeholder="ornek@eposta.com">
               </div>
               <div class="field">
-                <label for="newUserPass">Yeni Hesap — Şifre</label>
-                <input type="password" id="newUserPass" autocomplete="new-password"
+                <label for="newUserPass">Yeni hesap — Şifre</label>
+                <input type="password" id="newUserPass" name="newUserPass" autocomplete="new-password"
                        placeholder="en az 8 karakter (harf + rakam)">
               </div>
             </div>
             <div class="field">
               <label for="newUserRole">Rol</label>
-              <select id="newUserRole">
+              <select id="newUserRole" name="newUserRole">
                 <option value="user">Kullanıcı — yalnız kendi cihazları</option>
                 <option value="admin">Yönetici — tüm cihazlar + hesap yönetimi</option>
               </select>
             </div>
             <div class="btn-row">
-              <button class="btn primary" type="button" id="createUserBtn">
+              <button class="btn primary" type="submit" id="createUserBtn">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
                 <span>Hesabı Oluştur</span>
               </button>
@@ -362,7 +379,7 @@
               Yeni hesap, siz oturumunuzu kaybetmeden açılır. Kullanıcı, e-postasına gelen
               doğrulama bağlantısına tıklamadan giriş yapamaz.
             </p>
-          </div>
+          </form>
 
           <!-- ---- Admin: Cihaz Bağlantıları ---- -->
           <div id="adminDevices">
@@ -588,14 +605,14 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
               <span>Avatarı Değiştir</span>
             </button>
-            <input type="file" id="avatarInput" accept="image/*" hidden>
+            <input type="file" id="avatarInput" accept="image/*" aria-label="Profil fotoğrafı seç" hidden>
           </div>
           <div class="field profile-name-field">
             <label for="displayName">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="field-icon"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-              <span>Görünen Ad</span>
+              <span>Görünen ad</span>
             </label>
-            <input type="text" id="displayName" maxlength="40" autocomplete="nickname" placeholder="Adınız">
+            <input type="text" id="displayName" name="displayName" maxlength="40" autocomplete="name" placeholder="Adınız">
           </div>
         </div>
 
@@ -603,15 +620,15 @@
           <div class="field">
             <label for="profileEmail">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="field-icon"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-              <span>E-posta Adresi</span>
+              <span>E-posta adresi</span>
             </label>
-            <input type="email" id="profileEmail" readonly>
+            <input type="email" id="profileEmail" name="profileEmail" autocomplete="email" readonly>
           </div>
           <div class="field">
-            <label>
+            <div class="field-label">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="field-icon"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
-              <span>Doğrulama Durumu</span>
-            </label>
+              <span>Doğrulama durumu</span>
+            </div>
             <div class="badge-status-box">
               <span class="badge" id="emailVerifiedBadge">—</span>
             </div>
@@ -639,25 +656,26 @@
         <p class="result" id="profileResult" role="status" aria-live="polite"></p>
 
         <!-- E-posta değiştir -->
-        <div class="auth-inline-form" id="changeEmailRow" hidden>
+        <form class="auth-inline-form" id="changeEmailRow" hidden novalidate>
+          <input type="email" class="pw-form-username" name="username" autocomplete="username" hidden tabindex="-1" aria-hidden="true">
           <div class="field-row">
             <div class="field">
               <label for="newEmailInput">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="field-icon"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                <span>Yeni E-posta</span>
+                <span>Yeni e-posta</span>
               </label>
-              <input type="email" id="newEmailInput" autocomplete="email" placeholder="yeni@eposta.com">
+              <input type="email" id="newEmailInput" name="newEmailInput" autocomplete="email" placeholder="yeni@eposta.com">
             </div>
             <div class="field">
               <label for="emailCurrentPass">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="field-icon"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                <span>Mevcut Şifre</span>
+                <span>Mevcut şifre</span>
               </label>
-              <input type="password" id="emailCurrentPass" autocomplete="current-password" placeholder="••••••••">
+              <input type="password" id="emailCurrentPass" name="emailCurrentPass" autocomplete="current-password" placeholder="••••••••">
             </div>
           </div>
           <div class="btn-row">
-            <button class="btn primary" type="button" id="saveEmailBtn">
+            <button class="btn primary" type="submit" id="saveEmailBtn">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
               <span>E-postayı Güncelle</span>
             </button>
@@ -667,35 +685,36 @@
             </button>
           </div>
           <p class="help">Güvenlik için mevcut şifreniz istenir. Yeni adres doğrulanana kadar giriş yapamazsınız.</p>
-        </div>
+        </form>
 
         <!-- Şifre değiştir -->
-        <div class="auth-inline-form" id="changePasswordRow" hidden>
+        <form class="auth-inline-form" id="changePasswordRow" hidden novalidate>
+          <input type="email" class="pw-form-username" name="username" autocomplete="username" hidden tabindex="-1" aria-hidden="true">
           <div class="field-row">
             <div class="field">
               <label for="currentPassword">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="field-icon"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                <span>Mevcut Şifre</span>
+                <span>Mevcut şifre</span>
               </label>
-              <input type="password" id="currentPassword" autocomplete="current-password" placeholder="••••••••">
+              <input type="password" id="currentPassword" name="currentPassword" autocomplete="current-password" placeholder="••••••••">
             </div>
             <div class="field">
               <label for="newPassword">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="field-icon"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                <span>Yeni Şifre</span>
+                <span>Yeni şifre</span>
               </label>
-              <input type="password" id="newPassword" autocomplete="new-password" placeholder="en az 8 karakter (harf + rakam)">
+              <input type="password" id="newPassword" name="newPassword" autocomplete="new-password" placeholder="en az 8 karakter (harf + rakam)">
             </div>
           </div>
           <div class="field">
             <label for="confirmPassword">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="field-icon"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
-              <span>Yeni Şifre (tekrar)</span>
+              <span>Yeni şifre (tekrar)</span>
             </label>
-            <input type="password" id="confirmPassword" autocomplete="new-password" placeholder="••••••••">
+            <input type="password" id="confirmPassword" name="confirmPassword" autocomplete="new-password" placeholder="••••••••">
           </div>
           <div class="btn-row">
-            <button class="btn primary" type="button" id="savePasswordBtn">
+            <button class="btn primary" type="submit" id="savePasswordBtn">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
               <span>Şifreyi Güncelle</span>
             </button>
@@ -704,7 +723,7 @@
               <span>Vazgeç</span>
             </button>
           </div>
-        </div>
+        </form>
 
         <!-- Oturum güvenliği (adım yükseltme / step-up) -->
         <div class="admin-head" style="margin-top:1.25rem;">
@@ -713,23 +732,24 @@
         </div>
         <p class="help" id="sessionAgeText">—</p>
 
-        <div class="auth-inline-form" id="stepUpRow" hidden>
+        <form class="auth-inline-form" id="stepUpRow" hidden novalidate>
+          <input type="email" class="pw-form-username" name="username" autocomplete="username" hidden tabindex="-1" aria-hidden="true">
           <div class="field">
             <label for="stepUpPass">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="field-icon"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
               <span>Şifreniz (tekrar doğrulama)</span>
             </label>
-            <input type="password" id="stepUpPass" autocomplete="current-password" placeholder="••••••••">
+            <input type="password" id="stepUpPass" name="stepUpPass" autocomplete="current-password" placeholder="••••••••">
           </div>
           <div class="btn-row">
-            <button class="btn primary" type="button" id="stepUpBtn">
+            <button class="btn primary" type="submit" id="stepUpBtn">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
               <span>Doğrula</span>
             </button>
             <button class="btn ghost" type="button" id="stepUpCancelBtn">Vazgeç</button>
           </div>
           <p class="help">Şifreniz yalnızca Firebase kimlik doğrulamasına gönderilir; kaydedilmez.</p>
-        </div>
+        </form>
 
         <div class="btn-row">
           <button class="btn" type="button" id="stepUpStartBtn" hidden>
@@ -838,11 +858,11 @@
 
     <!-- FORM BAŞLANGICI -->
     <form id="settingsForm" novalidate>
-      <!-- ==================== GRUP: CİHAZ, DONANIM & OTOMASYON ==================== -->
+      <!-- ==================== GRUP: CİHAZ, DONANIM VE OTOMASYON ==================== -->
       <div class="settings-group">
         <h2 class="settings-group-label">
           <span class="sgl-line" aria-hidden="true"></span>
-          <span class="sgl-text">Cihaz, Donanım &amp; Otomasyon</span>
+          <span class="sgl-text">Cihaz, donanım ve otomasyon</span>
           <span class="sgl-line" aria-hidden="true"></span>
         </h2>
 
@@ -1115,7 +1135,7 @@
                 </svg>
                 Yayıncı Şifresi <span class="opt">opsiyonel</span>
               </label>
-              <input type="password" id="mqttPass" name="mqttPass" autocomplete="off"
+              <input type="password" id="mqttPass" name="mqttPass" autocomplete="new-password"
                      placeholder="yayıncı şifresi">
             </div>
           </div>
@@ -1129,7 +1149,7 @@
                 </svg>
                 Cihaz IP Adresi (Doğrudan HTTP)
               </label>
-              <input type="url" id="host" name="host" inputmode="url" autocomplete="url"
+              <input type="url" id="host" name="host" inputmode="url" autocomplete="off"
                      placeholder="http://192.168.4.1" spellcheck="false">
             </div>
 
@@ -1141,7 +1161,7 @@
                 </svg>
                 API Güvenlik Anahtarı (API_TOKEN) <span class="opt">opsiyonel</span>
               </label>
-              <input type="password" id="token" name="token" autocomplete="off"
+              <input type="password" id="token" name="token" autocomplete="new-password"
                      placeholder="config.h dosyasında API_TOKEN varsa girin">
             </div>
           </div>
@@ -1491,11 +1511,11 @@
       </section>
       </div><!-- /settings-group: Cihaz, Donanım & Otomasyon -->
 
-      <!-- ==================== GRUP: BİLDİRİM, GÖRÜNÜM & BAKIM ==================== -->
+      <!-- ==================== GRUP: BİLDİRİMLER ==================== -->
       <div class="settings-group">
         <h2 class="settings-group-label">
           <span class="sgl-line" aria-hidden="true"></span>
-          <span class="sgl-text">Bildirim, Görünüm &amp; Bakım</span>
+          <span class="sgl-text">Bildirimler</span>
           <span class="sgl-line" aria-hidden="true"></span>
         </h2>
 
@@ -1537,7 +1557,7 @@
                 </svg>
                 Bot Token (BotFather)
               </label>
-              <input type="password" id="tgToken" name="tgToken" autocomplete="off"
+              <input type="password" id="tgToken" name="tgToken" autocomplete="new-password"
                      spellcheck="false" placeholder="123456789:AA...">
               <p class="help">Token kayıtlıysa boş bırakabilirsiniz, mevcut şifre korunur.</p>
             </div>
@@ -1696,7 +1716,7 @@
                 <rect x="6" y="2" width="12" height="20" rx="3"/>
                 <path d="M10 18h4"/>
               </svg>
-              <h3 id="h-native-notify">Uygulama Bildirimleri</h3>
+              <h3 id="h-native-notify">Uygulama bildirimleri</h3>
             </div>
           </div>
           <p class="panel-desc">Telefonda, uygulama kapalıyken de çalışan gerçek alarm bildirimleri.</p>
@@ -1741,6 +1761,27 @@
           </p>
         </div>
       </section>
+      </div><!-- /settings-group: Bildirimler -->
+
+      <!-- Sabit Kaydetme Çubuğu -->
+      <div class="studio-actions-bar">
+        <button class="btn primary studio-submit-btn" type="submit">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          Ayarları kaydet
+        </button>
+        <a class="btn ghost" href="./">İptal</a>
+      </div>
+    </form>
+
+    <!-- ============ GRUP: ACİL DURUM, GÖRÜNÜM VE BAKIM ============ -->
+    <div class="settings-group">
+      <h2 class="settings-group-label">
+        <span class="sgl-line" aria-hidden="true"></span>
+        <span class="sgl-text">Acil durum, görünüm ve bakım</span>
+        <span class="sgl-line" aria-hidden="true"></span>
+      </h2>
 
       <!-- ============ ACİL DURUM E-POSTA KİŞİLERİ ============ -->
       <section class="config-panel" aria-labelledby="h-emergency" id="emergencySection">
@@ -1752,7 +1793,7 @@
                 <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
                 <polyline points="22,6 12,13 2,6"/>
               </svg>
-              <h3 id="h-emergency">Acil Durum E-postaları</h3>
+              <h3 id="h-emergency">Acil durum e-postaları</h3>
             </div>
           </div>
           <p class="panel-desc">Gaz, alev, su baskını ve sarsıntı alarmlarında yakınlarınıza otomatik e-posta.</p>
@@ -1906,7 +1947,7 @@
               </svg>
               Ayarları İçe Aktar (JSON Yükle)
             </button>
-            <input type="file" id="importFileInput" accept=".json" style="display:none;">
+            <input type="file" id="importFileInput" accept=".json" aria-label="Ayar yedek dosyası seç (.json)" style="display:none;">
           </div>
 
           <div class="maintenance-box" style="margin-top:2rem;">
@@ -1925,19 +1966,7 @@
           </div>
         </div>
       </section>
-      </div><!-- /settings-group: Bildirim, Görünüm & Bakım -->
-
-      <!-- Sabit Kaydetme Çubuğu -->
-      <div class="studio-actions-bar">
-        <button class="btn primary studio-submit-btn" type="submit">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <polyline points="20 6 9 17 4 12"/>
-          </svg>
-          Ayarları kaydet
-        </button>
-        <a class="btn ghost" href="./">İptal</a>
-      </div>
-    </form>
+    </div><!-- /settings-group: Acil durum, görünüm ve bakım -->
 
     <footer class="studio-footer">
       <p class="studio-footer-version">Deneyap Ev Koruma · Sürüm <span id="appVersion">—</span><span id="studioVersion" hidden></span></p>
@@ -1970,36 +1999,26 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 17h16M9 4v6m6 4v6"/></svg>
       <span>Kontrol</span>
     </a>
-    <a href="./#analytics">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18M7 15l4-4 3 3 5-6"/></svg>
-      <span>Geçmiş</span>
-    </a>
     <a href="./events.html">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9m-8 12a2 2 0 0 0 4 0"/></svg>
       <span>Olaylar</span>
     </a>
-    <a href="./earthquake.html">
+    <button type="button" class="bottom-nav-more active" id="mobileMoreBtn" aria-haspopup="dialog" aria-expanded="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M2 12h4l2-7 4 14 2-7h8"/>
+        <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+        <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+        <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+        <rect x="14" y="14" width="7" height="7" rx="1.5"/>
       </svg>
-      <span>Deprem</span>
-    </a>
-    <a href="./settings.html" class="active" aria-current="page">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
-        <circle cx="12" cy="12" r="3"/>
-      </svg>
-      <span>Ayarlar</span>
-    </a>
+      <span>Diğer</span>
+    </button>
   </nav>
 
   <script defer src="./js/config.js"></script>
   <script defer src="./js/studio-nav.js"></script>
   <script defer src="./js/mobile-app.js"></script>
-  <!-- Firebase SDK (CDN) -->
-  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <!-- Firebase SDK (Modüler ESM) -->
+  <script defer src="./js/firebase-modular-compat.js"></script>
   <script defer src="./js/parallax.js"></script>
   <script defer src="./js/api.js"></script>
   <script defer src="./js/mqtt.js"></script>

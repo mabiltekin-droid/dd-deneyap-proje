@@ -226,6 +226,7 @@
     if (window.App) {
       if (typeof App.applyTheme === 'function') App.applyTheme();
       if (typeof App.setupPwaInstall === 'function') App.setupPwaInstall();
+      if (typeof App.setupAccountBadge === 'function') App.setupAccountBadge();
       if (typeof App.registerServiceWorker === 'function') App.registerServiceWorker();
       if (typeof App.onSystemThemeChange === 'function') {
         App.onSystemThemeChange(function () {
@@ -254,15 +255,23 @@
     if (!list) return;
 
     if (count) {
+      const magLabel = state.minMag.toLocaleString('tr-TR', {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1
+      });
       count.textContent = state.events.length + ' kayıt · son ' + state.hours +
-        ' saat · M ≥ ' + state.minMag.toFixed(1);
+        ' saat · M ≥ ' + magLabel;
     }
 
     if (!state.events.length) {
       list.innerHTML =
         '<div class="quake-empty">' +
           '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-            '<path d="M2 12h4l2-7 4 14 2-7h8"/>' +
+            '<circle cx="12" cy="12" r="2.2"/>' +
+            '<path d="M8.5 8.5a5 5 0 0 0 0 7"/>' +
+            '<path d="M15.5 8.5a5 5 0 0 1 0 7"/>' +
+            '<path d="M5.2 5.2a9.6 9.6 0 0 0 0 13.6"/>' +
+            '<path d="M18.8 5.2a9.6 9.6 0 0 1 0 13.6"/>' +
           '</svg>' +
           '<strong>Bu aralıkta kayıt yok</strong>' +
           '<p>Büyüklük eşiğini düşürün veya zaman aralığını genişletin.</p>' +

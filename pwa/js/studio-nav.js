@@ -17,28 +17,37 @@
 (function () {
   'use strict';
 
-  /* Menüde görünen kısa adlar. Tanımsız panelde h3 metni kullanılır. */
+  /* Menü ve panel başlıkları birebir eşleşir (cümle düzeni). */
   var LABELS = {
     accountCard: 'Hesap ve roller',
     profileCard: 'Profilim',
     inviteCard: 'Davetler',
     devicesSection: 'Cihazlarım',
-    homesSection: 'Ev ve aile',
+    homesSection: 'Ev ve aile erişimi',
     otaSection: 'Cihaz yazılımı',
-    connSection: 'Cihaz ve ağ',
-    thresholdSection: 'Eşikler',
-    automationSection: 'Modlar',
-    telegramSection: 'Telegram',
+    connSection: 'Ev ağı bağlantısı',
+    thresholdSection: 'Sensör eşikleri ve otomasyon',
+    automationSection: 'Çalışma modları ve zamanlama',
+    telegramSection: 'Telegram bildirimleri',
     notifySection: 'Bildirimler',
     nativeNotifySection: 'Uygulama bildirimleri',
     emergencySection: 'Acil durum e-postaları',
     themeSection: 'Görünüm',
-    backupSection: 'Bakım'
+    backupSection: 'Yedekleme ve bakım'
+  };
+
+  /* Alt Kaydet/İptal çubuğunu yalnızca form gönderimi gerektiren bölümlerde göster */
+  var FORM_SAVE_PANELS = {
+    connSection: true,
+    thresholdSection: true,
+    automationSection: true,
+    telegramSection: true,
+    notifySection: true
   };
 
   var OVERVIEW_GROUPS = [
-    { title: 'Hesap', icon: 'accountCard', panels: ['accountCard', 'profileCard', 'inviteCard'] },
-    { title: 'Cihaz ve ev', icon: 'homesSection', panels: ['devicesSection', 'homesSection', 'otaSection', 'connSection', 'thresholdSection', 'automationSection'] },
+    { title: 'Hesap ve güvenlik', icon: 'accountCard', panels: ['accountCard', 'profileCard', 'inviteCard'] },
+    { title: 'Cihaz, donanım ve otomasyon', icon: 'homesSection', panels: ['devicesSection', 'homesSection', 'otaSection', 'connSection', 'thresholdSection', 'automationSection'] },
     { title: 'Bildirimler', icon: 'notifySection', panels: ['notifySection', 'nativeNotifySection', 'telegramSection', 'emergencySection'] },
     { title: 'Görünüm ve bakım', icon: 'themeSection', panels: ['themeSection', 'backupSection'] }
   ];
@@ -150,6 +159,12 @@
     focusEl(title);
   }
 
+  function syncActionsBar() {
+    var bar = document.querySelector('.studio-actions-bar');
+    if (!bar) return;
+    bar.hidden = !(currentId && FORM_SAVE_PANELS[currentId]);
+  }
+
   function showOverview(options) {
     var root = mainRoot();
     var overview = byId('settingsOverview');
@@ -158,10 +173,12 @@
     options = options || {};
     currentId = null;
     allPanels().forEach(function (panel) { panel.classList.remove('is-tab-active'); });
+    root.classList.remove('is-tabbed');
     root.classList.add('is-overview');
     overview.hidden = false;
     document.title = 'Ayarlar — Deneyap Ev Koruma';
     updateActiveStyles();
+    syncActionsBar();
 
     if (options.clearHash && window.location.hash && window.history.replaceState) {
       window.history.replaceState(window.history.state, '', window.location.pathname + window.location.search);
@@ -253,7 +270,7 @@
         '<div class="studio-drawer-foot">' +
           '<span class="sdf-dot" aria-hidden="true"></span>' +
           '<span id="studioMenuVersion"></span>' +
-          '<a href="./index.html">Sensörler</a>' +
+          '<a href="./">Panel</a>' +
         '</div>';
       document.body.appendChild(drawer);
     }
@@ -282,7 +299,7 @@
       btn.id = 'studioMenuBtn';
       btn.type = 'button';
       btn.className = 'studio-menu-btn';
-      btn.setAttribute('aria-label', 'Ayar bölümleri menüsünü aç');
+      btn.setAttribute('aria-label', 'Bölümler — ayar menüsünü aç');
       btn.setAttribute('aria-expanded', 'false');
       btn.setAttribute('aria-haspopup', 'dialog');
       btn.setAttribute('aria-controls', 'studioMenu');
@@ -570,6 +587,7 @@
 
     updateActiveStyles();
     updateToolbar();
+    syncActionsBar();
 
     if (options.hash !== false) {
       try {

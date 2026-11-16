@@ -150,6 +150,7 @@ function status() {
     rainRaw: sim.rainRaw,
     rain: sim.rain,
     state: sim.state,
+    gasWarn: TH.warn, gasDanger: TH.danger,
     fan: fan, pump: pump, buzzer: buzzer, auto: auto,
     window: windowPos, blind: blindPos,
     moving: sim.moving,
@@ -326,6 +327,41 @@ const server = http.createServer(function (req, res) {
       .catch(function (err) {
         sendJson(res, 500, { ok: false, error: err && err.message });
       });
+    return;
+  }
+
+  if (p === '/api/settings' && req.method === 'GET') {
+    sendJson(res, 200, {
+      ok: true,
+      gasWarn: TH.warn,
+      gasDanger: TH.danger,
+      autoControl: auto,
+      tgEnabled: false,
+      tgTokenSet: false,
+      tgChatSet: false
+    });
+    return;
+  }
+
+  if (p === '/api/settings' && req.method === 'POST') {
+    let body = '';
+    req.on('data', function (c) { body += c; if (body.length > 4096) req.destroy(); });
+    req.on('end', function () {
+      let v = {};
+      try { v = JSON.parse(body || '{}'); } catch (e) { /* bozuk gövde */ }
+      if (typeof v.gasWarn === 'number' && v.gasWarn > 0) TH.warn = Math.round(v.gasWarn);
+      if (typeof v.gasDanger === 'number' && v.gasDanger > 0) TH.danger = Math.round(v.gasDanger);
+      if (typeof v.autoControl === 'boolean') auto = v.autoControl;
+      sendJson(res, 200, {
+        ok: true,
+        gasWarn: TH.warn,
+        gasDanger: TH.danger,
+        autoControl: auto,
+        tgEnabled: !!v.tgEnabled,
+        tgTokenSet: !!v.tgToken,
+        tgChatSet: !!v.tgChatId
+      });
+    });
     return;
   }
 

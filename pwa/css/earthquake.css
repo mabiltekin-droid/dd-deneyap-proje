@@ -512,13 +512,17 @@
   font-size: 0.56rem;
   font-weight: 800;
   letter-spacing: 0.08em;
-  opacity: 0.75;
+  opacity: 0.92;
 }
 
 .quake-item[data-level="mid"] .quake-mag {
   border-color: color-mix(in srgb, var(--warn) 30%, var(--border));
   background: color-mix(in srgb, var(--warn) 11%, var(--surface));
   color: var(--warn);
+}
+
+[data-theme="light"] .quake-item[data-level="mid"] .quake-mag {
+  color: color-mix(in srgb, var(--warn) 72%, #3a2505);
 }
 
 .quake-item[data-level="high"] .quake-mag {

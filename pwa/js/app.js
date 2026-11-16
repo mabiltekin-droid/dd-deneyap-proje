@@ -625,13 +625,20 @@
     }
   }
 
+  function syncModeLock() {
+    if (App.Automation && typeof App.Automation.syncLockState === 'function') {
+      try { App.Automation.syncLockState(); } catch (e) { /* yoksay */ }
+    }
+  }
+
   /* Kumandalar yalnızca cihaz gerçekten yanıt verebiliyorsa açık olsun:
      saklanmış durum mesajı gelse bile LWT "çevrimdışı" diyorsa tuşlar
      kapalı kalmalıdır.
      Ek koşul (münhasırlık): cihaz bir hesaba bağlanmışsa yalnız sahibi
      veya admin kumanda gönderebilir; başkası görünüm alır ama kilitlidir. */
   function controlsAllowed() {
-    if (!online || (App.api.transport() && App.deviceOnline === false)) return false;
+    if (!online || !lastData || (App.api.transport() && App.deviceOnline === false)) return false;
+    if (!deviceVisible(lastData && lastData.dev)) return false;
     if (App.Auth && App.Auth.bindingOf && lastData && lastData.dev) {
       if (!App.Auth.canControl(lastData.dev)) return false;
     }
@@ -658,7 +665,7 @@
   const DEVICE_SECTIONS = '#homeWidget, #eventCard, [data-device-content]';
 
   function deviceVisible(dev) {
-    if (!dev) return false;
+    if (!dev) return !(App.api && typeof App.api.transport === 'function' && App.api.transport());
     if (App.Auth && typeof App.Auth.canView === 'function') return App.Auth.canView(dev);
     return true;
   }
@@ -680,40 +687,68 @@
   function paintNoDevice(dev) {
     hideDeviceSections();
     setControlsEnabled(false);
-    if (App.setConnBadge) App.setConnBadge('connecting', 'Cihaz yok');
+
+    const cs = (App.resolveConnectionStatus)
+      ? App.resolveConnectionStatus({ live: false, dev: dev })
+      : { state: 'connecting', label: 'Bağlanıyor…', code: 'connecting' };
+    if (App.setConnBadge) App.setConnBadge(cs.state, cs.label);
 
     const nd = $('noDevice');
+    syncModeLock();
     if (!nd) return;
     nd.hidden = false;
 
-    const snap = (App.Auth && App.Auth.snapshot) ? App.Auth.snapshot() : {};
     const devState = (App.Auth && App.Auth.deviceState) ? App.Auth.deviceState(dev) : null;
-    let title = 'Cihaz bulunamadı';
-    let message = 'Kendi cihazınızı görmek için hesabınıza giriş yapın.';
+    let title = 'Oturum açılmadı';
+    let message = 'Kendi cihazınızı görüntülemek ve yönetmek için hesabınıza giriş yapın.';
     let action = 'Hesaba git';
-    if (!dev && (!snap.ready || online)) {
-      title = 'Cihaz aranıyor';
-      message = 'Cihaz bağlantısı bekleniyor…';
-      action = 'Cihaz ve hesap ayarları';
-    } else if (App.Auth && App.Auth.needsCheck && dev && App.Auth.needsCheck(dev)) {
+    let href = './settings.html#accountCard';
+
+    if (App.Auth && App.Auth.needsCheck && dev && App.Auth.needsCheck(dev)) {
       title = 'Cihaz kontrol ediliyor';
       message = 'Cihaz erişiminiz doğrulanıyor.';
-    } else if (snap.signedIn) {
-      title = 'Cihaz ekleyin';
+      action = 'Hesap ve roller';
+      href = './settings.html#accountCard';
+    } else if (cs.code === 'connecting') {
+      title = 'Bağlantı kontrol ediliyor';
+      message = 'Oturum ve cihaz durumu doğrulanıyor…';
+      action = 'Cihaz ve hesap ayarları';
+      href = './settings.html';
+    } else if (cs.code === 'unauthenticated') {
+      title = 'Oturum açılmadı';
+      message = 'Kendi cihazınızı görmek ve yönetmek için hesabınıza giriş yapın.';
+      action = 'Hesaba git';
+      href = './settings.html#accountCard';
+    } else if (cs.code === 'unbound') {
+      title = 'Cihaz eşleşmedi';
       message = devState === 'free'
         ? 'Kartınızın aktivasyon kodunu girerek cihazı hesabınıza bağlayın.'
-        : 'Hesabınıza bağlı bir cihaz olduğunda sensör verilerini burada görebilirsiniz.';
+        : 'Hesabınıza henüz eşleşmiş bir Deneyap Kart bulunmuyor. Cihaz ekleyerek izlemeye başlayabilirsiniz.';
       action = 'Cihazı yönet';
+      href = './settings.html#accountCard';
+    } else {
+      title = cs.code === 'no_network' ? 'İnternet bağlantısı yok' : 'Cihaz çevrimdışı';
+      message = cs.code === 'no_network'
+        ? 'İnternet bağlantısı geri geldiğinde veriler otomatik güncellenecek.'
+        : 'Cihazınızın açık ve internete bağlı olduğundan emin olun.';
+      action = 'Bağlantı ayarları';
+      href = './settings.html#connSection';
     }
+
     setText('noDeviceTitle', title);
     setText('noDeviceMsg', message);
     setText('noDeviceAction', action);
+    const actBtn = $('noDeviceAction');
+    if (actBtn) actBtn.setAttribute('href', href);
+
     document.querySelectorAll('[data-device-message]').forEach(el => {
       if (el.textContent !== message) el.textContent = message;
     });
     document.querySelectorAll('[data-device-action]').forEach(el => {
       if (el.textContent !== action) el.textContent = action;
+      el.setAttribute('href', href);
     });
+    syncModeLock();
   }
 
   function render(data, at) {
@@ -888,6 +923,7 @@
     document.querySelectorAll('.controls .btn, .servo-slider').forEach(function (b) {
       b.disabled = !enabled;
     });
+    syncModeLock();
   }
 
   /* ------------------------------------------------------- Bağlantı Durumu */
@@ -897,11 +933,12 @@
        paket, cihaz koptuktan sonra da broker'da kalır ve panele taze
        veri gibi gelir. Cihazın gerçekten bağlı olduğunu LWT (/online
        konusu) söyler; o "çevrimdışı" dediyse hiçbir durum mesajı rozeti
-       "Canlı Telemetri"ye çeviremez. */
+       "Bağlı"ya çeviremez. */
     if (App.api.transport() && App.deviceOnline === false) return;
     online = true;
     failStreak = 0;
-    App.setConnBadge('live', 'Canlı Telemetri');
+    App.setConnBadge('live', 'Bağlı');
+    syncModeLock();
     if (window.App.Events && window.App.Events.setOnline) { try { window.App.Events.setOnline(true); } catch (e) {} }
     try {
       document.dispatchEvent(new CustomEvent('deneyap:connection', {
@@ -913,15 +950,12 @@
   function markOffline(err) {
     online = false;
     failStreak += 1;
-    const reason = err && err.legacy ? 'Eski Firmware'
-                 : err && err.timeout ? 'Zaman Aşımı'
-                 : App.api.transport() && App.deviceOnline === false ? 'Cihaz Çevrimdışı'
-                 : 'Bağlantı Yok';
-    App.setConnBadge('offline', reason);
-    if (lastData && deviceVisible(lastData.dev)) renderWidgetOffline();
-    else {
-      paintNoDevice(lastData && lastData.dev);
+    const reason = err && err.legacy ? 'Eski yazılım sürümü' : 'Cihaz çevrimdışı';
+    if (lastData && deviceVisible(lastData.dev)) {
       App.setConnBadge('offline', reason);
+      renderWidgetOffline();
+    } else {
+      paintNoDevice(lastData && lastData.dev);
       return;
     }
     if (window.App.Events && window.App.Events.setOnline) { try { window.App.Events.setOnline(false, reason); } catch (e) {} }
@@ -971,7 +1005,12 @@
       const latency = Math.round(performance.now() - t0);
       setText('pingMs', latency + ' ms');
       if (data !== lastData || !online) {
-        markOnline();
+        if (deviceVisible(data && data.dev)) {
+          markOnline();
+        } else {
+          online = true;
+          failStreak = 0;
+        }
         render(data, data === lastData ? lastUpdateTs : undefined);
       }
     } catch (err) {
@@ -1007,23 +1046,36 @@
         if (lastData && Number(msg.t) && Number(msg.t) <= Number(lastData.t) &&
             Number(msg.uptime) <= Number(lastData.uptime)) return;  /* eski kopyayı yut */
         setText('pingMs', Math.max(0, Date.now() - at + (msg.__rtt || 0)) + ' ms');
-        markOnline();
+        if (deviceVisible(msg && msg.dev)) {
+          markOnline();
+        } else {
+          online = true;
+          failStreak = 0;
+        }
         render(msg);
       }),
       App.api.onStatus(function (msg) {
         if (!msg || !msg.__relay || msg.online) return;
         online = false;
         failStreak += 1;
-        App.setConnBadge('offline', msg.msg || 'Bağlantı Yok');
-        renderWidgetOffline();
+        if (lastData && deviceVisible(lastData.dev)) {
+          App.setConnBadge('offline', msg.msg || 'Cihaz çevrimdışı');
+          renderWidgetOffline();
+        } else {
+          paintNoDevice(lastData && lastData.dev);
+        }
         setControlsEnabled(false);
       }),
       App.api.onStatus(function (msg) {
         if (!msg || !msg.__device || msg.online) return;
         online = false;
         failStreak += 1;
-        App.setConnBadge('offline', msg.msg || 'Cihaz Çevrimdışı');
-        renderWidgetOffline();
+        if (lastData && deviceVisible(lastData.dev)) {
+          App.setConnBadge('offline', msg.msg || 'Cihaz çevrimdışı');
+          renderWidgetOffline();
+        } else {
+          paintNoDevice(lastData && lastData.dev);
+        }
         setControlsEnabled(false);
       })
     );
@@ -1240,34 +1292,14 @@
 
   /* Başlıktaki "Hesap" rozeti + cihaz mülkiyeti bilgisi. */
   function setupAccountPill() {
-    const btn = document.getElementById('accountBtn');
-    const txt = document.getElementById('accountBtnText');
-    if (!App.Auth) return;
-
-    function paint(snap) {
-      if (btn && txt) {
-        if (snap.setupRequired) { btn.dataset.state = ''; txt.textContent = 'Kurulum'; }
-        else if (snap.isAdmin) { btn.dataset.state = 'admin'; txt.textContent = 'Admin'; }
-        else if (snap.signedIn) {
-          btn.dataset.state = 'user';
-          txt.textContent = ((snap.user && snap.user.email) || 'Hesap').split('@')[0];
-        } else {
-          btn.dataset.state = '';
-          txt.textContent = 'Hesap';
-        }
-      }
-      /* Oturum/rol değişince cihaz görünürlüğünü yeniden hesapla:
-         ör. admin çıkış yapınca başkasının cihazı anında gizlenir. */
+    if (!App.setupAccountBadge) return;
+    App.setupAccountBadge(function (snap) {
+      /* Oturum/rol değişince cihaz görünürlüğünü ve rozeti yeniden hesapla:
+         ör. çıkış yapınca "Oturum açılmadı" anında görünür. */
       if (lastData) render(lastData, lastUpdateTs);
-      else if (snap.ready && failStreak) paintNoDevice(null);
-    }
-
-    App.Auth.onChange(paint);
-    App.Auth.init().then(async function (snap) {
-      paint(snap);
-      try { await App.Auth.listBindings(); } catch (e) { /* şema yoksa sessiz */ }
-      paint(App.Auth.snapshot());
-    }).catch(function () { paint(App.Auth.snapshot()); });
+      else if (snap && snap.ready && !online) paintNoDevice(null);
+      syncModeLock();
+    });
   }
 
   /* ------------------------------------------------------------- Başlatma */
@@ -1379,7 +1411,8 @@
   function setupNetworkSyncHandler() {
     window.addEventListener('offline', function () {
       online = false;
-      App.setConnBadge('offline', 'Çevrimdışı (Önbellek)');
+      App.setConnBadge('offline', 'İnternet yok');
+      syncModeLock();
       renderWidgetOffline();
       App.toast('İnternet bağlantısı kesildi. Veriler yerel önbellekten okunuyor.', { kind: 'warn', duration: 4000 });
     });
@@ -1412,7 +1445,7 @@
   function setupUniversalButtonFeedback() {
     document.addEventListener('click', function (e) {
       const btn = e.target.closest('.btn[data-action], .mode-btn, .drill-btn, [data-sched="del"]');
-      if (!btn || btn.classList.contains('is-busy')) return;
+      if (!btn || btn.disabled || btn.getAttribute('aria-disabled') === 'true' || btn.classList.contains('is-busy')) return;
 
       btn.classList.add('is-busy');
       if (typeof App.haptic === 'function') App.haptic(15);
@@ -1448,10 +1481,14 @@
     setupSmartInstallButton();
     setupUniversalButtonFeedback();
     setupDeviceAuthentication();
+    if (!$('homeWidget') && !$('eventLog') && App.setupAccountBadge) {
+      App.setupAccountBadge();
+    }
   }
 
   window.App.initDashboard = init;
   window.App.destroyDashboard = destroy;
+  window.App.canControlDevice = controlsAllowed;
   window.App.setupVirtualKeyboardHandler = setupVirtualKeyboardHandler;
   window.App.renderCached = renderCached;
   /* Sesli komut / otomasyon modülleri için son telemetri erişimi */
