@@ -1,7 +1,7 @@
 /*
  * ============================================================================
  *  Deneyap Ev Koruma Sistemi — Deneyap Kart / Arduino IDE firmware
- *  Sürüm v3.4.0  (MQTT + HTTP)
+ *  Sürüm v3.5.1  (MQTT + HTTP)
  * ----------------------------------------------------------------------------
  *  Bu kod, depodaki `pwa/` kontrol paneli ile VARSAYILAN MQTT taşıması üzerinden
  *  haberleşir; ayrıca aynı yerel ağdan HTTP JSON API de sunar.
@@ -16,7 +16,7 @@
  *   • Fan / su motoru / buzzer röleleri ve 2 servo (pencere + panjur)
  *   • Gaz tehlikesi ve su baskınında Telegram bildirimi
  *   • Alarm anında Vercel /api/push üzerinden FCM + Web Push + acil e-posta
- *   • ESP32 Arduino core 2.x ve 3.x uyumlu (LEDC servo, OTA, I2S)
+ *   • ESP32 Arduino core 2.x ve 3.x uyumlu (LEDC servo/hoparlör, OTA)
  *   • HTTP eşdeğerleri: /api/status /api/control /api/settings /api/history
  *
  *  Donanım / ağ / eşik ayarları -> config.h
@@ -62,7 +62,7 @@
 /* ------------------------------------------------------------------ durum */
 enum GasState : uint8_t { GAS_NORMAL = 0, GAS_WARN = 1, GAS_DANGER = 2 };
 
-/* Ses motoru (I2S/MAX98357A) ön tanımları. Çıkış yardımcıları (outputsSafe)
+/* Ses motoru (MAX98357A / I2S) ön tanımları. Çıkış yardımcıları (outputsSafe)
    bu sabitleri kullanabilsin diye en üstte durur. */
 enum SoundMode : uint8_t { SND_NONE = 0, SND_ALARM = 1, SND_SIREN = 2, SND_TEST = 3, SND_BEEP = 4 };
 static volatile uint8_t  sndMode     = SND_NONE;
@@ -362,10 +362,9 @@ static void secureTlsBegin(WiFiClientSecure &sec) {
 #endif
 
 /* ============================================================ SES MOTORU ==
-   I2S amplifikatör (MAX98357A) üzerinden siren/ton üretimi. Ayrı bir FreeRTOS
-   görevi (core 0) DMA tamponunu besler; ana döngü (MQTT/HTTP) bloklanmaz.
-   Sesli "anons" (konuşma) panel tarafında, telefonun konuşma senteziyle
-   yapılır; buradaki motor yalnızca siren/uyarı tonları çalar. */
+   MAX98357A I2S amfisi üzerinden siren/ton üretir. Ayrı bir FreeRTOS görevi
+   DMA tamponunu besler; ana MQTT/HTTP döngüsü beklemez. Konuşma sentezi şu an
+   PWA'nın tarayıcı/telefon ses çıkışına yöneliktir; cihaza ses akışı yapılmaz. */
 static const char *sndName(uint8_t m) {
   switch (m) {
     case SND_ALARM: return "alarm";
@@ -385,7 +384,7 @@ static void i2sInit() {
   cfg.mode                 = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_TX);
   cfg.sample_rate          = SND_SAMPLE_RATE;
   cfg.bits_per_sample      = I2S_BITS_PER_SAMPLE_16BIT;
-  cfg.channel_format       = I2S_CHANNEL_FMT_RIGHT_LEFT;   // iki kanala da aynı örnek (kanal seçimi önemsiz)
+  cfg.channel_format       = I2S_CHANNEL_FMT_RIGHT_LEFT;
   cfg.communication_format = I2S_COMM_FORMAT_STAND_I2S;
   cfg.intr_alloc_flags     = 0;
   cfg.dma_buf_count        = 6;
@@ -408,7 +407,7 @@ static void i2sInit() {
   i2s_zero_dma_buffer(I2S_NUM_0);
 #if PIN_I2S_SD >= 0
   pinMode(PIN_I2S_SD, OUTPUT);
-  digitalWrite(PIN_I2S_SD, LOW);   // boşta amfiyi kapat (gürültü olmasın)
+  digitalWrite(PIN_I2S_SD, LOW);
 #endif
   sndReady = true;
   Serial.println(F("[ses] I2S hoparlor hazir (MAX98357A)"));
@@ -418,7 +417,7 @@ static void i2sInit() {
 /* 16-bit örnek üretici: kare dalga siren/ton. freq<=0 => sessizlik. */
 static void audioTask(void *arg) {
   const int N = 128;
-  static int16_t buf[256];   // stereo: 128 kare * 2
+  static int16_t buf[256];
   uint32_t phase = 0;
   for (;;) {
     uint8_t m = sndMode;
@@ -429,55 +428,44 @@ static void audioTask(void *arg) {
     uint32_t el = millis() - sndStartMs;
     int freq = 0;
     switch (m) {
-      case SND_ALARM: {                       // 900/1300 Hz dönüşümlü (250 ms)
-        freq = ((el / 250) & 1) ? 1300 : 900;
-        break;
-      }
-      case SND_SIREN: {                       // 2 sn'de 600->1400->600 süpürme
+      case SND_ALARM: freq = ((el / 250) & 1) ? 1300 : 900; break;
+      case SND_SIREN: {
         uint32_t p = el % 2000;
         freq = (p < 1000) ? (600 + (int)(800 * p / 1000))
                           : (1400 - (int)(800 * (p - 1000) / 1000));
         break;
       }
-      case SND_TEST: {                        // 3 kısa bip (150 ms on / 200 ms off)
+      case SND_TEST:
         if (el > 1050) { sndMode = SND_NONE; break; }
         freq = ((el % 350) < 150) ? 1000 : 0;
         break;
-      }
-      case SND_BEEP: {                        // tek 150 ms bip
+      case SND_BEEP:
         if (el > 150) { sndMode = SND_NONE; break; }
         freq = 1200;
         break;
-      }
       default: break;
     }
     int amp = 0;
     if (freq > 0) {
       int vol = sndVolume; if (vol < 0) vol = 0; if (vol > 100) vol = 100;
-      amp = (int)(30000L * vol / 100);        // tam ölçek ~30000 (kırpma yok)
+      amp = (int)(30000L * vol / 100);
     }
     uint32_t inc = (uint32_t)(((uint64_t)freq << 32) / SND_SAMPLE_RATE);
     for (int i = 0; i < N; i++) {
       int16_t v = 0;
       if (amp) { phase += inc; v = (phase & 0x80000000UL) ? (int16_t)amp : (int16_t)(-amp); }
-      buf[i * 2]     = v;
+      buf[i * 2] = v;
       buf[i * 2 + 1] = v;
     }
     size_t written = 0;
     i2s_write(I2S_NUM_0, buf, sizeof(buf), &written, portMAX_DELAY);
 #if PIN_I2S_SD >= 0
-    pinMode(PIN_I2S_SD, INPUT);   // çalarken amfiyi serbest bırak (açık)
+    pinMode(PIN_I2S_SD, INPUT);
 #endif
-    if (sndMode == SND_NONE) {
-#if PIN_I2S_SD >= 0
-      pinMode(PIN_I2S_SD, OUTPUT); digitalWrite(PIN_I2S_SD, LOW);
-#endif
-    }
   }
 }
 static void audioStart() {
-  if (!sndReady) return;
-  xTaskCreatePinnedToCore(audioTask, "ses", 4096, nullptr, 3, &audioTaskH, 0);
+  if (sndReady) xTaskCreatePinnedToCore(audioTask, "ses", 4096, nullptr, 3, &audioTaskH, 0);
 }
 
 /* --------------------------------------------------------------- çıkışlar */
@@ -503,7 +491,7 @@ static void setBuzzer(bool on) {
 #if PIN_BUZZER >= 0
   digitalWrite(PIN_BUZZER, on ? HIGH : LOW);
 #endif
-  /* Sesli alarmı I2S hoparlöre yönlendir (test/bip çalarken kesme). */
+  /* Sesli alarmı hoparlöre yönlendir (test/bip çalarken kesme). */
   if (on) { if (sndMode == SND_NONE) sndPlay(SND_ALARM); }
   else if (sndMode == SND_ALARM) sndStop();
 }
@@ -1907,7 +1895,7 @@ void setup() {
   if (PIN_FLAME_DO >= 0) pinMode(PIN_FLAME_DO, INPUT_PULLUP); // LM393 açık kolektör
   outputsSafe("acilis");
 
-  /* I2S hoparlör (MAX98357A) + ses görevi */
+  /* MAX98357A I2S hoparlör */
   i2sInit();
   audioStart();
 

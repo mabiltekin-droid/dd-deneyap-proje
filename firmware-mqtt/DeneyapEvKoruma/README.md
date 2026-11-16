@@ -1,9 +1,9 @@
-# Deneyap Ev Koruma — MQTT Firmware v3.4.0
+# Deneyap Ev Koruma — MQTT Firmware v3.5.1
 
 Aktif kart yazılımı. Panel varsayılan olarak MQTT taşımasını kullanır; kart ayrıca
 aynı yerel ağda HTTP JSON API sunar.
 
-## v3.4.0 yenilikleri
+## v3.5.1 yenilikleri
 
 - ESP32 Arduino core **3.3.x** ile derlenir; core 2.x LEDC servo yolu korunur.
 - `config.local.h` desteği: Wi-Fi, `PUSH_SECRET` ve OTA şifresi depoya yazılmadan
@@ -15,6 +15,8 @@ aynı yerel ağda HTTP JSON API sunar.
 - Push isteğine `fw` alanı eklendi; hata durumunda HTTP kodu ve kısa yanıt
   seri porta yazılır.
 - Açılışta kart/core ve push yapılandırması seri porta raporlanır.
+- Deneyap Kart 1A v2 için A/D pin adlarıyla doğrulanmış pin haritası.
+- MAX98357A I2S amfi için alarm/siren/bip çıkışı.
 
 ## Gerekli
 
@@ -22,6 +24,29 @@ aynı yerel ağda HTTP JSON API sunar.
 - ESP32 Arduino core (test: **3.3.10**)
 - `PubSubClient` **2.8**
 - Deneyap Kart 1A v2 FQBN: `esp32:esp32:deneyapkart1Av2`
+
+## Donanım pinleri (Deneyap Kart 1A v2)
+
+| İşlev | Kart üzerindeki pin | Bağlantı |
+|---|---|---|
+| MQ-2 gaz sensörü AO | `A0` | Analog çıkış |
+| Yağmur sensörü AO | `A1` | Analog çıkış |
+| SW-420 / 801S DO | `D0` | Dijital çıkış, varsayılan aktif LOW |
+| SW-420 / 801S AO | `A7` | İsteğe bağlı; analog modu varsayılan kapalı |
+| IR alev sensörü DO | `D1` | Dijital çıkış, varsayılan aktif LOW |
+| Fan röle sürücüsü IN | `D7` | Röle sürücüsü, aktif HIGH |
+| Pompa röle sürücüsü IN | `D8` | Röle sürücüsü, aktif HIGH |
+| Pencere servosu sinyal | `D10` | PWM |
+| Panjur servosu sinyal | `D11` | PWM |
+| MAX98357A BCLK | `D6` | I2S bit clock |
+| MAX98357A LRC / WS | `D5` | I2S word select |
+| MAX98357A DIN | `D4` | I2S data |
+
+MAX98357A için BCLK/WS/DIN sinyallerini tabloda belirtilen pinlere, 5V ve GND'yi
+uygun güç hatlarına bağlayın. Pin adları kart üzerindeki etiketlerdir; `GPIO 28`
+gibi başka ESP32 kartlarına ait sayılar kullanılmaz. Deneyap Kart 1A v2'de D28
+yoktur. Sensör girişlerine 3.3 V'tan yüksek sinyal uygulamayın. Röle ve servoları
+kart GPIO'sundan beslemeyin; uygun harici güç ve ortak GND kullanın.
 
 ## Derleme ve yükleme
 

@@ -26,14 +26,15 @@
    (karta özel, yeniden flaşta değişmez). Aynı MQTT_TOPIC'i kullanan iki
    kart olmasın! */
 #define DEVICE_ID          ""        // boş = otomatik "DK-XXXX"; istersen sabit ad yaz (örn. "kart1")
-#define FW_VERSION         "3.5.0"   // cihazın kendi sürümü; panel /status'te `fw` olarak gösterir
-                                     // 3.1.0: titreşim sensörü + I2S hoparlör (MAX98357A) + sesli alarm
+#define FW_VERSION         "3.5.1"   // cihazın kendi sürümü; panel /status'te `fw` olarak gösterir
+                                     // 3.1.0: titreşim sensörü + sesli alarm
                                      // 3.2.0: alev (IR flame) sensörü - dijital + analog, tam alarm
                                      // 3.2.1: LEDC servo sürücüsü ESP32 çekirdeği 3.x uyumlu
                                      // 3.2.2: alarm anında Vercel göndericisine Web Push isteği (PUSH_URL)
                                      // 3.3.0: kablosuz güncelleme (ArduinoOTA, şifreli)
                                      // 3.4.0: ESP32 core 3.3.x uyumu, config.local.h, push/core durum bilgisi
                                      // 3.5.0: bulut OTA (HTTPS + SHA-256), periyodik sürüm denetimi, ota komutu
+                                     // 3.5.1: Deneyap Kart 1A v2 pin haritası + doğru D pin eşlemesi
                                      // (not: panel sürümü package.json/config.js/sw.js'ten ayrıdır)
 
 /* ============================ Wi-Fi (STA) ============================== */
@@ -97,37 +98,33 @@
 #define PUSH_HTTP_TIMEOUT_MS 6000 // HTTPS bağlantı/yanıt zaman aşımı
 
 /* ============================ PIN HARİTASI ============================ */
-/* Analog girişler ADC1 kanalında olmalı (Wi-Fi açıkken ADC2 kullanılamaz). */
-#define PIN_MQ2            A5    // GPIO33 - Gaz / duman sensörü (analog AO)
-#define PIN_RAIN           A1    // GPIO39 - Yağmur sensörü (analog AO)
-#define PIN_VIB_AO         A4    // GPIO32 - Titreşim sensörü analog çıkış (AO, opsiyonel)
-#define PIN_VIB_DO         14    // GPIO14 - Titreşim sensörü dijital çıkış (DO, opsiyonel)
-#define PIN_FLAME_AO       A0    // GPIO36 - Alev sensörü analog çıkış (AO, opsiyonel)
-#define PIN_FLAME_DO       4     // GPIO4  - Alev sensörü dijital çıkış (DO, opsiyonel)
+/* Bu pin eşlemesi özellikle Deneyap Kart 1A v2 / ESP32-S3 içindir.
+   D numarası ile ESP32 GPIO numarası AYNI DEĞİLDİR. Kartta D28 yoktur.
+   A0..A7 ve D0..D14 kart üzerindeki gerçek pin adlarıdır; kodda bu adları
+   kullanmak, başka ESP32 kartlarındaki GPIO numaralarını kopyalama hatasını
+   önler. Sensör analog çıkışlarını 3.3V üstüne çıkarmayın. */
+#define PIN_MQ2            A0    // Gaz / duman sensörü AO
+#define PIN_RAIN           A1    // Yağmur sensörü AO
+#define PIN_VIB_AO         A7    // Titreşim sensörü AO (opsiyonel; analog modu açılırsa)
+#define PIN_VIB_DO         D0    // SW-420 / 801S dijital çıkışı
+#define PIN_FLAME_AO       -1    // Alev sensörü AO kullanılmıyor; -1 = devre dışı
+#define PIN_FLAME_DO       D1    // IR alev sensörü dijital çıkışı
 
-/* Çıkışlar: transistörlü röle modülü / sürücü üzerinden.
-   ESP32 strapping pinleri (GPIO0, 2, 5, 12, 15) ÇIKIŞ olarak kullanılmamalı. */
-#define PIN_RELAY_FAN      13    // Fan (davlumbaz havalandırma)
-#define PIN_RELAY_PUMP     27    // Su motoru / dalgıç pompa
-/* ÖNEMLİ: Eski sürümde PIN_BUZZER=33 idi; ama Deneyap 1A'da A5=GPIO33 ve MQ2
-   de A5'te olduğundan buzzer pini gaz sensörüyle ÇAKIŞIYORDU (buzzer açılınca
-   gaz okuması bozuluyordu). Sesli alarm artık I2S hoparlörden (MAX98357A)
-   verilir. Ayrı bir piezo/buzzer istersen buraya boş bir çıkış GPIO'su yaz
-   (ör. 22) ve buzzeri oraya bağla. -1 = pasif. */
-#define PIN_BUZZER         -1    // (-1 = yok; ses I2S hoparlörden çıkar)
-#define PIN_SERVO_WINDOW   25    // Servo 1 - pencere kapağı
-#define PIN_SERVO_BLIND    26    // Servo 2 - panjur
-#define PIN_LED            -1    // Durum LED'i GPIO'su (kart üstü). Yoksa -1 bırak.
+/* Çıkışlar kart üzerinde mevcut sinyal pinlerine atanmıştır. */
+#define PIN_RELAY_FAN      D7    // Fan röle sürücüsü IN
+#define PIN_RELAY_PUMP     D8    // Su motoru röle sürücüsü IN
+#define PIN_BUZZER         -1    // Ayrı piezo yok; alarm MAX98357A hoparlöründen çıkar
+#define PIN_SERVO_WINDOW   D10   // Pencere servosu sinyal
+#define PIN_SERVO_BLIND    D11   // Panjur servosu sinyal
+#define PIN_LED            -1    // Harici durum LED'i yok
 
-/* ---- I2S ses amplifikatörü (MAX98357A) ----
-   MAX98357A bir I2S DAC + amfi modülüdür; 5V ile beslenir, çıkışı hoparlöre
-   gider. Pinler GPIO matrisiyle herhangi bir serbest GPIO'ya yönlendirilir.
-   SD (shutdown/kazanç) pini modülde boş bırakılırsa amfi açık kalır; -1 yeterli.
-   Besleme marjinalse (USB) 5V hattına 470uF-1000uF kondansatör önerilir. */
-#define PIN_I2S_BCLK       18    // D6 - bit clock  (BCLK)
-#define PIN_I2S_LRC        19    // D5 - LR clock   (LRC / WS)
-#define PIN_I2S_DIN        21    // D4 - data out   -> amfi DIN
-#define PIN_I2S_SD         -1    // (opsiyonel) amfi shutdown/kazanç; -1 = bağlı değil
+/* I2S amfi (MAX98357A): eski kablolama tablosundaki gerçek kart etiketleri
+   D6/D5/D4 korunmuştur. Amfinin SD pinini kullanmıyorsanız boş bırakın (-1).
+   Amfi 5V besleme ve kartla ortak GND ister. */
+#define PIN_I2S_BCLK       D6    // MAX98357A BCLK
+#define PIN_I2S_LRC        D5    // MAX98357A LRC / WS
+#define PIN_I2S_DIN        D4    // MAX98357A DIN
+#define PIN_I2S_SD         -1    // isteğe bağlı amfi kapatma pini
 
 /* Servo açıları (derece) */
 #define SERVO_WINDOW_OPEN  180
@@ -222,9 +219,7 @@
 #define FLAME_ALARM_TG_DEFAULT true       // alevde Telegram bildirimi gönder
 
 /* ======================= SES / HOPARLÖR (I2S) ========================== */
-/* Sesli alarmlar I2S amfi (MAX98357A) üzerinden hoparlörden verilir. Panelden
-   ses seviyesi ve siren testi yapılabilir; AI sesli anons panel (telefon)
-   tarafındaki konuşma senteziyle yapılır. */
+/* MAX98357A I2S amfisiyle alarm/siren/test tonu üretir. */
 #define SND_VOLUME_DEFAULT  70            // açılış ses seviyesi (0..100)
 #define SND_SAMPLE_RATE     16000         // I2S örnekleme frekansı (Hz)
 

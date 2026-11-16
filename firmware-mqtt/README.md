@@ -1,9 +1,8 @@
 # Deneyap Ev Koruma — Cihaz Firmware'i (MQTT sürümü)
 
-**Sürüm: 3.2.0** — **alev (IR flame) sensörü** (dijital + analog, yangında tam
-alarm), titreşim/sarsıntı sensörü (dijital + analog) ve **I2S hoparlör
-(MAX98357A)** desteği: sesli alarm/siren/bip, panelden ses seviyesi ve siren
-testi. Bunlara ek olarak: yedek broker'a otomatik geçiş, ısınma sonrası
+**Sürüm: 3.5.1** — Deneyap Kart 1A v2 pin eşlemesi, titreşim ve alev sensörü,
+MAX98357A I2S alarm/siren/bip desteği. Bunlara ek olarak:
+yedek broker'a otomatik geçiş, ısınma sonrası
 gaz tabanı yeniden ölçümü + uyarlanabilir taban, panelden gaz tabanı
 kalibrasyonu, yağmur sensörü ham ADC kalibrasyonu + **kopuk/kısa sensör
 koruması**, üstel yeniden bağlanma.
@@ -32,10 +31,9 @@ Bu klasör, depodaki `pwa/` kontrol panelinin **varsayılan MQTT taşımasıyla*
 
 - **PubSubClient** (Nick O'Leary)
 
-Geri kalanı Deneyap Kart (ESP32) çekirdeğiyle gelir:
-`WiFi`, `WebServer`, `Preferences`, `HTTPClient`, `WiFiClientSecure` ve
-**I2S sürücüsü** (`driver/i2s.h`). Sesli alarm için **ek kütüphane gerekmez**;
-MAX98357A amfi doğrudan ESP32 donanımsal I2S'iyle sürülür.
+Geri kalanı Deneyap Kart (ESP32-S3) çekirdeğiyle gelir:
+`WiFi`, `WebServer`, `Preferences`, `HTTPClient`, `WiFiClientSecure` ve I2S.
+MAX98357A amfisi I2S ile sürülür; ek ses kütüphanesi gerekmez.
 
 > **Servo.h bu çekirdekte bulunmaz** — servo sürücüsü firmware içinde
 > ESP32 yerleşik **LEDC** donanımıyla yapılır (ekstra kütüphane gerekmez).
@@ -51,40 +49,33 @@ MAX98357A amfi doğrudan ESP32 donanımsal I2S'iyle sürülür.
    - `DEVICE_ID` → boş bırakılabilir; boşsa kartın eFuse MAC'inden otomatik
      `DK-XXXX` kimliği üretilir (karta özel; panele hesap bağlamada bu kimliği kullanır).
 2. `DeneyapEvKoruma/DeneyapEvKoruma.ino` dosyasını Deneyap Kart IDE ile açın.
-3. Kart seçimi: **Deneyap Kart** (veya kullandığınız model).
+3. Kart seçimi: **Deneyap Kart 1A v2**.
 4. Yükleyin. Seri monitör (115200 baud) bağlantı durumunu gösterir.
 5. Panelde `Ayarlar → Bağlantı` bölümünde taşıma = **MQTT**, broker ve konu
    alanlarını firmware ile aynı yapın.
 
 ## Bağlantı (pin haritası — `config.h`'den değiştirilebilir)
 
-| İşlev | Deneyap Kart pini | GPIO |
-|-------|-------------------|------|
-| MQ2 gaz / duman sensörü (AO) | A5 | 33 |
-| Yağmur sensörü (AO) | A1 | 39 |
-| Titreşim sensörü — dijital (DO) | D14 | 14 |
-| Titreşim sensörü — analog (AO) | A4 | 32 |
-| Alev sensörü — dijital (DO) | D10 | 4 |
-| Alev sensörü — analog (AO) | A0 | 36 |
-| I2S amfi — BCLK | D6 | 18 |
-| I2S amfi — LRC / WS | D5 | 19 |
-| I2S amfi — DIN (veri) | D4 | 21 |
-| Fan rölesi | D13 | 13 |
-| Su motoru rölesi | D27 | 27 |
-| Buzzer (transistör sürücü) | — | — (kapalı; ses I2S'ten) |
-| Servo — pencere | D25 | 25 |
-| Servo — panjur | D26 | 26 |
+| İşlev | Deneyap Kart 1A v2 pini |
+|-------|------------------------|
+| MQ2 gaz / duman sensörü (AO) | `A0` |
+| Yağmur sensörü (AO) | `A1` |
+| Titreşim sensörü — dijital (DO) | `D0` |
+| Titreşim sensörü — analog (AO, isteğe bağlı) | `A7` |
+| Alev sensörü — dijital (DO) | `D1` |
+| Fan rölesi sürücüsü IN | `D7` |
+| Su motoru rölesi sürücüsü IN | `D8` |
+| Servo — pencere sinyali | `D10` |
+| Servo — panjur sinyali | `D11` |
+| MAX98357A BCLK | `D6` |
+| MAX98357A LRC / WS | `D5` |
+| MAX98357A DIN | `D4` |
 
-> **Pin değişikliği (v3.1.0):** Eski sürümde buzzer **GPIO33**'teydi; ama Deneyap
-> 1A'da **A5 = GPIO33** ve MQ-2 gaz sensörü de A5'te olduğundan **çakışıyordu**
-> (buzzer açılınca gaz okuması bozuluyordu). Sesli alarm artık **I2S
-> hoparlörden** (MAX98357A) verilir; `PIN_BUZZER = -1` yapıldı. Ayrı bir piezo
-> isterseniz `config.h` içinde boş bir GPIO (ör. `22`) yazıp buzzeri oraya bağlayın.
->
-> **I2S amfi (MAX98357A):** 5 V ile beslenir, çıkışı hoparlöre gider. `SD`
-> (shutdown/kazanç) pini bağlanmazsa amfi açık kalır (`PIN_I2S_SD = -1` yeterli).
-> Besleme marjinalse (USB) 5 V hattına 470–1000 µF kondansatör önerilir.
-> Hoparlör hattı ile besleme kablolarını ayrı tutun (parazit).
+> Bu firmware **Deneyap Kart 1A v2** pin etiketlerini kullanır. D pin adları
+> GPIO numaralarıyla karıştırılmamalıdır; kartta `D28` yoktur. MAX98357A'yı
+> BCLK→D6, LRC/WS→D5, DIN→D4, 5V→5V ve GND→GND olacak şekilde bağlayın.
+> Sensör girişlerine 3.3 V'tan yüksek gerilim vermeyin. Röle ve servolar için
+> uygun harici güç kaynağı kullanıp GND'yi ortaklayın.
 >
 > **Titreşim sensörü (SW-420 / 801S sınıfı):** Hem dijital (DO) hem analog (AO)
 > çıkış desteklenir; varsayılan olarak **yalnızca dijital** kullanılır (yaygın
@@ -182,11 +173,11 @@ Komutlar:
   `flameRaw`, `flameBase`, `flameDigital`, `flameEnabled`, `flameAlarm`,
   `flameDetected`, `flameUseDigital`, `flameUseAnalog`, `flameTg` alanları
   yayınlanır; geçmiş kaydında 256 biti (`fl`) alev olayını işaretler.
-  > **Kablolama:** Dijital çıkışı **D10 (GPIO4)**'e, analog çıkışı (4 pinli
-  > modülde) **A0 (GPIO36)**'ya bağlayın. Gerekirse `config.h`'de
+  > **Kablolama:** Dijital çıkışı **D1**'e bağlayın. Bu firmware'de analog
+  > alev girişi kapalıdır; kullanmak için `PIN_FLAME_AO` atamasını değiştirin. Gerekirse `config.h`'de
   > `PIN_FLAME_DO` / `PIN_FLAME_AO` değerlerini değiştirin. Modülü 3V3 ile
   > besleyin (GPIO'lar 5 V toleranslı değildir).
-- **Ses / hoparlör (I2S, v3.1.0):** MAX98357A amfi ile sesli alarm. Desenler:
+- **Ses / hoparlör (I2S):** MAX98357A amfi ile sesli alarm. Desenler:
   `siren` (alarm), `alarm` (kesintili), `test` (test tonu), `bip`. Panelden ses
   seviyesi (`sndVolume`, 0..100) ve siren/bip testi yapılabilir; seviye NVS'ye
   kaydedilir. Durumda `sndMode` (`kapali`/`alarm`/`siren`/`test`/`bip`), `sndVol`,
