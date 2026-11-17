@@ -69,6 +69,8 @@ const PPM_FS = 10000;
 
 const bootMs = Date.now() - 1000 * 60 * 47;   // 47 dakikadır açık gibi
 let fan = false, pump = false, buzzer = false, auto = true;
+let vibEnabled = true, flameEnabled = true;
+let vibUntil = 0, flameUntil = 0, floodUntil = 0;
 let windowPos = 0, blindPos = 0, movingUntil = 0;
 let gasBase = 118;                            // "temiz hava" tabanı
 let lastTick = Date.now();
@@ -151,6 +153,17 @@ function status() {
     rain: sim.rain,
     state: sim.state,
     gasWarn: TH.warn, gasDanger: TH.danger,
+    vib: Date.now() < vibUntil,
+    vibEnabled: vibEnabled,
+    vibRaw: Date.now() < vibUntil ? 920 : 12,
+    vibBase: 10,
+    vibDigital: Date.now() < vibUntil,
+    flame: Date.now() < flameUntil,
+    flameEnabled: flameEnabled,
+    flameRaw: Date.now() < flameUntil ? 940 : 18,
+    flameBase: 15,
+    flameDigital: Date.now() < flameUntil,
+    flood: Date.now() < floodUntil,
     fan: fan, pump: pump, buzzer: buzzer, auto: auto,
     window: windowPos, blind: blindPos,
     moving: sim.moving,
@@ -181,16 +194,38 @@ function control(device, action, value) {
     if (action === 'on') pump = true;
     else if (action === 'off') pump = false;
     else pump = !pump;
-  } else if (device === 'buzzer') {
-    buzzer = action === 'on' ? true : action === 'off' ? false : !buzzer;
+  } else if (device === 'buzzer' || device === 'sound') {
+    if (action === 'on' || action === 'siren') buzzer = true;
+    else if (action === 'off') buzzer = false;
+    else if (action === 'toggle') buzzer = !buzzer;
+    else buzzer = true;
+  } else if (device === 'vibration' || device === 'vib') {
+    if (action === 'toggle') vibEnabled = !vibEnabled;
+    else if (action === 'test') { vibUntil = Date.now() + 6000; buzzer = true; moveServo('window', 0); }
+    else if (action === 'clear') { vibUntil = 0; buzzer = false; }
+  } else if (device === 'flame' || device === 'fire') {
+    if (action === 'toggle') flameEnabled = !flameEnabled;
+    else if (action === 'test') { flameUntil = Date.now() + 6000; buzzer = true; moveServo('window', 0); }
+    else if (action === 'clear') { flameUntil = 0; buzzer = false; }
+  } else if (device === 'flood') {
+    if (action === 'test') { floodUntil = Date.now() + 6000; buzzer = true; moveServo('window', 0); }
+    else if (action === 'clear') { floodUntil = 0; buzzer = false; }
+  } else if (device === 'test' && action === 'simulate_alarm') {
+    vibUntil = Date.now() + 5000;
+    flameUntil = Date.now() + 5000;
+    buzzer = true;
+    fan = true;
+    moveServo('window', 0);
   } else if (device === 'window') {
     if (action === 'open') moveServo('window', 180);
     else if (action === 'shut') moveServo('window', 0);
     else if (action === 'ajar') moveServo('window', 90);
+    else if (action === 'set' && typeof value === 'number') moveServo('window', Math.max(0, Math.min(180, Math.round(value))));
     else if (action === 'stop') moveServo('window', windowPos);   // ayır
   } else if (device === 'blind') {
     if (action === 'open') moveServo('blind', 180);
     else if (action === 'shut') moveServo('blind', 0);
+    else if (action === 'set' && typeof value === 'number') moveServo('blind', Math.max(0, Math.min(180, Math.round(value))));
     else if (action === 'stop') moveServo('blind', blindPos);
   }
 

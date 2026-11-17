@@ -827,7 +827,7 @@ body {
 .home-visual {
   position: relative;
   grid-column: 1;
-  grid-row: 1 / -1;
+  grid-row: 1 / span 6;
   align-self: stretch;
   min-width: 0;
   min-height: 0;
@@ -2518,18 +2518,19 @@ a.btn:focus-visible {
 
 /* -------------------------------------------------------------------- Mobil */
 @media (max-width: 1380px) {
-  .glass-header {
+  .glass-header:has(.mode-switch) {
     flex-wrap: wrap;
   }
 
-  .header-actions {
+  .glass-header:has(.mode-switch) .header-actions {
     margin-left: auto;
   }
 
-  .header-nav,
-  [data-theme="light"] .header-nav {
+  .glass-header:has(.mode-switch) .header-nav,
+  [data-theme="light"] .glass-header:has(.mode-switch) .header-nav {
     order: 3;
-    flex-basis: auto;
+    flex-basis: 100%;
+    justify-content: center;
     margin-inline: auto;
     max-width: 100%;
     overflow-x: auto;
@@ -2677,22 +2678,31 @@ a.btn:focus-visible {
   }
 
   .scada-footer {
-    padding: 2.2rem 1rem 1.4rem;
-    margin-top: 2.4rem;
+    padding: 1.5rem 1rem calc(78px + env(safe-area-inset-bottom, 0px));
+    margin-top: 1.5rem;
   }
 
   .bottom-nav {
-    background: var(--surface);
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    align-items: center;
+    gap: 0.2rem;
+    height: auto;
+    min-block-size: calc(62px + env(safe-area-inset-bottom, 0px));
+    padding: 0.3rem max(0.4rem, env(safe-area-inset-left, 0px)) calc(0.3rem + env(safe-area-inset-bottom, 0px)) max(0.4rem, env(safe-area-inset-right, 0px));
+    background: color-mix(in srgb, var(--surface) 96%, transparent);
+    box-sizing: border-box;
   }
 
   .bottom-nav a,
   .bottom-nav button.bottom-nav-more {
     min-width: 0;
-    min-height: 50px;
-    margin: 0.18rem 0.2rem;
-    border-radius: 14px;
-    padding-inline: 0.15rem;
-    font-size: 0.73rem;
+    min-block-size: 48px;
+    margin: 0;
+    border-radius: 12px;
+    padding: 0.28rem 0.15rem;
+    font-size: 0.68rem;
+    line-height: 1.15;
   }
 
   .bottom-nav a.active,

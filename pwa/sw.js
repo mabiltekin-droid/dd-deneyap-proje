@@ -2,7 +2,7 @@
 const VERSION = '2.31.0';
 const ASSET_VERSION = '';
 const CACHE_PREFIX = 'deneyap-pwa-v';
-const CACHE = CACHE_PREFIX + VERSION + '-r19-' + (ASSET_VERSION || 'dev');
+const CACHE = CACHE_PREFIX + VERSION + '-r20-' + (ASSET_VERSION || 'dev');
 const SHELL = './index.html';
 const NAVIGATION_TIMEOUT_MS = 6000;
 
@@ -19,6 +19,7 @@ const PRECACHE = [
   './css/earthquake.css',
   './css/sakin-secondary.css',
   './css/events-page.css',
+  './css/house3d.css',
   './images/ev-kesiti-640.webp',
   './images/ev-kesiti-1200.webp',
   './fonts/dm-sans-latin.woff2',
@@ -60,6 +61,11 @@ const PRECACHE = [
   './js/profile-ui.js',
   './js/admin-invite-ui.js',
   './js/history.js',
+  './js/house3d/textures.js',
+  './js/house3d/orbit-controls.js',
+  './js/house3d/architecture.js',
+  './js/house3d/effects.js',
+  './js/house3d/scene.js',
   './manifest.json',
   './icons/favicon.svg',
   './icons/icon-192.png',

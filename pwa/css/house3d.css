@@ -1,0 +1,278 @@
+/* ==========================================================================
+   house3d.css — İnteraktif Three.js 3D kesit ev sahnesi ve HUD yerleşimi
+   ========================================================================== */
+
+.home-visual .house3d-slot {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  position: relative;
+}
+
+.hero-section .home-visual {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  aspect-ratio: 3 / 2;
+  min-height: 360px;
+  height: 100%;
+  background: linear-gradient(165deg, #efe4d2 0%, #e5d5bc 62%, #d8c6aa 100%);
+  border: 1px solid var(--border);
+  box-sizing: border-box;
+}
+
+[data-theme="dark"] .hero-section .home-visual,
+[data-theme="amoled"] .hero-section .home-visual {
+  background: linear-gradient(165deg, #1b2822 0%, #121b17 100%);
+}
+
+.house3d-stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+  border-radius: inherit;
+  overflow: hidden;
+  user-select: none;
+  background: radial-gradient(circle at 30% 20%, #f5ebda 0%, #e6d7be 65%, #d6c5a9 100%);
+  transition: background 0.45s ease;
+}
+
+.house3d-stage[data-sky="night"] {
+  background: radial-gradient(circle at 65% 18%, #1f3348 0%, #12202d 58%, #0a1219 100%);
+}
+
+[data-theme="dark"] .house3d-stage:not([data-sky="night"]),
+[data-theme="amoled"] .house3d-stage:not([data-sky="night"]) {
+  background: radial-gradient(circle at 35% 18%, #26362e 0%, #18251f 62%, #111a16 100%);
+}
+
+.house3d-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: grab;
+  outline: none;
+}
+
+.house3d-canvas:active {
+  cursor: grabbing;
+}
+
+.house3d-fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: inherit;
+}
+
+.house3d-fallback[hidden] {
+  display: none !important;
+}
+
+/* Üst durum ve aktif sensör çubuğu */
+.house3d-top {
+  position: absolute;
+  top: 0.65rem;
+  left: 0.65rem;
+  right: 0.65rem;
+  z-index: 4;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.45rem;
+  pointer-events: none;
+}
+
+.house3d-status {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  min-height: 28px;
+  padding: 0.25rem 0.68rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 250, 241, 0.45);
+  background: rgba(24, 39, 31, 0.78);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #f8f4ea;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  box-shadow: 0 4px 14px rgba(15, 24, 19, 0.24);
+  white-space: nowrap;
+}
+
+.house3d-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #4ade80;
+  flex: none;
+}
+
+.house3d-status[data-level="warn"] .house3d-dot { background: #fbbf24; }
+.house3d-status[data-level="danger"] .house3d-dot {
+  background: #f87171;
+  box-shadow: 0 0 0 4px rgba(248, 113, 113, 0.28);
+}
+.house3d-status[data-level="flood"] .house3d-dot {
+  background: #60a5fa;
+  box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.28);
+}
+.house3d-status[data-level="offline"] .house3d-dot { background: #cbd5e1; }
+
+.house3d-badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.3rem;
+}
+
+.house3d-tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0.16rem 0.52rem;
+  border-radius: 999px;
+  background: rgba(24, 39, 31, 0.74);
+  border: 1px solid rgba(255, 250, 241, 0.25);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #f4efe3;
+  font-size: 0.66rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+/* Alt kamera & oda odaklama araç çubuğu */
+.house3d-toolbar {
+  position: absolute;
+  left: 0.65rem;
+  right: 0.65rem;
+  bottom: 0.65rem;
+  z-index: 4;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.house3d-controls-pill {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.22rem;
+  max-width: 100%;
+  padding: 0.24rem;
+  border-radius: 999px;
+  background: rgba(24, 39, 31, 0.8);
+  border: 1px solid rgba(255, 250, 241, 0.24);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 8px 24px rgba(15, 24, 19, 0.28);
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.house3d-controls-pill::-webkit-scrollbar {
+  display: none;
+}
+
+.house3d-cam-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.28rem;
+  min-height: 28px;
+  min-width: 28px;
+  padding: 0.22rem 0.58rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(248, 244, 234, 0.88);
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 650;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.16s ease, color 0.16s ease;
+}
+
+.house3d-cam-btn:hover {
+  background: rgba(255, 250, 241, 0.16);
+  color: #ffffff;
+}
+
+.house3d-cam-btn[aria-pressed="true"] {
+  background: #f5ecdc;
+  color: #163b25;
+}
+
+.house3d-cam-btn:focus-visible {
+  outline: 2px solid #f5ecdc;
+  outline-offset: 2px;
+}
+
+.house3d-sep {
+  flex: none;
+  width: 1px;
+  height: 16px;
+  margin-inline: 0.1rem;
+  background: rgba(255, 250, 241, 0.24);
+}
+
+.house3d-cam-btn svg {
+  width: 13px;
+  height: 13px;
+  flex: none;
+}
+
+@media (max-width: 980px) {
+  .hero-section .home-visual {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    aspect-ratio: 4 / 3;
+    min-height: 0;
+    height: auto;
+  }
+
+  .house3d-top {
+    top: 0.5rem;
+    left: 0.5rem;
+    right: 0.5rem;
+  }
+
+  .house3d-toolbar {
+    left: 0.45rem;
+    right: 0.45rem;
+    bottom: 0.45rem;
+  }
+
+  .house3d-cam-btn {
+    min-height: 32px;
+    padding: 0.25rem 0.55rem;
+    font-size: 0.66rem;
+  }
+}
+
+@media (max-width: 380px) {
+  .hero-section .home-visual {
+    min-height: 0;
+  }
+
+  .house3d-tag {
+    display: none;
+  }
+}

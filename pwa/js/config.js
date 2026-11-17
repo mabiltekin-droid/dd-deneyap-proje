@@ -12,14 +12,34 @@
   App.VERSION = '2.31.0';
   App.STORAGE_KEY = 'deneyap.settings.v2';
 
-  /* Evrensel Ortam Tespiti: Standalone PWA / Normal Web ayrımı */
-  App.isStandalone = (function () {
-    return (window.matchMedia && (
-             window.matchMedia('(display-mode: standalone)').matches ||
-             window.matchMedia('(display-mode: window-controls-overlay)').matches
-           )) ||
-           navigator.standalone === true; // iOS Safari PWA
-  })();
+  /* Evrensel Ortam Tespiti: Standalone PWA / Kurulu Uygulama / Normal Web ayrımı */
+  const DISPLAY_MODES = ['standalone', 'window-controls-overlay', 'minimal-ui', 'fullscreen'];
+  const INSTALLED_KEY = 'dd.pwa.installed';
+
+  function hasDisplayMode() {
+    if (!window.matchMedia) return false;
+    for (let i = 0; i < DISPLAY_MODES.length; i++) {
+      try {
+        if (window.matchMedia('(display-mode: ' + DISPLAY_MODES[i] + ')').matches) return true;
+      } catch (e) { /* yoksay */ }
+    }
+    return false;
+  }
+
+  App.checkStandalone = function () {
+    const installedFlag = (function () {
+      try { return localStorage.getItem(INSTALLED_KEY) === '1'; }
+      catch (e) { return false; }
+    })();
+    return hasDisplayMode() ||
+           navigator.standalone === true ||
+           /^android-app:\/\//i.test(document.referrer || '') ||
+           !!(window.AndroidApp && typeof window.AndroidApp.platform === 'function') ||
+           document.documentElement.classList.contains('android-app') ||
+           installedFlag;
+  };
+
+  App.isStandalone = App.checkStandalone();
 
   App.DEFAULTS = {
     /* --- Taşıma (transport) seçimi ---
@@ -773,68 +793,151 @@
   };
 
   /* -------------------------------------------------- PWA İndirme / Yükleme */
-  App.setupPwaInstall = function (btnId) {
-    const btn = document.getElementById(btnId || 'pwaInstallBtn');
-    if (!btn) return;
+  function isIosBrowser() {
+    return /iphone|ipad|ipod/i.test(navigator.userAgent || '') && !window.MSStream;
+  }
 
-    if (App.isStandalone) {
-      btn.hidden = true;
-      btn.style.display = 'none';
-      return;
+  function supportsNativeInstall() {
+    return typeof Navigator !== 'undefined' && typeof Navigator.prototype.install === 'function';
+  }
+
+  App.syncInstallButtons = function () {
+    const standalone = App.checkStandalone();
+    App.isStandalone = standalone;
+    document.documentElement.classList.toggle('pwa-installed', standalone);
+
+    const canInstall = !standalone && (
+      !!window.__pwaDeferredPrompt ||
+      supportsNativeInstall() ||
+      isIosBrowser()
+    );
+
+    const targets = document.querySelectorAll('#pwaInstallBtn, .pwa-install-btn, #mobileMoreInstallBtn');
+    targets.forEach(function (btn) {
+      btn.hidden = !canInstall;
+      btn.style.display = canInstall ? '' : 'none';
+      btn.classList.toggle('has-prompt', !!(canInstall && window.__pwaDeferredPrompt));
+    });
+    return canInstall;
+  };
+
+  let pwaGlobalListenersBound = false;
+  function bindGlobalPwaEvents() {
+    if (pwaGlobalListenersBound) return;
+    pwaGlobalListenersBound = true;
+
+    if (window.matchMedia) {
+      DISPLAY_MODES.forEach(function (mode) {
+        try {
+          const mq = window.matchMedia('(display-mode: ' + mode + ')');
+          if (typeof mq.addEventListener === 'function') {
+            mq.addEventListener('change', App.syncInstallButtons);
+          } else if (typeof mq.addListener === 'function') {
+            mq.addListener(App.syncInstallButtons);
+          }
+        } catch (e) { /* yoksay */ }
+      });
     }
 
     window.addEventListener('beforeinstallprompt', function (e) {
       e.preventDefault();
       window.__pwaDeferredPrompt = e;
-      btn.hidden = false;
-      btn.style.display = '';
-      btn.classList.add('has-prompt');
+      if (!hasDisplayMode() && navigator.standalone !== true) {
+        try { localStorage.removeItem(INSTALLED_KEY); } catch (err) { /* yoksay */ }
+      }
+      App.syncInstallButtons();
     });
 
     window.addEventListener('appinstalled', function () {
       window.__pwaDeferredPrompt = null;
-      btn.classList.remove('has-prompt');
-      btn.hidden = true;
-      btn.style.display = 'none';
-      App.toast('Ev Koruma başarıyla yüklendi! 🎉', { kind: 'ok' });
+      try { localStorage.setItem(INSTALLED_KEY, '1'); } catch (err) { /* yoksay */ }
+      App.syncInstallButtons();
+      App.toast('Ev Koruma başarıyla yüklendi!', { kind: 'ok' });
     });
 
-    btn.addEventListener('click', async function () {
-      if (typeof App.haptic === 'function') App.haptic(25);
-      if (App.sound && typeof App.sound.click === 'function') App.sound.click();
+    window.addEventListener('pageshow', App.syncInstallButtons);
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) App.syncInstallButtons();
+    });
+
+    if (typeof navigator.getInstalledRelatedApps === 'function') {
+      navigator.getInstalledRelatedApps().then(function (apps) {
+        if (Array.isArray(apps) && apps.length > 0) {
+          try { localStorage.setItem(INSTALLED_KEY, '1'); } catch (err) { /* yoksay */ }
+          App.syncInstallButtons();
+        }
+      }).catch(function () { /* yoksay */ });
+    }
+  }
+
+  App.triggerPwaInstall = async function (triggerBtn) {
+    if (typeof App.haptic === 'function') App.haptic(25);
+    if (App.sound && typeof App.sound.click === 'function') App.sound.click();
+
+    if (App.syncInstallButtons(), App.isStandalone) {
+      App.toast('Uygulama zaten cihazınızda kurulu ve bağımsız çalışıyor.', { kind: 'ok' });
+      return;
+    }
+
+    const targets = triggerBtn ? [triggerBtn] : Array.from(document.querySelectorAll('#pwaInstallBtn, #mobileMoreInstallBtn'));
+    if (targets[0] && targets[0].getAttribute('aria-disabled') === 'true') return;
+    targets.forEach(function (el) { el.setAttribute('aria-disabled', 'true'); });
+
+    try {
+      if (supportsNativeInstall()) {
+        await navigator.install();
+        try { localStorage.setItem(INSTALLED_KEY, '1'); } catch (err) { /* yoksay */ }
+        window.__pwaDeferredPrompt = null;
+        App.syncInstallButtons();
+        App.toast('Uygulama yükleniyor…', { kind: 'ok' });
+        return;
+      }
 
       const promptEvent = window.__pwaDeferredPrompt;
       if (promptEvent) {
-        promptEvent.prompt();
-        try {
-          const choice = await promptEvent.userChoice;
-          if (choice && choice.outcome === 'accepted') {
-            App.toast('Uygulama yükleniyor...', { kind: 'ok' });
-            btn.hidden = true;
-            btn.style.display = 'none';
-          }
-        } catch (err) {
-          console.warn('[pwa] seçim hatası:', err);
-        }
         window.__pwaDeferredPrompt = null;
-        btn.classList.remove('has-prompt');
+        await promptEvent.prompt();
+        const choice = await promptEvent.userChoice;
+        if (choice && choice.outcome === 'accepted') {
+          try { localStorage.setItem(INSTALLED_KEY, '1'); } catch (err) { /* yoksay */ }
+          App.toast('Uygulama yükleniyor…', { kind: 'ok' });
+        }
+        App.syncInstallButtons();
         return;
       }
 
-      if (App.isStandalone) {
-        btn.hidden = true;
-        btn.style.display = 'none';
-        App.toast('Uygulama zaten cihazınızda kurulu ve bağımsız çalışıyor.', { kind: 'ok' });
+      if (isIosBrowser()) {
+        App.toast('iOS Safari: "Paylaş" → "Ana Ekrana Ekle" butonuna dokunun.', { kind: 'warn', duration: 6000 });
         return;
       }
 
-      const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
-      if (isIos) {
-        App.toast('iOS Safari: "Paylaş" ➔ "Ana Ekrana Ekle" butonuna dokunun.', { kind: 'warn', duration: 6000 });
-      } else {
-        App.toast('Tarayıcı menüsünden (⋮) "Uygulamayı Yükle" veya "Ana ekrana ekle"yi seçebilirsiniz.', { kind: 'ok', duration: 5000 });
+      App.syncInstallButtons();
+    } catch (err) {
+      if (!err || err.name !== 'AbortError') {
+        console.warn('[pwa] yükleme hatası:', err);
       }
+      App.syncInstallButtons();
+    } finally {
+      targets.forEach(function (el) { el.removeAttribute('aria-disabled'); });
+    }
+  };
+
+  App.setupPwaInstall = function (btnId) {
+    bindGlobalPwaEvents();
+    const btn = document.getElementById(btnId || 'pwaInstallBtn');
+    App.syncInstallButtons();
+    if (!btn || btn._pwaInstallBound) return;
+    btn._pwaInstallBound = true;
+    btn.addEventListener('click', function () {
+      App.triggerPwaInstall(btn);
     });
   };
+
+  bindGlobalPwaEvents();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', App.syncInstallButtons);
+  } else {
+    App.syncInstallButtons();
+  }
 })();
 

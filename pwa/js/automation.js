@@ -249,6 +249,9 @@
       logMode(mode, opts.source);
     }
     if (opts.push === true) applyDeviceSync(mode);
+    try {
+      document.dispatchEvent(new CustomEvent('deneyap:mode', { detail: { mode: mode } }));
+    } catch (e) { /* yoksay */ }
     return mode;
   }
 

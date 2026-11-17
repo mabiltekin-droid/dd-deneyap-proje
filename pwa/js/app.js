@@ -683,6 +683,7 @@
     document.querySelectorAll(DEVICE_SECTIONS).forEach(el => { if (el.hidden) el.hidden = false; });
     document.querySelectorAll('[data-device-empty]').forEach(el => { if (!el.hidden) el.hidden = true; });
     const empty = $('eventUnavailable'); if (empty) empty.hidden = true;
+    if (App.House3D && typeof App.House3D.syncMount === 'function') App.House3D.syncMount();
   }
 
   function paintNoDevice(dev) {
@@ -696,8 +697,14 @@
 
     const nd = $('noDevice');
     syncModeLock();
+    if (nd) nd.hidden = false;
+    if (App.House3D) {
+      if (typeof App.House3D.updateTelemetry === 'function') {
+        App.House3D.updateTelemetry(null, { state: 'unknown', online: false });
+      }
+      if (typeof App.House3D.syncMount === 'function') App.House3D.syncMount();
+    }
     if (!nd) return;
-    nd.hidden = false;
 
     const devState = (App.Auth && App.Auth.deviceState) ? App.Auth.deviceState(dev) : null;
     let title = 'Oturum açılmadı';
@@ -790,6 +797,9 @@
       renderBanner(state);
     }
     renderWidget(data, state);
+    if (App.House3D && typeof App.House3D.updateTelemetry === 'function') {
+      App.House3D.updateTelemetry(data, { state: state, online: online, cached: !!at });
+    }
     renderLockHint();
     setControlsEnabled(controlsAllowed());
     /* Önbellek ve yetki değişikliği yeniden çizimleri yeni olay üretmez. */
@@ -1327,7 +1337,6 @@
     if (!$('homeWidget') && !$('eventLog')) return;
     setupTheme();
     setupServiceWorker();
-    App.setupPwaInstall();
     setupServoSliders();
     setupSpeaker();
     setupAccountPill();
@@ -1371,23 +1380,65 @@
 
   /* --------------------------------- Sanal Klavye Yönetimi (Virtual Keyboard) */
   function setupVirtualKeyboardHandler() {
-    if (!window.visualViewport) return;
+    const NON_TEXT_TYPES = new Set([
+      'button', 'checkbox', 'color', 'file', 'hidden', 'image', 'radio', 'range', 'reset', 'submit'
+    ]);
 
-    let initialHeight = window.visualViewport.height;
+    function isEditableTarget(el) {
+      if (!el || el.nodeType !== 1) return false;
+      if (el.isContentEditable) return true;
+      const tag = el.tagName;
+      if (tag === 'TEXTAREA') return !el.readOnly && !el.disabled;
+      if (tag === 'INPUT') {
+        const type = String(el.type || 'text').toLowerCase();
+        return !NON_TEXT_TYPES.has(type) && !el.readOnly && !el.disabled;
+      }
+      return false;
+    }
 
-    window.visualViewport.addEventListener('resize', function () {
+    let focusBaseHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+
+    function syncBottomNavVisibility() {
       const bottomNav = document.querySelector('.bottom-nav');
       if (!bottomNav) return;
-      const currentHeight = window.visualViewport.height;
-      // Yükseklik 160px'ten fazla azaldıysa sanal klavye açılmıştır
-      const isKeyboardOpen = (initialHeight - currentHeight) > 160;
-      if (isKeyboardOpen) {
-        bottomNav.classList.add('nav-hidden-keyboard');
-      } else {
+
+      const editable = isEditableTarget(document.activeElement);
+      if (!editable) {
         bottomNav.classList.remove('nav-hidden-keyboard');
-        initialHeight = currentHeight;
+        if (window.visualViewport) focusBaseHeight = window.visualViewport.height;
+        return;
       }
+
+      if (!window.visualViewport) return;
+      const vvHeight = window.visualViewport.height;
+      const insetShrink = window.innerHeight - vvHeight;
+      const webviewShrink = focusBaseHeight - vvHeight;
+      const isKeyboardOpen = insetShrink > 140 || webviewShrink > 140;
+      bottomNav.classList.toggle('nav-hidden-keyboard', isKeyboardOpen);
+    }
+
+    document.addEventListener('focusin', function (e) {
+      if (isEditableTarget(e.target) && window.visualViewport) {
+        focusBaseHeight = Math.max(window.innerHeight, window.visualViewport.height);
+      }
+      syncBottomNavVisibility();
     });
+
+    document.addEventListener('focusout', function () {
+      setTimeout(syncBottomNavVisibility, 80);
+    });
+
+    window.addEventListener('orientationchange', function () {
+      setTimeout(function () {
+        if (window.visualViewport) focusBaseHeight = window.visualViewport.height;
+        syncBottomNavVisibility();
+      }, 150);
+    });
+
+    window.addEventListener('resize', syncBottomNavVisibility);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', syncBottomNavVisibility);
+    }
   }
 
   /* -------------------------------- Ağ Durumu Senkronizasyonu (Online / Offline) */
@@ -1410,15 +1461,10 @@
 
   /* ------------------------------- Akıllı PWA Yükleme Butonu Yönetimi */
   function setupSmartInstallButton() {
-    const btn = document.getElementById('pwaInstallBtn');
-    if (!btn) return;
-    if (App.isStandalone) {
-      btn.hidden = true;
-      btn.style.display = 'none';
-      return;
-    }
     if (typeof App.setupPwaInstall === 'function') {
       App.setupPwaInstall();
+    } else if (typeof App.syncInstallButtons === 'function') {
+      App.syncInstallButtons();
     }
   }
 

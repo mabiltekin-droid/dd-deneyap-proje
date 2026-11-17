@@ -21,6 +21,9 @@
     } catch (e) {
       /* Köprü yoksa normal web sitesi davranışı devam eder. */
     }
+    if (window.App && typeof window.App.syncInstallButtons === 'function') {
+      window.App.syncInstallButtons();
+    }
   }
 
   function haptic() {
@@ -115,7 +118,7 @@
               '</a>') +
         '</nav>' +
         '<div class="mmd-foot">' +
-          '<button type="button" class="btn sm ghost" id="mobileMoreInstallBtn">Uygulamayı indir</button>' +
+          '<button type="button" class="btn sm ghost" id="mobileMoreInstallBtn" hidden>Uygulamayı indir</button>' +
           '<a class="btn sm ghost" href="./privacy.html">Gizlilik</a>' +
         '</div>' +
       '</div>';
@@ -160,16 +163,20 @@
 
     var installAction = document.getElementById('mobileMoreInstallBtn');
     if (installAction) {
-      if (window.App && window.App.isStandalone) {
-        installAction.hidden = true;
-      } else {
-        installAction.addEventListener('click', function () {
-          haptic();
-          if (dlg.open) dlg.close();
+      installAction.addEventListener('click', function () {
+        haptic();
+        if (dlg.open) dlg.close();
+        if (window.App && typeof window.App.triggerPwaInstall === 'function') {
+          window.App.triggerPwaInstall(installAction);
+        } else {
           var realBtn = document.getElementById('pwaInstallBtn');
           if (realBtn) realBtn.click();
-        });
-      }
+        }
+      });
+    }
+
+    if (window.App && typeof window.App.syncInstallButtons === 'function') {
+      window.App.syncInstallButtons();
     }
 
     syncMoreViewHighlight();
@@ -199,6 +206,9 @@
     var dlg = buildMoreDialog();
     if (!dlg) return;
     haptic();
+    if (window.App && typeof window.App.syncInstallButtons === 'function') {
+      window.App.syncInstallButtons();
+    }
     syncMoreViewHighlight();
     var btn = document.getElementById('mobileMoreBtn');
     if (btn) btn.setAttribute('aria-expanded', 'true');
