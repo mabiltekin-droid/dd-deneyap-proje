@@ -130,7 +130,7 @@
     } else w.resolve(status);
   }
 
-  function onMessage(topic, payload) {
+  function onMessage(topic, payload, packet) {
     const t = String(topic);
     const base = topicBase();
 
@@ -138,6 +138,7 @@
       /* Cihazın LWT durumu. Yayıncıya (broker) bağlı olmak, cihazın da
          bağlı olduğu anlamına gelmez — ikisi ayrı ele alınır. */
       const online = String(payload) !== 'offline';
+      if (!online) lastStatus = null;
       App.api._setDeviceOnline(online, online ? 'Cihaz yayıncıya bağlı' : 'Cihaz Çevrimdışı');
       return;
     }
@@ -151,6 +152,8 @@
       return;
     }
     if (t !== base + '/status') return;
+    // Broker tekrarından gelen durum, canlı cihaz okuması veya komut onayı değildir.
+    if (packet && packet.retain) return;
 
     let data;
     try { data = JSON.parse(payload.toString()); }
@@ -305,7 +308,9 @@
       if (urlIdx > 0) ensureRecheck();   /* yedekteyiz: birincili yoklamaya başla */
     });
 
-    c.on('message', onMessage);
+    c.on('message', function (topic, payload, packet) {
+      if (client === c) onMessage(topic, payload, packet);
+    });
 
     c.on('error', function (err) {
       console.warn('[mqtt] hata:', err && err.message);
@@ -315,6 +320,7 @@
       if (client !== c) return;      /* biz çoktan yenisine geçtik */
       connected = false;
       connecting = false;
+      lastStatus = null;
       App.api._setRelayOnline(false, 'yayıncı bağlantısı koptu');
       /* Bu adreste hiç bağlanamadıysak (ör. emqx kabul etmiyor) sıradaki
          yedeğe geç; bağlanmışken koptuysa aynı adreste kal (geçici kesinti). */
@@ -340,8 +346,12 @@
   function dropClient() {
     const old = client;
     client = null;
+    const wasConnected = connected;
+    connected = false;
     connecting = false;
+    lastStatus = null;
     if (old) { try { old.end(true); } catch (e) { /* yoksay */ } }
+    if (wasConnected) App.api._setRelayOnline(false, 'yayıncıya yeniden bağlanılıyor');
   }
 
   function scheduleReconnect() {

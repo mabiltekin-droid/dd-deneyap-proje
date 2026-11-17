@@ -68,7 +68,9 @@ function makeEnv(brokerOpts) {
     baseUrl() { return 'http://192.168.4.1'; }
   };
   const sandbox = {
-    window: { App },
+    window: { App, addEventListener() {} },
+    document: { addEventListener() {} },
+    navigator: { onLine: true },
     App,
     console,
     setTimeout, clearTimeout, setInterval, clearInterval,
@@ -153,6 +155,24 @@ const tick = (ms) => new Promise(r => setTimeout(r, ms || 60));
     check('api._pushed guncel', App.api._pushed().gasPpm === 380);
   }
 
+  /* Canlılık ve komut onayı için brokerın eski durumunu kullanma. */
+  {
+    const { App, broker } = makeEnv();
+    App.mqtt.connect();
+    await tick(120);
+    broker.fire('message', 'deneyap/kart1/online', Buffer.from('online'), { retain: true });
+    check('saklanan LWT mesajı işlenir', App.deviceOnline === true);
+    let resolved = false;
+    const awaiting = App.api.status().then(status => { resolved = true; return status; });
+    broker.fire('message', 'deneyap/kart1/status',
+      Buffer.from(JSON.stringify(deviceStatus({ t: 10, state: 'danger' }))), { retain: true });
+    await tick(250);
+    check('saklanan durum canlı veri olarak işlenmez', !resolved && !App.api._pushed());
+    broker.fire('message', 'deneyap/kart1/status',
+      Buffer.from(JSON.stringify(deviceStatus({ t: 20 }))), { retain: false });
+    check('sonraki canlı veri bağlantıyı doğrular', (await awaiting).t === 20);
+  }
+
   /* --- 3) kumut -> cihaz -> onay dongusu ------------------------------ */
   console.log('\n3) Kumut gonderme ve onay alma (id eslesmesi)');
   {
@@ -161,6 +181,10 @@ const tick = (ms) => new Promise(r => setTimeout(r, ms || 60));
       onPublish(b, topic, payload) {
         if (topic !== 'deneyap/kart1/cmd') return;
         deviceCmd = payload;
+        setTimeout(() => {
+          b.fire('message', 'deneyap/kart1/status', Buffer.from(JSON.stringify(
+            deviceStatus({ cmdId: payload.id, fan: false }))), { retain: true });
+        }, 5);
         // Cihaz komutu uygular ve ayni id ile durumu geri yollar
         setTimeout(() => {
           b.fire('message', 'deneyap/kart1/status', Buffer.from(JSON.stringify(

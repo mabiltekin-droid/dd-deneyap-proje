@@ -25,7 +25,8 @@
   var barText = null;
   var barBtn = null;
   var showingCache = false;
-  var hideTimer = 0;
+  var offlineTimer = 0;
+  var retryTimer = 0;
 
   function nowClock(ms) {
     try {
@@ -111,7 +112,6 @@
   }
 
   function showBar(text, kind) {
-    clearTimeout(hideTimer);
     ensureBar();
     barText.textContent = text;
     bar.dataset.kind = kind || 'offline';
@@ -119,6 +119,9 @@
   }
 
   function hideBar() {
+    clearTimeout(offlineTimer);
+    clearTimeout(retryTimer);
+    offlineTimer = 0;
     if (!bar) return;
     bar.hidden = true;
     barBtn.disabled = false;
@@ -132,8 +135,8 @@
       if (typeof App.retryConnection === 'function') App.retryConnection();
       else window.dispatchEvent(new Event('online'));
     } catch (e) { /* yoksay */ }
-    clearTimeout(hideTimer);
-    hideTimer = setTimeout(function () {
+    clearTimeout(retryTimer);
+    retryTimer = setTimeout(function () {
       if (!bar || bar.hidden) return;
       barBtn.disabled = false;
       barBtn.textContent = 'Yeniden dene';
@@ -150,8 +153,9 @@
   }
 
   function showOfflineSoon(reason) {
-    clearTimeout(hideTimer);
-    hideTimer = setTimeout(function () {
+    if (offlineTimer || (bar && !bar.hidden && bar.dataset.kind === 'offline')) return;
+    offlineTimer = setTimeout(function () {
+      offlineTimer = 0;
       showBar(offlineText(reason), 'offline');
     }, 900);
   }
@@ -167,10 +171,10 @@
 
     var uid = currentUid();
     if (cached.uid && cached.uid !== uid) {
-      clearCache();
+      // Oturum henüz doğrulanmadıysa gösterme, ancak aynı hesabın verisini silme.
+      if (uid) clearCache();
       return;
     }
-    if (!uid && cached.uid) return;
 
     if (typeof App.renderCached !== 'function') return;
     if (!App.renderCached(cached.data, cached.at)) return;
@@ -181,10 +185,12 @@
 
   function whenAuthReady(cb) {
     var done = false;
+    var fallbackTimer = 0;
 
     function fire() {
       if (done) return;
       done = true;
+      clearTimeout(fallbackTimer);
       cb();
     }
 
@@ -198,13 +204,14 @@
         var off = App.Auth.onChange(function (s) {
           if (!s || !s.ready) return;
           try { off(); } catch (e) { /* yoksay */ }
-          fire();
+          if (done) cb();
+          else fire();
         });
       }
     } catch (e) { /* yoksay */ }
 
     /* Oturum yoksa da bir süre sonra önbelleği göstermeyi dene. */
-    setTimeout(fire, 2600);
+    fallbackTimer = setTimeout(fire, 2600);
   }
 
   /* -------------------------------------------------------------- olaylar */
@@ -214,14 +221,14 @@
 
     if (showingCache) {
       showingCache = false;
-      if (!bar || bar.dataset.kind === 'cache') hideBar();
+      hideBar();
     }
   });
 
   document.addEventListener('deneyap:connection', function (e) {
     var d = e.detail || {};
     if (d.online) {
-      if (bar && bar.dataset.kind === 'offline') hideBar();
+      hideBar();
       return;
     }
     showOfflineSoon(d.reason);
@@ -229,18 +236,6 @@
 
   window.addEventListener('offline', function () {
     showOfflineSoon('internet');
-  });
-
-  window.addEventListener('online', function () {
-    if (bar && bar.dataset.kind === 'offline') hideBar();
-  });
-
-  /* Duraklatılmış sekme geri geldiğinde bayat şerit kalmasın. */
-  document.addEventListener('visibilitychange', function () {
-    if (document.hidden) return;
-    if (navigator.onLine && App.lastTelemetry && App.lastTelemetry()) {
-      if (bar && bar.dataset.kind === 'offline') hideBar();
-    }
   });
 
   /* Uygulama ilk açılışında: önce önbellek, sonra canlı veri. */

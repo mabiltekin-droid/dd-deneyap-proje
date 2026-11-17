@@ -637,8 +637,9 @@
      Ek koşul (münhasırlık): cihaz bir hesaba bağlanmışsa yalnız sahibi
      veya admin kumanda gönderebilir; başkası görünüm alır ama kilitlidir. */
   function controlsAllowed() {
-    if (!online || !lastData || (App.api.transport() && App.deviceOnline === false)) return false;
-    if (!deviceVisible(lastData && lastData.dev)) return false;
+    if (!online || !lastData || navigator.onLine === false ||
+        (App.api.transport() && (App.relayOnline === false || App.deviceOnline === false))) return false;
+    if (!deviceVisible(lastData.dev)) return false;
     if (App.Auth && App.Auth.bindingOf && lastData && lastData.dev) {
       if (!App.Auth.canControl(lastData.dev)) return false;
     }
@@ -784,11 +785,15 @@
     renderSound(data);
     renderSystem(data, state);
     renderOutlets(data);
-    renderAmbientAlarm(state);
-    renderBanner(state);
+    if (online) {
+      renderAmbientAlarm(state);
+      renderBanner(state);
+    }
     renderWidget(data, state);
     renderLockHint();
     setControlsEnabled(controlsAllowed());
+    /* Önbellek ve yetki değişikliği yeniden çizimleri yeni olay üretmez. */
+    if (at || !online) return;
     announceAlarms(data, state);
     notifyAlarms(data, state);
 
@@ -801,12 +806,9 @@
       window.App.Blackbox.ingest(data);
     }
 
-    /* Önbellekten çizim son veri zamanını ileri taşımamalı. */
-    if (!at && online) {
-      try {
-        document.dispatchEvent(new CustomEvent('deneyap:telemetry', { detail: data }));
-      } catch (e) { /* yoksay */ }
-    }
+    try {
+      document.dispatchEvent(new CustomEvent('deneyap:telemetry', { detail: data }));
+    } catch (e) { /* yoksay */ }
   }
 
   /* Önbellekteki son telemetriyi ekrana basar (ağ yokken ilk açılış).
@@ -928,15 +930,16 @@
 
   /* ------------------------------------------------------- Bağlantı Durumu */
 
-  function markOnline() {
-    /* Durum mesajı tek başına "canlı" kanıtı DEĞİLDİR: saklanmış (retained)
-       paket, cihaz koptuktan sonra da broker'da kalır ve panele taze
-       veri gibi gelir. Cihazın gerçekten bağlı olduğunu LWT (/online
-       konusu) söyler; o "çevrimdışı" dediyse hiçbir durum mesajı rozeti
-       "Bağlı"ya çeviremez. */
-    if (App.api.transport() && App.deviceOnline === false) return;
+  let lastLiveData = null;
+  let connectionGeneration = 0;
+
+  function markOnline(dev) {
+    // Yeni durum gelse bile ağın veya cihazın çevrimdışı bildirimi önceliklidir.
+    if (navigator.onLine === false ||
+        (App.api.transport() && (App.relayOnline === false || App.deviceOnline === false))) return false;
     online = true;
     failStreak = 0;
+    if (!deviceVisible(dev)) return true;
     App.setConnBadge('live', 'Bağlı');
     syncModeLock();
     if (window.App.Events && window.App.Events.setOnline) { try { window.App.Events.setOnline(true); } catch (e) {} }
@@ -945,12 +948,21 @@
         detail: { online: true }
       }));
     } catch (e) { /* yoksay */ }
+    return true;
   }
 
   function markOffline(err) {
+    connectionGeneration += 1;
     online = false;
     failStreak += 1;
-    const reason = err && err.legacy ? 'Eski yazılım sürümü' : 'Cihaz çevrimdışı';
+    const reason = (err && err.reason) || (err && err.legacy ? 'Eski yazılım sürümü'
+                 : err && err.timeout ? 'Zaman aşımı' : 'Cihaz çevrimdışı');
+    setControlsEnabled(false);
+    try {
+      document.dispatchEvent(new CustomEvent('deneyap:connection', {
+        detail: { online: false, reason: reason }
+      }));
+    } catch (e) { /* yoksay */ }
     if (lastData && deviceVisible(lastData.dev)) {
       App.setConnBadge('offline', reason);
       renderWidgetOffline();
@@ -960,7 +972,6 @@
     }
     if (window.App.Events && window.App.Events.setOnline) { try { window.App.Events.setOnline(false, reason); } catch (e) {} }
 
-    setControlsEnabled(false);
     setChip('sysChip', 'warning', 'BAĞLANTI YOK');
     setChip('gasChip', 'unknown', '—');
     setChip('rainChip', 'unknown', '—');
@@ -978,11 +989,6 @@
     const hint = $('controlHint');
     if (hint) hint.textContent = 'bağlantı bekleniyor — kumandalar kilitli';
 
-    try {
-      document.dispatchEvent(new CustomEvent('deneyap:connection', {
-        detail: { online: false, reason: reason }
-      }));
-    } catch (e) { /* yoksay */ }
   }
 
   /* ------------------------------------------------------------- Polling */
@@ -999,19 +1005,16 @@
   async function poll() {
     if (polling || document.hidden) return;
     polling = true;
+    const generation = connectionGeneration;
     const t0 = performance.now();
     try {
       const data = await App.api.status();
+      if (generation !== connectionGeneration || data === lastLiveData) return;
       const latency = Math.round(performance.now() - t0);
       setText('pingMs', latency + ' ms');
-      if (data !== lastData || !online) {
-        if (deviceVisible(data && data.dev)) {
-          markOnline();
-        } else {
-          online = true;
-          failStreak = 0;
-        }
-        render(data, data === lastData ? lastUpdateTs : undefined);
+      if (markOnline(data && data.dev)) {
+        lastLiveData = data;
+        render(data);
       }
     } catch (err) {
       markOffline(err);
@@ -1043,40 +1046,18 @@
       App.api.onStatus(function (msg) {
         if (!msg || msg.__relay || msg.__device) return;  /* bağlantı olayları ayrı ele alınır */
         const at = Date.now();
-        if (lastData && Number(msg.t) && Number(msg.t) <= Number(lastData.t) &&
-            Number(msg.uptime) <= Number(lastData.uptime)) return;  /* eski kopyayı yut */
+        if (msg === lastLiveData || !markOnline(msg.dev)) return;
         setText('pingMs', Math.max(0, Date.now() - at + (msg.__rtt || 0)) + ' ms');
-        if (deviceVisible(msg && msg.dev)) {
-          markOnline();
-        } else {
-          online = true;
-          failStreak = 0;
-        }
+        lastLiveData = msg;
         render(msg);
       }),
       App.api.onStatus(function (msg) {
         if (!msg || !msg.__relay || msg.online) return;
-        online = false;
-        failStreak += 1;
-        if (lastData && deviceVisible(lastData.dev)) {
-          App.setConnBadge('offline', msg.msg || 'Cihaz çevrimdışı');
-          renderWidgetOffline();
-        } else {
-          paintNoDevice(lastData && lastData.dev);
-        }
-        setControlsEnabled(false);
+        markOffline({ reason: msg.msg || 'Bağlantı yok' });
       }),
       App.api.onStatus(function (msg) {
         if (!msg || !msg.__device || msg.online) return;
-        online = false;
-        failStreak += 1;
-        if (lastData && deviceVisible(lastData.dev)) {
-          App.setConnBadge('offline', msg.msg || 'Cihaz çevrimdışı');
-          renderWidgetOffline();
-        } else {
-          paintNoDevice(lastData && lastData.dev);
-        }
-        setControlsEnabled(false);
+        markOffline({ reason: msg.msg || 'Cihaz çevrimdışı' });
       })
     );
 
@@ -1105,8 +1086,10 @@
     if (btn) btn.classList.add('is-busy');
     try {
       const data = await App.api.control(device, action, value);
-      markOnline();
-      render(data);
+      if (data !== lastLiveData && markOnline(data && data.dev)) {
+        lastLiveData = data;
+        render(data);
+      }
       App.sound.chime();
       App.haptic(25);
       if (device === 'pump' && action === 'on') App.toast('Su motoru çalıştırıldı', { kind: 'ok' });
@@ -1409,18 +1392,16 @@
 
   /* -------------------------------- Ağ Durumu Senkronizasyonu (Online / Offline) */
   function setupNetworkSyncHandler() {
+    if (!$('homeWidget') && !$('eventLog')) return;
     window.addEventListener('offline', function () {
-      online = false;
-      App.setConnBadge('offline', 'İnternet yok');
-      syncModeLock();
-      renderWidgetOffline();
+      markOffline({ reason: 'İnternet yok' });
       App.toast('İnternet bağlantısı kesildi. Veriler yerel önbellekten okunuyor.', { kind: 'warn', duration: 4000 });
     });
 
     window.addEventListener('online', function () {
       App.setConnBadge('connecting', 'Canlıya Geçiliyor…');
       App.toast('Ağ bağlantısı kuruldu. Telemetri senkronize ediliyor...', { kind: 'ok', duration: 3000 });
-      if ($('homeWidget') || $('eventLog')) poll();
+      poll();
       if (App.api && App.api.transport() && typeof App.api.startMqtt === 'function') {
         try { App.api.startMqtt(); } catch (e) {}
       }

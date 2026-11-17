@@ -50,12 +50,14 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.lifecycle.Lifecycle;
 
 import com.google.firebase.messaging.FirebaseMessaging;
 
 import org.json.JSONObject;
 
 import java.lang.ref.WeakReference;
+import java.net.URI;
 import java.util.concurrent.Executor;
 
 /**
@@ -75,6 +77,7 @@ public class WebViewActivity extends FragmentActivity {
     private static final int NOTIFICATION_PERMISSION_REQUEST = 1002;
     private static final int LOCATION_PERMISSION_REQUEST = 1003;
     private static final String BRIDGE_NAME = "AndroidApp";
+    private static final long PAGE_RETRY_DELAY_MS = 750;
 
     /** FCM token'ı sayfaya iletmek için açık WebView'a zayıf referans. */
     private static WeakReference<WebViewActivity> INSTANCE = new WeakReference<>(null);
@@ -85,19 +88,27 @@ public class WebViewActivity extends FragmentActivity {
     private ProgressBar progressBar;
     private ScrollView errorView;
     private TextView errorText;
+    private Button retryButton;
+    private Button browserButton;
     private ValueCallback<Uri[]> filePathCallback;
     private GeolocationPermissions.Callback pendingGeoCallback;
     private String pendingGeoOrigin;
     private String startUrl;
+    private URI panelOrigin;
+    private String failedPageUrl;
+    private boolean automaticRetryUsed;
+    private Runnable automaticRetry;
     private long lastBackPress = 0L;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        String configuredUrl = getString(R.string.start_url);
+        panelOrigin = parseWebUrl(configuredUrl);
         startUrl = getIntent().getStringExtra(EXTRA_URL);
         if (startUrl == null || startUrl.trim().isEmpty()) {
-            startUrl = getString(R.string.start_url);
+            startUrl = configuredUrl;
         }
 
         INSTANCE = new WeakReference<>(this);
@@ -171,12 +182,7 @@ public class WebViewActivity extends FragmentActivity {
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
 
-        swipeRefresh.setOnRefreshListener(() -> {
-            if (webView != null) {
-                showWebContent();
-                webView.reload();
-            }
-        });
+        swipeRefresh.setOnRefreshListener(this::reloadPage);
         swipeRefresh.setOnChildScrollUpCallback((parent, child) ->
                 webView != null && webView.getScrollY() > 0);
 
@@ -193,7 +199,12 @@ public class WebViewActivity extends FragmentActivity {
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                return handleUri(request.getUrl());
+                boolean handled = handleUri(request.getUrl());
+                if (request.isForMainFrame() && request.hasGesture() && !request.isRedirect()) {
+                    cancelAutomaticRetry();
+                    if (!handled) automaticRetryUsed = false;
+                }
+                return handled;
             }
 
             @Override
@@ -203,11 +214,17 @@ public class WebViewActivity extends FragmentActivity {
 
             @Override
             public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
+                cancelAutomaticRetry();
                 if (googleSignIn != null) googleSignIn.cancel();
                 progressBar.setVisibility(View.VISIBLE);
                 if (errorView.getVisibility() != View.VISIBLE) {
                     showWebContent();
                 }
+            }
+
+            @Override
+            public void onPageCommitVisible(WebView view, String url) {
+                if (errorView.getVisibility() != View.VISIBLE) automaticRetryUsed = false;
             }
 
             @Override
@@ -224,10 +241,7 @@ public class WebViewActivity extends FragmentActivity {
             public void onReceivedError(WebView view, WebResourceRequest request,
                                         WebResourceError error) {
                 if (request.isForMainFrame()) {
-                    showError("Sayfa yüklenemedi.\n\n"
-                            + error.getDescription()
-                            + "\nKod: " + error.getErrorCode()
-                            + "\n" + request.getUrl());
+                    handlePageError(request, error);
                 }
             }
         });
@@ -235,6 +249,7 @@ public class WebViewActivity extends FragmentActivity {
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public void onProgressChanged(WebView view, int newProgress) {
+                if (errorView.getVisibility() == View.VISIBLE) return;
                 progressBar.setProgress(newProgress);
                 if (newProgress >= 100) {
                     progressBar.setVisibility(View.GONE);
@@ -353,31 +368,30 @@ public class WebViewActivity extends FragmentActivity {
         errorParams.topMargin = dp(12);
         content.addView(errorText, errorParams);
 
-        Button retry = new Button(this);
-        retry.setText("Tekrar dene");
-        retry.setAllCaps(false);
-        retry.setTextColor(getColor(R.color.app_background));
-        retry.setBackgroundTintList(ColorStateList.valueOf(getColor(R.color.app_on_background)));
-        retry.setMinHeight(dp(48));
-        retry.setOnClickListener(v -> {
-            showWebContent();
-            webView.loadUrl(startUrl);
-        });
+        retryButton = new Button(this);
+        retryButton.setText(R.string.web_retry);
+        retryButton.setAllCaps(false);
+        retryButton.setTextColor(getColor(R.color.app_background));
+        retryButton.setBackgroundTintList(ColorStateList.valueOf(getColor(R.color.app_on_background)));
+        retryButton.setMinHeight(dp(48));
+        retryButton.setOnClickListener(v -> reloadPage());
         LinearLayout.LayoutParams retryParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT);
         retryParams.topMargin = dp(20);
-        content.addView(retry, retryParams);
+        content.addView(retryButton, retryParams);
 
-        Button chrome = new Button(this);
-        chrome.setText("Chrome'da aç");
-        chrome.setAllCaps(false);
-        chrome.setTextColor(getColor(R.color.app_on_background));
-        chrome.setBackgroundTintList(ColorStateList.valueOf(getColor(R.color.app_sage)));
-        chrome.setMinHeight(dp(48));
-        chrome.setOnClickListener(v ->
-                MainActivity.openInChrome(this, currentUrl()));
-        content.addView(chrome, new LinearLayout.LayoutParams(
+        browserButton = new Button(this);
+        browserButton.setText(R.string.shortcut_chrome_short);
+        browserButton.setAllCaps(false);
+        browserButton.setTextColor(getColor(R.color.app_on_background));
+        browserButton.setBackgroundTintList(ColorStateList.valueOf(getColor(R.color.app_sage)));
+        browserButton.setMinHeight(dp(48));
+        browserButton.setOnClickListener(v -> {
+            cancelAutomaticRetry();
+            if (failedPageUrl != null) MainActivity.openInChrome(this, failedPageUrl);
+        });
+        content.addView(browserButton, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT));
 
@@ -387,6 +401,7 @@ public class WebViewActivity extends FragmentActivity {
     }
 
     private void showWebContent() {
+        failedPageUrl = null;
         if (errorView != null) errorView.setVisibility(View.GONE);
         if (swipeRefresh != null) {
             swipeRefresh.setVisibility(View.VISIBLE);
@@ -409,6 +424,80 @@ public class WebViewActivity extends FragmentActivity {
         errorText.setText(message);
     }
 
+    private void handlePageError(WebResourceRequest request, WebResourceError error) {
+        if (automaticRetry != null) return;
+        String url = request.getUrl().toString();
+        URI page = parseWebUrl(url);
+        boolean canRetry = page != null && "GET".equalsIgnoreCase(request.getMethod());
+        failedPageUrl = canRetry ? url : null;
+        retryButton.setVisibility(canRetry ? View.VISIBLE : View.GONE);
+        browserButton.setVisibility(canRetry ? View.VISIBLE : View.GONE);
+
+        int code = error.getErrorCode();
+        boolean transientConnectionError = code == WebViewClient.ERROR_CONNECT
+                || code == WebViewClient.ERROR_TIMEOUT
+                || (code == WebViewClient.ERROR_IO
+                    && "net::ERR_CONNECTION_RESET".contentEquals(error.getDescription()));
+        String message = getString(transientConnectionError
+                ? R.string.web_transport_error : R.string.web_load_error);
+        showError(message);
+
+        if (canRetry && transientConnectionError && isPanelUrl(page) && !automaticRetryUsed
+                && getLifecycle().getCurrentState().isAtLeast(Lifecycle.State.RESUMED)) {
+            automaticRetryUsed = true;
+            automaticRetry = () -> {
+                automaticRetry = null;
+                showWebContent();
+                webView.loadUrl(url);
+            };
+            errorView.postDelayed(automaticRetry, PAGE_RETRY_DELAY_MS);
+        }
+    }
+
+    private void reloadPage() {
+        if (webView == null) return;
+        boolean showingError = errorView.getVisibility() == View.VISIBLE;
+        String target = failedPageUrl;
+        if (showingError && target == null) return;
+        resetPageRecovery();
+        showWebContent();
+        if (showingError) webView.loadUrl(target);
+        else webView.reload();
+    }
+
+    private void resetPageRecovery() {
+        cancelAutomaticRetry();
+        automaticRetryUsed = false;
+    }
+
+    private void cancelAutomaticRetry() {
+        if (automaticRetry == null) return;
+        errorView.removeCallbacks(automaticRetry);
+        automaticRetry = null;
+    }
+
+    private boolean isPanelUrl(URI page) {
+        return panelOrigin != null && "https".equalsIgnoreCase(page.getScheme())
+                && "https".equalsIgnoreCase(panelOrigin.getScheme())
+                && panelOrigin.getHost().equalsIgnoreCase(page.getHost())
+                && (page.getPort() == -1 ? 443 : page.getPort())
+                    == (panelOrigin.getPort() == -1 ? 443 : panelOrigin.getPort());
+    }
+
+    private static URI parseWebUrl(String url) {
+        try {
+            URI page = URI.create(url);
+            if (page.getHost() != null && page.getRawUserInfo() == null
+                    && ("https".equalsIgnoreCase(page.getScheme())
+                        || "http".equalsIgnoreCase(page.getScheme()))) {
+                return page;
+            }
+        } catch (IllegalArgumentException ignored) {
+            // A malformed URL is never replayed.
+        }
+        return null;
+    }
+
     private void showAppMenu() {
         final String[] items = {
                 "Yenile",
@@ -421,8 +510,7 @@ public class WebViewActivity extends FragmentActivity {
                 .setItems(items, (dialog, which) -> {
                     switch (which) {
                         case 0:
-                            showWebContent();
-                            if (webView != null) webView.reload();
+                            reloadPage();
                             break;
                         case 1:
                             MainActivity.openInChrome(this, currentUrl());
@@ -609,12 +697,7 @@ public class WebViewActivity extends FragmentActivity {
 
         @JavascriptInterface
         public void reloadPage() {
-            runOnUiThread(() -> {
-                if (webView != null) {
-                    showWebContent();
-                    webView.reload();
-                }
-            });
+            runOnUiThread(WebViewActivity.this::reloadPage);
         }
 
         @JavascriptInterface
@@ -841,6 +924,7 @@ public class WebViewActivity extends FragmentActivity {
         if ((fromShortcut || fromNotification)
                 && url != null && !url.trim().isEmpty() && webView != null) {
             startUrl = url;
+            resetPageRecovery();
             showWebContent();
             webView.loadUrl(url);
         }
@@ -884,9 +968,12 @@ public class WebViewActivity extends FragmentActivity {
     @Override
     public void onBackPressed() {
         if (webView != null && webView.canGoBack()) {
+            resetPageRecovery();
+            if (errorView.getVisibility() == View.VISIBLE) showWebContent();
             webView.goBack();
             return;
         }
+        cancelAutomaticRetry();
         long now = System.currentTimeMillis();
         if (now - lastBackPress <= 2200) {
             super.onBackPressed();
@@ -898,6 +985,7 @@ public class WebViewActivity extends FragmentActivity {
 
     @Override
     protected void onPause() {
+        cancelAutomaticRetry();
         if (webView != null) {
             webView.onPause();
         }
@@ -916,6 +1004,7 @@ public class WebViewActivity extends FragmentActivity {
     @Override
     protected void onDestroy() {
         INSTANCE = new WeakReference<>(null);
+        cancelAutomaticRetry();
         if (googleSignIn != null) googleSignIn.cancel();
         if (webView != null) {
             webView.removeJavascriptInterface(BRIDGE_NAME);

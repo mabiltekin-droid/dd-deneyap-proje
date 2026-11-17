@@ -551,25 +551,33 @@
       updateViaCache: 'none'
     })
       .then(function (reg) {
-        if (!App._swVisibilityBound) {
-          App._swVisibilityBound = true;
-          let checkedAt = Date.now();
-          document.addEventListener('visibilitychange', function () {
-            if (document.hidden || Date.now() - checkedAt < 5 * 60 * 1000) return;
-            checkedAt = Date.now();
-            checkForUpdate(reg);
+        if (App._swVisibilityBound) return reg;
+        App._swVisibilityBound = true;
+        let checkedAt = Date.now();
+        let warmedAt = 0;
+        function warmCache() {
+          if (document.hidden || navigator.onLine === false || navigator.connection?.saveData) return;
+          if (Date.now() - warmedAt < 60 * 1000) return;
+          warmedAt = Date.now();
+          navigator.serviceWorker.ready.then(function (registration) {
+            registration.active?.postMessage({ type: 'CACHE_OFFLINE' });
           });
         }
-        const afterLoad = function () {
-          const warmCache = function () {
-            if (document.hidden || navigator.connection?.saveData) return;
-            navigator.serviceWorker.ready.then(function (registration) {
-              registration.active?.postMessage({ type: 'CACHE_OFFLINE' });
-            });
-          };
+        document.addEventListener('visibilitychange', function () {
+          if (document.hidden) return;
+          warmCache();
+          if (Date.now() - checkedAt < 5 * 60 * 1000) return;
+          checkedAt = Date.now();
+          checkForUpdate(reg);
+        });
+        window.addEventListener('online', function () {
+          warmedAt = 0;
+          warmCache();
+        });
+        function afterLoad() {
           if ('requestIdleCallback' in window) window.requestIdleCallback(warmCache);
           else setTimeout(warmCache, 2500);
-        };
+        }
         if (document.readyState === 'complete') afterLoad();
         else window.addEventListener('load', afterLoad, { once: true });
         return reg;

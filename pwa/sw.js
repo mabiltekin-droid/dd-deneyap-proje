@@ -1,8 +1,10 @@
 /* HTML stays network-first. Versioned static assets are cached for reuse. */
 const VERSION = '2.31.0';
-const CACHE = 'deneyap-pwa-v' + VERSION + '-r18';
-const SHELL = './index.html';
 const ASSET_VERSION = '';
+const CACHE_PREFIX = 'deneyap-pwa-v';
+const CACHE = CACHE_PREFIX + VERSION + '-r19-' + (ASSET_VERSION || 'dev');
+const SHELL = './index.html';
+const NAVIGATION_TIMEOUT_MS = 6000;
 
 const PRECACHE = [
   './',
@@ -70,28 +72,31 @@ const PRECACHE = [
 
 const DEFERRED = /(?:vendor\/|shaders\.js|tier\.js|1200\.webp|icon-512|logo-(mark|symbol))/;
 const VERSIONED = /^\.\/(css|js)\//;
+const PAGES = new Set(['index', 'settings', 'events', 'privacy', 'earthquake']);
 
 function precacheUrl(path) {
-  return ASSET_VERSION && VERSIONED.test(path)
-    ? path + '?v=' + ASSET_VERSION : path;
+  if (!ASSET_VERSION) return path;
+  if (VERSIONED.test(path)) return path + '?v=' + ASSET_VERSION;
+  if (path === SHELL) return './';
+  return path.endsWith('.html') ? path.slice(0, -5) : path;
 }
 
 self.addEventListener('install', function (event) {
   event.waitUntil(caches.open(CACHE).then(async function (cache) {
-    try {
-      await cache.add(SHELL);
-    } catch (_) {
-      await cache.add('./');
-    }
+    await cache.add(precacheUrl(SHELL));
     return self.skipWaiting();
   }));
 });
 
 self.addEventListener('activate', function (event) {
   event.waitUntil(caches.keys().then(async function (keys) {
-    await Promise.all(keys.filter(key => key.startsWith('deneyap-pwa-v') && key !== CACHE)
-      .map(key => caches.delete(key)));
-    if (self.registration.navigationPreload) await self.registration.navigationPreload.enable();
+    const appCaches = keys.filter(key => key.startsWith(CACHE_PREFIX));
+    const position = appCaches.indexOf(CACHE);
+    // Keep one previous build so an interrupted update can still open warmed pages.
+    await Promise.all(appCaches.slice(0, Math.max(0, position - 1)).map(key => caches.delete(key)));
+    if (self.registration.navigationPreload) {
+      await self.registration.navigationPreload.enable().catch(function () {});
+    }
     await self.clients.claim();
   }));
 });
@@ -99,17 +104,13 @@ self.addEventListener('activate', function (event) {
 async function cacheOfflinePages() {
   const cache = await caches.open(CACHE);
   const paths = PRECACHE.filter(path => !DEFERRED.test(path)
-    && !['./', SHELL, './sw.js'].includes(path));
+    && !['./', SHELL, './sw.js'].includes(path))
+    .sort((left, right) => Number(VERSIONED.test(right)) - Number(VERSIONED.test(left)));
   // Small batches keep offline preparation from competing with page load.
   for (let offset = 0; offset < paths.length; offset += 4) {
     await Promise.all(paths.slice(offset, offset + 4).map(async function (path) {
       const url = precacheUrl(path);
       if (!(await cache.match(url))) await cache.add(url).catch(function () {});
-      if (ASSET_VERSION && path.endsWith('.html')) {
-        const canonical = path === SHELL ? './' : path.slice(0, -5);
-        const stored = await cache.match(url);
-        if (stored && !(await cache.match(canonical))) await cache.put(canonical, stored);
-      }
     }));
   }
 }
@@ -121,7 +122,7 @@ self.addEventListener('message', function (event) {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   } else if (event.data && event.data.type === 'CACHE_OFFLINE' && !warmup) {
-    warmup = cacheOfflinePages();
+    warmup = cacheOfflinePages().finally(function () { warmup = null; });
     event.waitUntil(warmup);
   }
 });
@@ -180,30 +181,83 @@ self.addEventListener('pushsubscriptionchange', function (event) {
   event.waitUntil(Promise.resolve());
 });
 
-/* Navigation and unversioned assets are checked against the server. */
+function pageKeys(url) {
+  const name = url.pathname.replace(/^\//, '').replace(/\/$|\.html$/g, '') || 'index';
+  if (!PAGES.has(name)) return [];
+  const paths = name === 'index' ? ['/', '/index.html', '/index'] : ['/' + name, '/' + name + '.html'];
+  return paths.map(path => new URL(path, url.origin));
+}
+
+async function matchEntries(cache, keys, accept) {
+  for (const key of keys) {
+    const cached = await cache.match(key);
+    if (cached && accept(cached)) return cached;
+  }
+  return null;
+}
+
+async function matchOffline(cache, keys, accept) {
+  if (!keys.length) return null;
+  const cached = await matchEntries(cache, keys, accept);
+  if (cached) return cached;
+  const versions = (await caches.keys()).filter(key => key.startsWith(CACHE_PREFIX));
+  const previous = versions[versions.indexOf(CACHE) - 1];
+  return previous ? matchEntries(await caches.open(previous), keys, accept) : null;
+}
+
+function isPage(response) {
+  return response.ok && (response.headers.get('content-type') || '').includes('text/html');
+}
+
+function isUnavailable(response) {
+  return response.type === 'error' || [502, 503, 504].includes(response.status);
+}
+
+async function loadNavigation(event) {
+  // A failed preload rejects independently of the next connection attempt.
+  const preload = await Promise.resolve(event.preloadResponse).catch(function () {});
+  return preload && !isUnavailable(preload) ? preload : fetch(event.request);
+}
+
+async function serveNavigation(event, url, cache) {
+  const network = loadNavigation(event).catch(() => Response.error());
+  const keys = pageKeys(url);
+  const offline = await matchOffline(cache, keys, isPage).catch(() => null);
+  let timer;
+  try {
+    const response = offline ? await Promise.race([
+      network, new Promise(resolve => { timer = setTimeout(resolve, NAVIGATION_TIMEOUT_MS, offline); })
+    ]) : await network;
+    if (response === offline) return offline;
+    if (offline && isUnavailable(response)) return offline;
+    if (keys.length && !url.search && isPage(response) && response.type === 'basic' && !response.redirected) {
+      event.waitUntil(cache.put(event.request, response.clone()).catch(function () {}));
+    }
+    return response;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function serve(event, url) {
   const request = event.request;
-  const cache = await caches.open(CACHE);
-  const navigation = request.mode === 'navigate';
-  const versioned = !navigation && ASSET_VERSION && url.searchParams.get('v') === ASSET_VERSION;
-  if (versioned) {
-    const cached = await cache.match(request);
+  const cache = await caches.open(CACHE).catch(() => null);
+  if (request.mode === 'navigate') return cache ? serveNavigation(event, url, cache) : loadNavigation(event);
+  if (!cache) return fetch(request);
+
+  const version = /^\/(css|js)\//.test(url.pathname) && url.searchParams.get('v');
+  if (version) {
+    const cached = await matchOffline(cache, [request], response => response.ok).catch(() => null);
     if (cached) return cached;
   }
   try {
-    const response = (navigation && await event.preloadResponse) || await fetch(request);
-    if (response.ok && response.type === 'basic') {
+    const response = await fetch(request);
+    if (response.ok && response.type === 'basic' && (!version || version === ASSET_VERSION)) {
       event.waitUntil(cache.put(request, response.clone()).catch(function () {}));
     }
     return response;
   } catch (error) {
-    let fallback = await cache.match(request, { ignoreSearch: navigation });
-    if (!fallback && navigation) {
-      const path = url.pathname.replace(/\/$/, '');
-      const page = new URL(path.endsWith('.html') ? path : path + '.html', url.origin);
-      fallback = await cache.match(page) || await cache.match(SHELL);
-    }
-    if (!fallback && !navigation && url.search) fallback = await cache.match(request, { ignoreSearch: true });
+    const fallback = version ? null : await matchOffline(cache, [request], response => response.ok);
     return fallback || Response.error();
   }
 }
