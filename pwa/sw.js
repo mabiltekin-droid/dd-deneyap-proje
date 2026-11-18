@@ -2,7 +2,7 @@
 const VERSION = '2.31.0';
 const ASSET_VERSION = '';
 const CACHE_PREFIX = 'deneyap-pwa-v';
-const CACHE = CACHE_PREFIX + VERSION + '-r20-' + (ASSET_VERSION || 'dev');
+const CACHE = CACHE_PREFIX + VERSION + '-r21-' + (ASSET_VERSION || 'dev');
 const SHELL = './index.html';
 const NAVIGATION_TIMEOUT_MS = 6000;
 
@@ -20,8 +20,6 @@ const PRECACHE = [
   './css/sakin-secondary.css',
   './css/events-page.css',
   './css/house3d.css',
-  './images/ev-kesiti-640.webp',
-  './images/ev-kesiti-1200.webp',
   './fonts/dm-sans-latin.woff2',
   './fonts/dm-sans-latin-ext.woff2',
   './fonts/fraunces-latin.woff2',
@@ -72,11 +70,10 @@ const PRECACHE = [
   './icons/icon-512.png',
   './icons/maskable-512.png',
   './icons/logo-mark.svg',
-  './icons/logo-symbol.svg',
   './sw.js'
 ];
 
-const DEFERRED = /(?:vendor\/|shaders\.js|tier\.js|1200\.webp|icon-512|logo-(mark|symbol))/;
+const DEFERRED = /(?:vendor\/|shaders\.js|tier\.js|icon-512|logo-mark)/;
 const VERSIONED = /^\.\/(css|js)\//;
 const PAGES = new Set(['index', 'settings', 'events', 'privacy', 'earthquake']);
 

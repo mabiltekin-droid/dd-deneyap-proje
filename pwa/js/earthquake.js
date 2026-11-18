@@ -382,6 +382,17 @@
     updateCountdown();
     sendNotification(event, seconds);
 
+    const quiet = !!(window.App && window.App.Automation && window.App.Automation.isQuiet && window.App.Automation.isQuiet());
+    if (!quiet && window.App && window.App.sound && typeof window.App.sound.quakeAlarm === 'function') {
+      window.App.sound.quakeAlarm();
+    }
+    if (window.App && window.App.voice && typeof window.App.voice.speak === 'function') {
+      const msg = seconds != null
+        ? ('Deprem uyarısı! ' + event.location + ' bölgesi. Tahmini S dalgası ' + Math.ceil(seconds) + ' saniye içinde ulaşabilir.')
+        : ('Deprem uyarısı! ' + event.location + ' bölgesinde M' + Number(event.magnitude).toFixed(1) + ' büyüklüğünde deprem kaydedildi.');
+      window.App.voice.speak(msg, { force: Number(event.magnitude) >= 4.5 });
+    }
+
     if (state.alertHideTimer) clearTimeout(state.alertHideTimer);
     state.alertHideTimer = setTimeout(function () {
       if (state.active && state.active.event.id === event.id) clearActiveAlert();

@@ -13,9 +13,10 @@
   width: 100%;
   min-width: 0;
   max-width: 100%;
-  aspect-ratio: 3 / 2;
-  min-height: 360px;
+  aspect-ratio: auto;
+  min-height: 390px;
   height: 100%;
+  overflow: clip;
   background: linear-gradient(165deg, #efe4d2 0%, #e5d5bc 62%, #d8c6aa 100%);
   border: 1px solid var(--border);
   box-sizing: border-box;

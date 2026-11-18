@@ -13,10 +13,23 @@
   var root = document.documentElement;
   var moreDialog = null;
 
+  function disableNativeWebViewAutofill() {
+    if (!root.classList.contains('android-app')) return;
+    try {
+      var nodes = document.querySelectorAll('form, input[type="password"], input[type="email"], input[autocomplete]');
+      for (var i = 0; i < nodes.length; i++) {
+        nodes[i].setAttribute('autocomplete', 'off');
+      }
+    } catch (e) { /* yoksay */ }
+  }
+
   function addAppClass() {
     try {
       if (window.AndroidApp && typeof window.AndroidApp.platform === 'function') {
-        if (window.AndroidApp.platform() === 'android') root.classList.add('android-app');
+        if (window.AndroidApp.platform() === 'android') {
+          root.classList.add('android-app');
+          disableNativeWebViewAutofill();
+        }
       }
     } catch (e) {
       /* Köprü yoksa normal web sitesi davranışı devam eder. */
@@ -70,6 +83,12 @@
     var kind = pageKind();
     var isIndex = kind === 'index';
     var prefix = isIndex ? '' : './';
+    var ext = '.html';
+    var navHint = document.querySelector('.nav-settings-pill, .header-nav a[href*="events"], .bottom-nav a[href*="events"]');
+    if (navHint) {
+      var navHref = navHint.getAttribute('href') || '';
+      if (navHref.indexOf('.html') === -1) ext = '';
+    }
 
     var dlg = document.createElement('dialog');
     dlg.id = 'mobileMoreDialog';
@@ -95,15 +114,15 @@
             '<span class="mmd-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M15 2v2M9 2v2M20 15h2M20 9h2M9 20v2M15 20v2M2 9h2M2 15h2"/></svg></span>' +
             '<span class="mmd-txt"><strong>Sistem</strong><small>Bağlantı, bellek ve kart durumu</small></span>' +
           '</a>' +
-          '<a class="mmd-item' + (kind === 'earthquake' ? ' active' : '') + '" href="./earthquake.html"' + (kind === 'earthquake' ? ' aria-current="page"' : '') + '>' +
+          '<a class="mmd-item' + (kind === 'earthquake' ? ' active' : '') + '" href="./earthquake' + ext + '"' + (kind === 'earthquake' ? ' aria-current="page"' : '') + '>' +
             '<span class="mmd-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2"/><path d="M8.5 8.5a5 5 0 0 0 0 7"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M5.2 5.2a9.6 9.6 0 0 0 0 13.6"/><path d="M18.8 5.2a9.6 9.6 0 0 1 0 13.6"/></svg></span>' +
             '<span class="mmd-txt"><strong>Deprem</strong><small>EMSC canlı sismik akış</small></span>' +
           '</a>' +
-          '<a class="mmd-item' + (kind === 'settings' ? ' active' : '') + '" href="./settings.html"' + (kind === 'settings' ? ' aria-current="page"' : '') + '>' +
+          '<a class="mmd-item' + (kind === 'settings' ? ' active' : '') + '" href="./settings' + ext + '"' + (kind === 'settings' ? ' aria-current="page"' : '') + '>' +
             '<span class="mmd-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></span>' +
             '<span class="mmd-txt"><strong>Ayarlar</strong><small>Cihaz, eşikler ve bildirimler</small></span>' +
           '</a>' +
-          '<a class="mmd-item" href="./settings.html#accountCard">' +
+          '<a class="mmd-item" href="./settings' + ext + '#accountCard">' +
             '<span class="mmd-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>' +
             '<span class="mmd-txt"><strong>Hesap ve roller</strong><small>Oturum ve aile erişimi</small></span>' +
           '</a>' +
@@ -119,7 +138,7 @@
         '</nav>' +
         '<div class="mmd-foot">' +
           '<button type="button" class="btn sm ghost" id="mobileMoreInstallBtn" hidden>Uygulamayı indir</button>' +
-          '<a class="btn sm ghost" href="./privacy.html">Gizlilik</a>' +
+          '<a class="btn sm ghost" href="./privacy' + ext + '">Gizlilik</a>' +
         '</div>' +
       '</div>';
 
@@ -222,8 +241,12 @@
   addAppClass();
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', buildMoreDialog);
+    document.addEventListener('DOMContentLoaded', function () {
+      disableNativeWebViewAutofill();
+      buildMoreDialog();
+    });
   } else {
+    disableNativeWebViewAutofill();
     buildMoreDialog();
   }
 

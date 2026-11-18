@@ -405,6 +405,12 @@
   window.addEventListener('pointerdown', unlockAudio, { passive: true });
   window.addEventListener('touchstart', unlockAudio, { passive: true });
 
+  function soundGain(base) {
+    const raw = Number(settings.sndVolume);
+    const pct = isFinite(raw) ? Math.max(15, Math.min(100, raw)) : 70;
+    return base * (pct / 100);
+  }
+
   App.sound = {
     click: function () {
       if (!settings.soundEnabled) return;
@@ -417,7 +423,7 @@
         const now = ctx.currentTime;
         osc.frequency.setValueAtTime(820, now);
         osc.frequency.exponentialRampToValueAtTime(360, now + 0.035);
-        gain.gain.setValueAtTime(0.06, now);
+        gain.gain.setValueAtTime(soundGain(0.08), now);
         gain.gain.exponentialRampToValueAtTime(0.001, now + 0.035);
         osc.connect(gain);
         gain.connect(ctx.destination);
@@ -438,7 +444,7 @@
           osc.type = 'sine';
           const t = ctx.currentTime + i * 0.055;
           osc.frequency.setValueAtTime(f, t);
-          gain.gain.setValueAtTime(0.05, t);
+          gain.gain.setValueAtTime(soundGain(0.07), t);
           gain.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
           osc.connect(gain);
           gain.connect(ctx.destination);
@@ -448,7 +454,7 @@
       } catch (e) { /* yoksay */ }
     },
 
-    /* FM Osilatör Sentezleyicisi (Reactor FM Synthesis Alarm) */
+    /* FM Osilatör Sentezleyicisi (Reactor FM Synthesis Alarm — Gaz Kaçağı) */
     alarm: function (intensity) {
       if (!settings.soundEnabled) return;
       try {
@@ -485,9 +491,9 @@
         modulator.connect(modGain);
         modGain.connect(carrier.frequency);
 
-        // Çıkış Zarfı (Düşük ses seviyesi: gain <= 0.08)
+        // Çıkış Zarfı
         masterGain.gain.setValueAtTime(0.001, now);
-        masterGain.gain.linearRampToValueAtTime(0.075, now + 0.035);
+        masterGain.gain.linearRampToValueAtTime(soundGain(0.11), now + 0.035);
         masterGain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
 
         carrier.connect(masterGain);
@@ -497,6 +503,108 @@
         modulator.start(now);
         carrier.stop(now + dur);
         modulator.stop(now + dur);
+      } catch (e) { /* yoksay */ }
+    },
+
+    /* Alev / yangın alarmı: yüksek aciliyetli çift darbeli siren (880Hz <-> 1320Hz) */
+    fireAlarm: function () {
+      if (!settings.soundEnabled) return;
+      try {
+        const ctx = getAudioCtx();
+        if (!ctx) return;
+        const peak = soundGain(0.11);
+        [0, 0.27].forEach(function (offset) {
+          const t = ctx.currentTime + offset;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(880, t);
+          osc.frequency.linearRampToValueAtTime(1320, t + 0.12);
+          osc.frequency.linearRampToValueAtTime(880, t + 0.24);
+          gain.gain.setValueAtTime(0.001, t);
+          gain.gain.linearRampToValueAtTime(peak, t + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.24);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(t);
+          osc.stop(t + 0.25);
+        });
+      } catch (e) { /* yoksay */ }
+    },
+
+    /* Sarsıntı / deprem / kurcalama alarmı: üç darbeli sismik uyarı (260Hz -> 520Hz) */
+    quakeAlarm: function () {
+      if (!settings.soundEnabled) return;
+      try {
+        const ctx = getAudioCtx();
+        if (!ctx) return;
+        const peak = soundGain(0.12);
+        [0, 0.2, 0.4].forEach(function (offset) {
+          const t = ctx.currentTime + offset;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(260, t);
+          osc.frequency.exponentialRampToValueAtTime(520, t + 0.14);
+          gain.gain.setValueAtTime(0.001, t);
+          gain.gain.linearRampToValueAtTime(peak, t + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.17);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(t);
+          osc.stop(t + 0.18);
+        });
+      } catch (e) { /* yoksay */ }
+    },
+
+    /* Su baskını / sel alarmı: yükselen çift dalgalı hidro-uyarı (380Hz -> 740Hz) */
+    floodAlarm: function () {
+      if (!settings.soundEnabled) return;
+      try {
+        const ctx = getAudioCtx();
+        if (!ctx) return;
+        const peak = soundGain(0.11);
+        [0, 0.28].forEach(function (offset) {
+          const t = ctx.currentTime + offset;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(380, t);
+          osc.frequency.exponentialRampToValueAtTime(740, t + 0.22);
+          gain.gain.setValueAtTime(0.001, t);
+          gain.gain.linearRampToValueAtTime(peak, t + 0.03);
+          gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.24);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(t);
+          osc.stop(t + 0.25);
+        });
+      } catch (e) { /* yoksay */ }
+    },
+
+    /* Gaz uyarısı, sensör arızası ve yağmur için nazik çift notalı ikaz tonu */
+    warnTone: function (kind) {
+      if (!settings.soundEnabled) return;
+      try {
+        const ctx = getAudioCtx();
+        if (!ctx) return;
+        const notes = kind === 'rain' ? [659.25, 880]
+          : (kind === 'fault' ? [440, 369.99] : [587.33, 493.88]);
+        const peak = soundGain(kind === 'rain' ? 0.065 : 0.085);
+        notes.forEach(function (freq, idx) {
+          const t = ctx.currentTime + idx * 0.14;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = kind === 'fault' ? 'triangle' : 'sine';
+          osc.frequency.setValueAtTime(freq, t);
+          gain.gain.setValueAtTime(0.001, t);
+          gain.gain.linearRampToValueAtTime(peak, t + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(t);
+          osc.stop(t + 0.15);
+        });
       } catch (e) { /* yoksay */ }
     }
   };

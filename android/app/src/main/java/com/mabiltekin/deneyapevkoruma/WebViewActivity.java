@@ -14,11 +14,14 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.util.SparseArray;
 import android.view.Gravity;
 import android.view.HapticFeedbackConstants;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewStructure;
 import android.view.Window;
+import android.view.autofill.AutofillValue;
 import android.webkit.CookieManager;
 import android.webkit.GeolocationPermissions;
 import android.webkit.JavascriptInterface;
@@ -50,6 +53,7 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.lifecycle.Lifecycle;
 
 import com.google.firebase.messaging.FirebaseMessaging;
@@ -120,8 +124,11 @@ public class WebViewActivity extends FragmentActivity {
         window.setStatusBarColor(background);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             window.setNavigationBarColor(background);
-            WindowCompat.getInsetsController(window, window.getDecorView())
-                    .setAppearanceLightNavigationBars(true);
+            WindowInsetsControllerCompat controller =
+                    WindowCompat.getInsetsController(window, window.getDecorView());
+            if (controller != null) {
+                controller.setAppearanceLightNavigationBars(true);
+            }
         }
         WindowCompat.setDecorFitsSystemWindows(window, false);
 
@@ -145,7 +152,46 @@ public class WebViewActivity extends FragmentActivity {
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
 
-        webView = new WebView(this);
+        webView = new WebView(this) {
+            @Override
+            public void onProvideAutofillVirtualStructure(ViewStructure structure, int flags) {
+                try {
+                    super.onProvideAutofillVirtualStructure(structure, flags);
+                } catch (Throwable ignored) {
+                    // Android 14-16 WebView autofill/CredMan köprüsü sanal yapı hatasında çökmesin.
+                }
+            }
+
+            @Override
+            public void onProvideVirtualStructure(ViewStructure structure) {
+                try {
+                    super.onProvideVirtualStructure(structure);
+                } catch (Throwable ignored) {
+                    // Sanal erişilebilirlik/autofill yapısı kurulamadıysa sessizce yoksay.
+                }
+            }
+
+            @Override
+            public void autofill(SparseArray<AutofillValue> values) {
+                try {
+                    super.autofill(values);
+                } catch (Throwable ignored) {
+                    // Otomatik doldurma yanıtı eşleşmezse WebView çökmesin.
+                }
+            }
+
+            @Override
+            public void autofill(AutofillValue value) {
+                try {
+                    super.autofill(value);
+                } catch (Throwable ignored) {
+                    // Tekil otomatik doldurma hatasında çökmesin.
+                }
+            }
+        };
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            webView.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS);
+        }
         webView.setBackgroundColor(background);
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
         webView.setNestedScrollingEnabled(true);
@@ -425,7 +471,7 @@ public class WebViewActivity extends FragmentActivity {
     }
 
     private void handlePageError(WebResourceRequest request, WebResourceError error) {
-        if (automaticRetry != null) return;
+        if (automaticRetry != null || request == null || request.getUrl() == null) return;
         String url = request.getUrl().toString();
         URI page = parseWebUrl(url);
         boolean canRetry = page != null && "GET".equalsIgnoreCase(request.getMethod());
@@ -433,11 +479,13 @@ public class WebViewActivity extends FragmentActivity {
         retryButton.setVisibility(canRetry ? View.VISIBLE : View.GONE);
         browserButton.setVisibility(canRetry ? View.VISIBLE : View.GONE);
 
-        int code = error.getErrorCode();
+        int code = error != null ? error.getErrorCode() : WebViewClient.ERROR_UNKNOWN;
+        CharSequence desc = error != null ? error.getDescription() : null;
         boolean transientConnectionError = code == WebViewClient.ERROR_CONNECT
                 || code == WebViewClient.ERROR_TIMEOUT
                 || (code == WebViewClient.ERROR_IO
-                    && "net::ERR_CONNECTION_RESET".contentEquals(error.getDescription()));
+                    && desc != null
+                    && "net::ERR_CONNECTION_RESET".contentEquals(desc));
         String message = getString(transientConnectionError
                 ? R.string.web_transport_error : R.string.web_load_error);
         showError(message);
@@ -596,16 +644,20 @@ public class WebViewActivity extends FragmentActivity {
     }
 
     private String permissionState() {
-        if (AppNotifications.hasPermission(this)) return "granted";
-        if (Build.VERSION.SDK_INT >= 33) {
-            boolean asked = AppNotifications.prefs(this)
-                    .getBoolean(AppNotifications.KEY_NOTIF_ASKED, false);
-            boolean rationale = shouldShowRequestPermissionRationale(
-                    Manifest.permission.POST_NOTIFICATIONS);
-            if (asked && !rationale) return "denied";
+        try {
+            if (AppNotifications.hasPermission(this)) return "granted";
+            if (Build.VERSION.SDK_INT >= 33) {
+                boolean asked = AppNotifications.prefs(this)
+                        .getBoolean(AppNotifications.KEY_NOTIF_ASKED, false);
+                boolean rationale = shouldShowRequestPermissionRationale(
+                        Manifest.permission.POST_NOTIFICATIONS);
+                if (asked && !rationale) return "denied";
+                return "default";
+            }
+            return "denied";
+        } catch (Throwable ignored) {
             return "default";
         }
-        return "denied";
     }
 
     private boolean handleUri(Uri uri) {
@@ -672,115 +724,162 @@ public class WebViewActivity extends FragmentActivity {
 
         @JavascriptInterface
         public String version() {
-            return appVersion();
+            try {
+                return appVersion();
+            } catch (Throwable ignored) {
+                return "2.31.0";
+            }
         }
 
         @JavascriptInterface
         public void haptic() {
-            runOnUiThread(() -> {
-                if (webView != null) {
-                    webView.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
-                }
-            });
+            try {
+                runOnUiThread(() -> {
+                    try {
+                        if (webView != null) {
+                            webView.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
+                        }
+                    } catch (Throwable ignored) { /* yoksay */ }
+                });
+            } catch (Throwable ignored) { /* yoksay */ }
         }
 
         @JavascriptInterface
         public void openMenu() {
-            runOnUiThread(WebViewActivity.this::showAppMenu);
+            try {
+                runOnUiThread(() -> {
+                    try { showAppMenu(); } catch (Throwable ignored) { /* yoksay */ }
+                });
+            } catch (Throwable ignored) { /* yoksay */ }
         }
 
         @JavascriptInterface
         public void openInChrome() {
-            runOnUiThread(() ->
-                    MainActivity.openInChrome(WebViewActivity.this, currentUrl()));
+            try {
+                runOnUiThread(() -> {
+                    try {
+                        MainActivity.openInChrome(WebViewActivity.this, currentUrl());
+                    } catch (Throwable ignored) { /* yoksay */ }
+                });
+            } catch (Throwable ignored) { /* yoksay */ }
         }
 
         @JavascriptInterface
         public void reloadPage() {
-            runOnUiThread(WebViewActivity.this::reloadPage);
+            try {
+                runOnUiThread(() -> {
+                    try { WebViewActivity.this.reloadPage(); } catch (Throwable ignored) { /* yoksay */ }
+                });
+            } catch (Throwable ignored) { /* yoksay */ }
         }
 
         @JavascriptInterface
         public void sharePage() {
-            runOnUiThread(WebViewActivity.this::shareCurrentPage);
+            try {
+                runOnUiThread(() -> {
+                    try { shareCurrentPage(); } catch (Throwable ignored) { /* yoksay */ }
+                });
+            } catch (Throwable ignored) { /* yoksay */ }
         }
 
         /* ------------------------------------------------ FCM / bildirimler */
 
         @JavascriptInterface
         public String fcmToken() {
-            String token = AppNotifications.prefs(WebViewActivity.this)
-                    .getString(AppNotifications.KEY_FCM_TOKEN, "");
-            if (token == null || token.trim().isEmpty()) {
-                ensureFcmToken();
+            try {
+                String token = AppNotifications.prefs(WebViewActivity.this)
+                        .getString(AppNotifications.KEY_FCM_TOKEN, "");
+                if (token == null || token.trim().isEmpty()) {
+                    ensureFcmToken();
+                }
+                return token == null ? "" : token;
+            } catch (Throwable ignored) {
+                return "";
             }
-            return token == null ? "" : token;
         }
 
         @JavascriptInterface
         public String notificationPermission() {
-            return permissionState();
+            try {
+                return permissionState();
+            } catch (Throwable ignored) {
+                return "default";
+            }
         }
 
         @JavascriptInterface
         public boolean requestNotifications() {
-            if (AppNotifications.hasPermission(WebViewActivity.this)) return true;
-            runOnUiThread(() -> AppNotifications.requestPermission(
-                    WebViewActivity.this, NOTIFICATION_PERMISSION_REQUEST));
-            return false;
+            try {
+                if (AppNotifications.hasPermission(WebViewActivity.this)) return true;
+                runOnUiThread(() -> {
+                    try {
+                        AppNotifications.requestPermission(
+                                WebViewActivity.this, NOTIFICATION_PERMISSION_REQUEST);
+                    } catch (Throwable ignored) { /* yoksay */ }
+                });
+                return false;
+            } catch (Throwable ignored) {
+                return false;
+            }
         }
 
         @JavascriptInterface
         public boolean statusNotificationEnabled() {
-            return AppNotifications.statusEnabled(WebViewActivity.this);
+            try {
+                return AppNotifications.statusEnabled(WebViewActivity.this);
+            } catch (Throwable ignored) {
+                return false;
+            }
         }
 
         @JavascriptInterface
         public void authenticate(final String callbackId) {
-            runOnUiThread(() -> {
-                try {
-                    BiometricManager biometricManager = BiometricManager.from(WebViewActivity.this);
-                    if (biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG | BiometricManager.Authenticators.DEVICE_CREDENTIAL)
-                            != BiometricManager.BIOMETRIC_SUCCESS) {
+            try {
+                runOnUiThread(() -> {
+                    try {
+                        BiometricManager biometricManager = BiometricManager.from(WebViewActivity.this);
+                        if (biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG | BiometricManager.Authenticators.DEVICE_CREDENTIAL)
+                                != BiometricManager.BIOMETRIC_SUCCESS) {
+                            if (webView != null) {
+                                webView.evaluateJavascript("window._onBiometricResult && window._onBiometricResult('" + callbackId + "', true, 'Biyometrik kilit devrede değil');", null);
+                            }
+                            return;
+                        }
+
+                        Executor executor = ContextCompat.getMainExecutor(WebViewActivity.this);
+                        BiometricPrompt biometricPrompt = new BiometricPrompt((FragmentActivity) WebViewActivity.this,
+                                executor, new BiometricPrompt.AuthenticationCallback() {
+                            @Override
+                            public void onAuthenticationError(int errorCode, @NonNull CharSequence errString) {
+                                super.onAuthenticationError(errorCode, errString);
+                                if (webView != null) {
+                                    webView.evaluateJavascript("window._onBiometricResult && window._onBiometricResult('" + callbackId + "', false, '" + errString.toString().replace("'", "\\'") + "');", null);
+                                }
+                            }
+
+                            @Override
+                            public void onAuthenticationSucceeded(@NonNull BiometricPrompt.AuthenticationResult result) {
+                                super.onAuthenticationSucceeded(result);
+                                if (webView != null) {
+                                    webView.evaluateJavascript("window._onBiometricResult && window._onBiometricResult('" + callbackId + "', true, 'Doğrulama başarılı');", null);
+                                }
+                            }
+                        });
+
+                        BiometricPrompt.PromptInfo promptInfo = new BiometricPrompt.PromptInfo.Builder()
+                                .setTitle("DD Ev Koruma Güvenlik Doğrulaması")
+                                .setSubtitle("Hassas komutu onaylamak için parmak izinizi okutun")
+                                .setNegativeButtonText("İptal")
+                                .build();
+
+                        biometricPrompt.authenticate(promptInfo);
+                    } catch (Throwable t) {
                         if (webView != null) {
-                            webView.evaluateJavascript("window._onBiometricResult && window._onBiometricResult('" + callbackId + "', true, 'Biyometrik kilit devrede değil');", null);
+                            webView.evaluateJavascript("window._onBiometricResult && window._onBiometricResult('" + callbackId + "', true, 'Hata');", null);
                         }
-                        return;
                     }
-
-                    Executor executor = ContextCompat.getMainExecutor(WebViewActivity.this);
-                    BiometricPrompt biometricPrompt = new BiometricPrompt((FragmentActivity) WebViewActivity.this,
-                            executor, new BiometricPrompt.AuthenticationCallback() {
-                        @Override
-                        public void onAuthenticationError(int errorCode, @NonNull CharSequence errString) {
-                            super.onAuthenticationError(errorCode, errString);
-                            if (webView != null) {
-                                webView.evaluateJavascript("window._onBiometricResult && window._onBiometricResult('" + callbackId + "', false, '" + errString.toString().replace("'", "\\'") + "');", null);
-                            }
-                        }
-
-                        @Override
-                        public void onAuthenticationSucceeded(@NonNull BiometricPrompt.AuthenticationResult result) {
-                            super.onAuthenticationSucceeded(result);
-                            if (webView != null) {
-                                webView.evaluateJavascript("window._onBiometricResult && window._onBiometricResult('" + callbackId + "', true, 'Doğrulama başarılı');", null);
-                            }
-                        }
-                    });
-
-                    BiometricPrompt.PromptInfo promptInfo = new BiometricPrompt.PromptInfo.Builder()
-                            .setTitle("DD Ev Koruma Güvenlik Doğrulaması")
-                            .setSubtitle("Hassas komutu onaylamak için parmak izinizi okutun")
-                            .setNegativeButtonText("İptal")
-                            .build();
-
-                    biometricPrompt.authenticate(promptInfo);
-                } catch (Throwable t) {
-                    if (webView != null) {
-                        webView.evaluateJavascript("window._onBiometricResult && window._onBiometricResult('" + callbackId + "', true, 'Hata');", null);
-                    }
-                }
-            });
+                });
+            } catch (Throwable ignored) { /* yoksay */ }
         }
 
         /**
@@ -789,66 +888,84 @@ public class WebViewActivity extends FragmentActivity {
          */
         @JavascriptInterface
         public void setStatusNotification(String json) {
-            final String raw = json == null ? "{}" : json;
-            runOnUiThread(() -> {
-                try {
-                    JSONObject o = new JSONObject(raw);
-                    boolean enabled = o.optBoolean("enabled", true);
-                    AppNotifications.setStatusEnabled(WebViewActivity.this, enabled);
-                    if (enabled) {
-                        AppNotifications.showStatus(WebViewActivity.this,
-                                o.optString("title", "Sistem durumu"),
-                                o.optString("body", "Son durum"),
-                                o.optString("big", ""),
-                                o.optString("url", getString(R.string.start_url)));
+            try {
+                final String raw = json == null ? "{}" : json;
+                runOnUiThread(() -> {
+                    try {
+                        JSONObject o = new JSONObject(raw);
+                        boolean enabled = o.optBoolean("enabled", true);
+                        AppNotifications.setStatusEnabled(WebViewActivity.this, enabled);
+                        if (enabled) {
+                            AppNotifications.showStatus(WebViewActivity.this,
+                                    o.optString("title", "Sistem durumu"),
+                                    o.optString("body", "Son durum"),
+                                    o.optString("big", ""),
+                                    o.optString("url", getString(R.string.start_url)));
+                        }
+                    } catch (Throwable ignored) {
+                        // Geçersiz JSON: bildirim değiştirilmez.
                     }
-                } catch (Throwable ignored) {
-                    // Geçersiz JSON: bildirim değiştirilmez.
-                }
-            });
+                });
+            } catch (Throwable ignored) { /* yoksay */ }
         }
 
         /** Ana ekran widget'ına son durumu yazar. */
         @JavascriptInterface
         public void setWidgetStatus(String json) {
-            final String raw = json == null ? "{}" : json;
-            runOnUiThread(() -> {
-                try {
-                    JSONObject o = new JSONObject(raw);
-                    StatusWidgetProvider.saveStatus(WebViewActivity.this,
-                            o.optString("status", ""),
-                            o.optString("detail", ""),
-                            o.optBoolean("ok", false));
-                } catch (Throwable ignored) {
-                    // yoksay
-                }
-            });
+            try {
+                final String raw = json == null ? "{}" : json;
+                runOnUiThread(() -> {
+                    try {
+                        JSONObject o = new JSONObject(raw);
+                        StatusWidgetProvider.saveStatus(WebViewActivity.this,
+                                o.optString("status", ""),
+                                o.optString("detail", ""),
+                                o.optBoolean("ok", false));
+                    } catch (Throwable ignored) {
+                        // yoksay
+                    }
+                });
+            } catch (Throwable ignored) { /* yoksay */ }
         }
 
         /** Olay raporunu PDF olarak üretip paylaşım sayfasını açar. */
         @JavascriptInterface
         public void exportPdf(String json) {
-            final String raw = json == null ? "{}" : json;
-            runOnUiThread(() -> ReportPdf.share(WebViewActivity.this, raw));
+            try {
+                final String raw = json == null ? "{}" : json;
+                runOnUiThread(() -> {
+                    try {
+                        ReportPdf.share(WebViewActivity.this, raw);
+                    } catch (Throwable ignored) { /* yoksay */ }
+                });
+            } catch (Throwable ignored) { /* yoksay */ }
         }
 
         @JavascriptInterface
         public void openNotificationSettings() {
-            runOnUiThread(() -> AppNotifications.openChannelSettings(WebViewActivity.this));
+            try {
+                runOnUiThread(() -> {
+                    try {
+                        AppNotifications.openChannelSettings(WebViewActivity.this);
+                    } catch (Throwable ignored) { /* yoksay */ }
+                });
+            } catch (Throwable ignored) { /* yoksay */ }
         }
 
         /** 112 Acil Yardım veya belirtilen numarayı arama ekranında açar. */
         @JavascriptInterface
         public void callEmergency(String number) {
-            final String target = (number == null || number.trim().isEmpty()) ? "112" : number.trim();
-            runOnUiThread(() -> {
-                try {
-                    Intent intent = new Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + target));
-                    startActivity(intent);
-                } catch (Throwable t) {
-                    Toast.makeText(WebViewActivity.this, "Arama açılamadı: " + target, Toast.LENGTH_SHORT).show();
-                }
-            });
+            try {
+                final String target = (number == null || number.trim().isEmpty()) ? "112" : number.trim();
+                runOnUiThread(() -> {
+                    try {
+                        Intent intent = new Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + target));
+                        startActivity(intent);
+                    } catch (Throwable t) {
+                        Toast.makeText(WebViewActivity.this, "Arama açılamadı: " + target, Toast.LENGTH_SHORT).show();
+                    }
+                });
+            } catch (Throwable ignored) { /* yoksay */ }
         }
 
         /** Cihazda biyometrik kilit (parmak izi/yüz tanıma) kullanılabilir mi? */
@@ -867,9 +984,11 @@ public class WebViewActivity extends FragmentActivity {
         /** Biyometrik kimlik doğrulamayı başlatır. */
         @JavascriptInterface
         public void authenticateBiometric(String title, String subtitle) {
-            final String promptTitle = (title == null || title.trim().isEmpty()) ? "Kimlik Doğrulama" : title;
-            final String promptSub = (subtitle == null) ? "İşleme devam etmek için doğrulayın" : subtitle;
-            runOnUiThread(() -> showBiometricPrompt(promptTitle, promptSub));
+            try {
+                final String promptTitle = (title == null || title.trim().isEmpty()) ? "Kimlik Doğrulama" : title;
+                final String promptSub = (subtitle == null) ? "İşleme devam etmek için doğrulayın" : subtitle;
+                runOnUiThread(() -> showBiometricPrompt(promptTitle, promptSub));
+            } catch (Throwable ignored) { /* yoksay */ }
         }
     }
 

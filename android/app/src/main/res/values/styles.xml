@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="AppTheme.Base" parent="android:Theme.Material.Light.NoActionBar">
+    <style name="AppTheme.Base" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="colorPrimary">@color/app_on_background</item>
+        <item name="colorPrimaryDark">@color/app_background</item>
+        <item name="colorAccent">@color/app_on_background</item>
         <item name="android:windowBackground">@drawable/splash</item>
         <item name="android:colorAccent">@color/app_on_background</item>
         <item name="android:statusBarColor">@color/app_background</item>

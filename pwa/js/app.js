@@ -29,10 +29,12 @@
   let pumpArmed = false;
   let pumpArmTimer = null;
   let sndVolumeActive = false;
-  let prevAlarm = { danger: false, warn: false, flood: false, vib: false, flame: false };
+  let prevAlarm = { danger: false, warn: false, flood: false, vib: false, flame: false, fault: false, rain: false };
   /* Sistem bildirimi için ayrı kenar-durumu: sesli anons kapalıyken de
      (App.voice yoksa announceAlarms erken döner) bildirim üretilebilsin. */
   let prevNotify = { danger: false, warn: false, flood: false, vib: false, flame: false };
+  let lastAudioAt = { flame: 0, vib: 0, flood: 0, gas: 0, warn: 0, fault: 0 };
+  let prevRainTone = false;
 
   /* Canlı Uptime Takibi (Cihaz sorguları arasında saniye saniye artar) */
   let baseUptimeMs = 0;
@@ -430,11 +432,19 @@
     const flood = !!(data && data.flood);
     const vib = !!(data && data.vib);
     const flame = !!(data && data.flame);
+    const fault = !!(data && data.gasFault);
+    const rain = !!(data && data.rainOk !== false && data.rain);
 
     if (danger && !prevAlarm.danger) {
       App.voice.speak('Dikkat! Gaz kaçağı algılandı. Tahliye fanı çalıştırıldı, su motoru kilitlendi ve pencere kapatıldı. Gaz vanasını kapatıp ortamı havalandırın.', { force: true });
     } else if (warn && !prevAlarm.warn && !danger && !silent) {
       App.voice.speak('Uyarı. Gaz yoğunluğu yükseliyor. Lütfen ortamı havalandırın.');
+    }
+    if (fault && !prevAlarm.fault && !silent) {
+      App.voice.speak('Uyarı. Gaz sensörü bağlantısı okunamıyor. Lütfen sensörü kontrol edin.');
+    }
+    if (rain && !prevAlarm.rain && !flood && !silent) {
+      App.voice.speak('Yağmur algılandı. Otomatik koruma açıksa pencere kapatılır.');
     }
     if (flood && !prevAlarm.flood) {
       App.voice.speak('Su baskını algılandı. Pencere kapatıldı. Su motorunu ve tahliye önlemlerini kontrol edin.', { force: true });
@@ -445,7 +455,7 @@
     if (flame && !prevAlarm.flame) {
       App.voice.speak('Alev algılandı. Siren çalıyor ve önlemler devreye girdi. Yangın güvenliğinizi kontrol edin.', { force: true });
     }
-    prevAlarm = { danger: danger, warn: warn, flood: flood, vib: vib, flame: flame };
+    prevAlarm = { danger: danger, warn: warn, flood: flood, vib: vib, flame: flame, fault: fault, rain: rain };
   }
 
   /* Alarm geçişlerinde masaüstü/telefon sistem bildirimi (App.notify).
@@ -567,26 +577,83 @@
   }
 
   /* Ambient Ekran Kenarı Darbesi & Sesli Uyarılar */
-  function renderAmbientAlarm(state) {
+  function renderAmbientAlarm(dataOrState, maybeState) {
+    const data = (dataOrState && typeof dataOrState === 'object') ? dataOrState : lastData;
+    const state = typeof maybeState === 'string'
+      ? maybeState
+      : (typeof dataOrState === 'string' ? dataOrState : gasStateOf(data || {}));
+
+    const flame = !!(data && data.flame);
+    const vib = !!(data && data.vib);
+    const flood = !!(data && data.flood);
+    const gasDanger = state === 'danger';
+    const gasWarn = state === 'warning';
+    const gasFault = !!(data && data.gasFault);
+    const rain = !!(data && data.rainOk !== false && data.rain);
+
+    const isDanger = flame || vib || flood || gasDanger;
+    const isWarning = !isDanger && (gasWarn || gasFault);
+    const bodyState = isDanger ? 'danger' : (isWarning ? 'warning' : (state || 'normal'));
+
     const glow = $('ambientGlow');
-    document.body.classList.toggle('state-danger', state === 'danger');
-    document.body.setAttribute('data-state', state);
+    document.body.classList.toggle('state-danger', isDanger);
+    document.body.setAttribute('data-state', bodyState);
 
     if (glow) {
       glow.className = '';
-      if (state === 'danger') {
-        glow.classList.add('state-danger');
-        const ppm = Number(lastData && lastData.gasPpm) || 0;
-        const dangerTh = (lastData && typeof lastData.gasDanger === 'number') ? lastData.gasDanger : 400;
-        const normPpm = Math.min(1.0, ppm / Math.max(dangerTh * 1.5, 100));
-        /* Gece / izleme modunda panel hoparlörü susar (cihaz sireni zaten kısık/kapalı). */
-        const quiet = !!(App.Automation && App.Automation.isQuiet && App.Automation.isQuiet());
-        if (!quiet) App.sound.alarm(normPpm);
-        App.haptic(60);
-      } else if (state === 'warning') {
-        glow.classList.add('state-warning');
-      }
+      if (isDanger) glow.classList.add('state-danger');
+      else if (isWarning) glow.classList.add('state-warning');
     }
+
+    /* Gece / izleme modunda panel hoparlörü susar (cihaz sireni zaten kısık/kapalı). */
+    const quiet = !!(App.Automation && App.Automation.isQuiet && App.Automation.isQuiet());
+    const now = Date.now();
+    const sound = App.sound || {};
+
+    if (flame) {
+      if (!quiet && now - lastAudioAt.flame >= 1400) {
+        lastAudioAt.flame = now;
+        if (typeof sound.fireAlarm === 'function') sound.fireAlarm();
+        else if (typeof sound.alarm === 'function') sound.alarm(0.95);
+      }
+      App.haptic(75);
+    } else if (vib) {
+      if (!quiet && now - lastAudioAt.vib >= 1400) {
+        lastAudioAt.vib = now;
+        if (typeof sound.quakeAlarm === 'function') sound.quakeAlarm();
+        else if (typeof sound.alarm === 'function') sound.alarm(0.85);
+      }
+      App.haptic(70);
+    } else if (flood) {
+      if (!quiet && now - lastAudioAt.flood >= 1400) {
+        lastAudioAt.flood = now;
+        if (typeof sound.floodAlarm === 'function') sound.floodAlarm();
+        else if (typeof sound.alarm === 'function') sound.alarm(0.8);
+      }
+      App.haptic(60);
+    } else if (gasDanger) {
+      if (!quiet && now - lastAudioAt.gas >= 1400) {
+        lastAudioAt.gas = now;
+        const ppm = Number(data && data.gasPpm) || 0;
+        const dangerTh = (data && typeof data.gasDanger === 'number') ? data.gasDanger : 400;
+        const normPpm = Math.min(1.0, ppm / Math.max(dangerTh * 1.5, 100));
+        if (typeof sound.alarm === 'function') sound.alarm(normPpm);
+      }
+      App.haptic(60);
+    } else if (gasWarn) {
+      if (!quiet && now - lastAudioAt.warn >= 6500) {
+        lastAudioAt.warn = now;
+        if (typeof sound.warnTone === 'function') sound.warnTone('warning');
+      }
+    } else if (gasFault) {
+      if (!quiet && now - lastAudioAt.fault >= 6500) {
+        lastAudioAt.fault = now;
+        if (typeof sound.warnTone === 'function') sound.warnTone('fault');
+      }
+    } else if (rain && !prevRainTone) {
+      if (!quiet && typeof sound.warnTone === 'function') sound.warnTone('rain');
+    }
+    prevRainTone = rain;
   }
 
   function renderBanner(state) {
@@ -605,6 +672,14 @@
       el.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>' +
         '<div><strong>SARSINTI / KURCALAMA ALARMI</strong>' +
         'Sarsıntı sensörü tetiklendi. Siren (hoparlör) çalıyor ve pencere kapatıldı. Ortamı ve evinizi kontrol edin.</div>';
+      el.hidden = false;
+      return;
+    }
+    if (lastData && lastData.flood) {
+      el.className = 'banner danger';
+      el.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>' +
+        '<div><strong>SU BASKINI ALARMI</strong>' +
+        'Su baskını algılandı. Pencere kapatıldı. Su motorunu ve tahliye önlemlerini derhal kontrol edin.</div>';
       el.hidden = false;
       return;
     }
@@ -793,7 +868,7 @@
     renderSystem(data, state);
     renderOutlets(data);
     if (online) {
-      renderAmbientAlarm(state);
+      renderAmbientAlarm(data, state);
       renderBanner(state);
     }
     renderWidget(data, state);

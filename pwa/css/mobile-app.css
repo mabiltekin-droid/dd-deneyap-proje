@@ -675,31 +675,34 @@
     padding-bottom: 1.5rem !important;
   }
 
-  /* Mobilde footer kompakt ve işlevsel kalsın; boş koyu blok oluşmasın. */
+  /* Mobilde footer ferah 2 sütunlu dokunmatik uyumlu düzen. */
   .scada-footer {
-    padding: 1.5rem 1rem calc(78px + env(safe-area-inset-bottom, 0px));
+    padding: 1.75rem 1rem calc(84px + env(safe-area-inset-bottom, 0px));
     margin-top: 1.5rem;
     text-align: left;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-  }
-
-  .scada-footer .footer-inner {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 1.15rem;
-    margin-bottom: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   .scada-footer .links-col {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 0.45rem 0.85rem;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
   }
 
   .scada-footer .links-col .f-heading {
-    flex-basis: 100%;
-    margin-bottom: 0.15rem;
+    grid-column: 1 / -1;
+    margin-bottom: 0.25rem;
+  }
+
+  .scada-footer .links-col a {
+    display: flex;
+    align-items: center;
+    min-block-size: 44px;
+    padding: 0.5rem 0.75rem;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 0.8rem;
   }
 
   /* Mobilde yatay taşan eski kontrol grupları kendi içinde kaydırılsın. */

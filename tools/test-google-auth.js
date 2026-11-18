@@ -217,6 +217,7 @@ async function nativeSuccess() {
   await ready(page);
   const button = page.element('googleSignInBtn');
   button.click();
+  button.click();
   assert.equal(button.disabled, true);
   await assert.rejects(page.globals.DeneyapGoogleSignIn.getGoogleIdToken(), /zaten açık/i);
   assert.deepEqual(page.posted, ['getGoogleIdToken:1']);
@@ -251,6 +252,22 @@ async function nativeFailure() {
   page.port.reply({ idToken: 'rejected-fixture' });
   await until(() => !button.disabled, 'Firebase credential rejection should restore the sign-in button');
   assert.deepEqual(backend.calls, [{ action: 'credential', token: 'rejected-fixture' }]);
+  assert.equal(page.app.Auth.snapshot().signedIn, false);
+  assert.equal(page.externalOpens(), 0);
+
+  backend.auth.credentialError = null;
+  button.click();
+  assert.deepEqual(page.posted, ['getGoogleIdToken:1', 'getGoogleIdToken:2', 'getGoogleIdToken:3']);
+  page.port.reply({ error: 'Google girişi kullanılamıyor.', code: 'auth/native-provider-unavailable' });
+  await until(() => !button.disabled, 'Native provider error should restore the sign-in button');
+  assert.match(page.element('authResult').textContent, /kullanılamıyor/i);
+  assert.equal(page.app.Auth.snapshot().signedIn, false);
+
+  button.click();
+  assert.deepEqual(page.posted, ['getGoogleIdToken:1', 'getGoogleIdToken:2', 'getGoogleIdToken:3', 'getGoogleIdToken:4']);
+  page.port.reply({ error: 'Google girişi bu cihazda başlatılamadı.', code: 'auth/native-request-failed' });
+  await until(() => !button.disabled, 'Native request failure should restore the sign-in button');
+  assert.match(page.element('authResult').textContent, /başlatılamadı/i);
   assert.equal(page.app.Auth.snapshot().signedIn, false);
   assert.equal(page.externalOpens(), 0);
 }

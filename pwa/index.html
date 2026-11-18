@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html lang="tr" data-theme="light" data-tier="mid">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>DD Ev Koruma</title>
-  <meta name="description" content="Gaz, duman, su ve hareket sensörlerini tek ekranda izleyin. Deneyap Kart tabanlı ev güvenlik sistemi.">
+  <meta name="description"
+    content="Gaz, duman, su ve hareket sensörlerini tek ekranda izleyin. Deneyap Kart tabanlı ev güvenlik sistemi.">
   <meta name="theme-color" content="#faf4e9" id="metaThemeColor">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Ev Koruma">
@@ -22,6 +24,7 @@
   <script src="./js/theme-boot.js"></script>
   <script defer src="./js/parallax.js"></script>
 </head>
+
 <body class="mission-control-body">
   <!-- Ambient Ekran Kenarı Alarm & CRT Katmanları -->
   <div id="ambientGlow" aria-hidden="true"></div>
@@ -47,7 +50,8 @@
         <p class="conn" id="conn" data-state="connecting">
           <span class="dot" aria-hidden="true"></span>
           <span id="connText">Bağlanıyor…</span>
-          <span class="rssi-pill" id="rssiHeaderBadge" style="margin-left: 0.5rem; font-size: 0.65rem; opacity: 0.85;" hidden>
+          <span class="rssi-pill" id="rssiHeaderBadge" style="margin-left: 0.5rem; font-size: 0.65rem; opacity: 0.85;"
+            hidden>
             <span id="rssiHeaderVal">— dBm</span>
           </span>
         </p>
@@ -71,40 +75,49 @@
       <div class="mode-switch" id="modeSwitcher" data-mode-mount role="group" aria-label="Çalışma modu"></div>
 
       <!-- Sesli Komut (Web Speech) -->
-      <button id="voiceBtn" class="voice-btn" data-voice-trigger type="button" aria-pressed="false" aria-label="Sesli komut" title="Sesli komut (mikrofon)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <rect x="9" y="2" width="6" height="12" rx="3"/>
-          <path d="M5 10v1a7 7 0 0 0 14 0v-1"/>
-          <line x1="12" y1="19" x2="12" y2="22"/>
+      <button id="voiceBtn" class="voice-btn" data-voice-trigger type="button" aria-pressed="false"
+        aria-label="Sesli komut" title="Sesli komut (mikrofon)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"
+          stroke-linejoin="round" aria-hidden="true">
+          <rect x="9" y="2" width="6" height="12" rx="3" />
+          <path d="M5 10v1a7 7 0 0 0 14 0v-1" />
+          <line x1="12" y1="19" x2="12" y2="22" />
         </svg>
       </button>
       <span id="voiceHint" class="voice-hint" role="status" aria-live="polite"></span>
 
       <!-- Ayarlar Sayfasına Hızlı Geçiş -->
       <a href="./settings.html" class="nav-settings-pill" title="Sistem ayarlarına git">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
-          <circle cx="12" cy="12" r="3"/>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+          stroke-linejoin="round" aria-hidden="true">
+          <path
+            d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+          <circle cx="12" cy="12" r="3" />
         </svg>
         <span>Ayarlar</span>
       </a>
 
-      <a href="./settings.html#accountCard" id="accountBtn" class="acct-pill"
-         aria-label="Hesap" title="Hesap ve roller">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+      <a href="./settings.html#accountCard" id="accountBtn" class="acct-pill" aria-label="Hesap"
+        title="Hesap ve roller">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+          stroke-linejoin="round" aria-hidden="true">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+          <circle cx="12" cy="7" r="4" />
         </svg>
         <span id="accountBtnText">Hesap</span>
       </a>
-      <button id="pwaInstallBtn" class="pwa-install-btn" type="button" hidden aria-label="İndir — Ev Koruma uygulamasını yükleyin" title="Ev Koruma uygulamasını cihazınıza indirin">
-        <svg class="install-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-          <polyline points="7 10 12 15 17 10"/>
-          <line x1="12" y1="15" x2="12" y2="3"/>
+      <button id="pwaInstallBtn" class="pwa-install-btn" type="button" hidden
+        aria-label="İndir — Ev Koruma uygulamasını yükleyin" title="Ev Koruma uygulamasını cihazınıza indirin">
+        <svg class="install-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <polyline points="7 10 12 15 17 10" />
+          <line x1="12" y1="15" x2="12" y2="3" />
         </svg>
         <span class="install-text">İndir</span>
       </button>
-      <button id="themeToggleBtn" class="sky-pill" type="button" role="switch" aria-label="Tema değiştir" aria-checked="true">
+      <button id="themeToggleBtn" class="sky-pill" type="button" role="switch" aria-label="Tema değiştir"
+        aria-checked="true">
         <span class="sky-track">
           <span class="sky-stars" aria-hidden="true">
             <span class="star star-1"></span>
@@ -137,19 +150,23 @@
   <div class="mobile-quickbar" aria-label="Hızlı çalışma modu ve sesli komut">
     <div class="mobile-quickbar-inner">
       <div class="mode-switch" id="modeSwitcherMobile" data-mode-mount role="group" aria-label="Çalışma modu"></div>
-      <button id="voiceBtnMobile" class="mobile-voice-btn" data-voice-trigger type="button" aria-pressed="false" aria-label="Ses — sesli komut" title="Sesli komut">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <rect x="9" y="2" width="6" height="12" rx="3"/>
-          <path d="M5 10v1a7 7 0 0 0 14 0v-1"/>
-          <line x1="12" y1="19" x2="12" y2="22"/>
+      <button id="voiceBtnMobile" class="mobile-voice-btn" data-voice-trigger type="button" aria-pressed="false"
+        aria-label="Ses — sesli komut" title="Sesli komut">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"
+          stroke-linejoin="round" aria-hidden="true">
+          <rect x="9" y="2" width="6" height="12" rx="3" />
+          <path d="M5 10v1a7 7 0 0 0 14 0v-1" />
+          <line x1="12" y1="19" x2="12" y2="22" />
         </svg>
         <span>Ses</span>
       </button>
-      <button id="mobileNativeMenu" class="mobile-native-menu" type="button" aria-label="Uygulama menüsü" title="Uygulama menüsü">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <circle cx="5" cy="12" r="1.2" fill="currentColor" stroke="none"/>
-          <circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/>
-          <circle cx="19" cy="12" r="1.2" fill="currentColor" stroke="none"/>
+      <button id="mobileNativeMenu" class="mobile-native-menu" type="button" aria-label="Uygulama menüsü"
+        title="Uygulama menüsü">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+          stroke-linejoin="round" aria-hidden="true">
+          <circle cx="5" cy="12" r="1.2" fill="currentColor" stroke="none" />
+          <circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none" />
+          <circle cx="19" cy="12" r="1.2" fill="currentColor" stroke="none" />
         </svg>
       </button>
     </div>
@@ -157,10 +174,11 @@
 
   <div id="voiceStatusBanner" class="voice-status-banner" role="status" aria-live="polite" hidden>
     <span class="vsb-pulse" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="9" y="2" width="6" height="12" rx="3"/>
-        <path d="M5 10v1a7 7 0 0 0 14 0v-1"/>
-        <line x1="12" y1="19" x2="12" y2="22"/>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+        stroke-linejoin="round">
+        <rect x="9" y="2" width="6" height="12" rx="3" />
+        <path d="M5 10v1a7 7 0 0 0 14 0v-1" />
+        <line x1="12" y1="19" x2="12" y2="22" />
       </svg>
     </span>
     <div class="vsb-copy">
@@ -175,10 +193,22 @@
       <section class="widget" id="homeWidget" aria-label="Sensör özeti" data-state="unknown" hidden>
         <div class="w-hero">
           <div class="w-hero-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5M5 9.5V21h14V9.5M9.5 21v-6h5v6"/></svg>
-            <svg class="w-icon-normal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>
-            <svg class="w-icon-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 21h20L12 3Zm0 6v4m0 4h.01"/></svg>
-            <svg class="w-icon-offline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3v5m6-5v5m3 0H6v3a6 6 0 0 0 6 6m0 0v4m8-7-5 5m0-5 5 5"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+              stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 10.5 12 3l9 7.5M5 9.5V21h14V9.5M9.5 21v-6h5v6" />
+            </svg>
+            <svg class="w-icon-normal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m5 12 4 4L19 6" />
+            </svg>
+            <svg class="w-icon-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 3 2 21h20L12 3Zm0 6v4m0 4h.01" />
+            </svg>
+            <svg class="w-icon-offline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M9 3v5m6-5v5m3 0H6v3a6 6 0 0 0 6 6m0 0v4m8-7-5 5m0-5 5 5" />
+            </svg>
           </div>
           <div class="w-head">
             <h2 class="w-state" id="wState" role="status">Bağlanıyor…</h2>
@@ -189,32 +219,54 @@
           <div class="house3d-slot" data-house3d-slot="live"></div>
         </figure>
         <a id="wAlertLink" class="btn home-alert-link" href="./events.html" hidden>Olayları incele</a>
-        <a id="wOfflineLink" class="btn ghost home-alert-link" href="./settings.html#connSection" hidden>Bağlantıyı kontrol et</a>
+        <a id="wOfflineLink" class="btn ghost home-alert-link" href="./settings.html#connSection" hidden>Bağlantıyı
+          kontrol et</a>
         <div class="w-sensors">
           <h3>Sensörler</h3>
           <div class="w-items">
             <a class="w-item" href="#gasCard" data-state="unknown">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 21c6-6-6-12 0-18m6 18c6-6-6-12 0-18m6 18c6-6-6-12 0-18"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                stroke-linejoin="round" aria-hidden="true">
+                <path d="M6 21c6-6-6-12 0-18m6 18c6-6-6-12 0-18m6 18c6-6-6-12 0-18" />
+              </svg>
               <span><span class="w-lbl">Gaz ve duman</span><strong id="wGas">Veri bekleniyor</strong></span>
             </a>
             <a class="w-item" href="#flameCard" data-state="unknown">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22a7 7 0 0 0 7-7c0-4-2-6-3-7 0 3-2 4-2 4 0-5-2-8-4-10 0 5-1 6-3 9-1 1-2 3-2 4a7 7 0 0 0 7 7z"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                stroke-linejoin="round" aria-hidden="true">
+                <path
+                  d="M12 22a7 7 0 0 0 7-7c0-4-2-6-3-7 0 3-2 4-2 4 0-5-2-8-4-10 0 5-1 6-3 9-1 1-2 3-2 4a7 7 0 0 0 7 7z" />
+              </svg>
               <span><span class="w-lbl">Alev</span><strong id="wFlame">Veri bekleniyor</strong></span>
             </a>
             <a class="w-item" href="#rainCard" data-state="unknown">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 15a4 4 0 1 0-1.5-7.7A6 6 0 0 0 7 8.5a3.5 3.5 0 1 0-.5 6.5H20ZM9 18l-1 3m5-3-1 3m5-3-1 3"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                stroke-linejoin="round" aria-hidden="true">
+                <path d="M20 15a4 4 0 1 0-1.5-7.7A6 6 0 0 0 7 8.5a3.5 3.5 0 1 0-.5 6.5H20ZM9 18l-1 3m5-3-1 3m5-3-1 3" />
+              </svg>
               <span><span class="w-lbl">Yağmur</span><strong id="wRain">Veri bekleniyor</strong></span>
             </a>
             <a class="w-item" href="#vibCard" data-state="unknown">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12h4l2-7 4 14 2-7h8"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                stroke-linejoin="round" aria-hidden="true">
+                <path d="M2 12h4l2-7 4 14 2-7h8" />
+              </svg>
               <span><span class="w-lbl">Sarsıntı</span><strong id="wVib">Veri bekleniyor</strong></span>
             </a>
           </div>
         </div>
         <a href="#command-center" class="home-control-link">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="8" cy="7" r="2" fill="var(--primary-soft)"/><circle cx="16" cy="17" r="2" fill="var(--primary-soft)"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <path d="M4 7h16M4 17h16" />
+            <circle cx="8" cy="7" r="2" fill="var(--primary-soft)" />
+            <circle cx="16" cy="17" r="2" fill="var(--primary-soft)" />
+          </svg>
           <span>Cihaz kontrolü</span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <path d="m9 18 6-6-6-6" />
+          </svg>
         </a>
         <div class="home-quick-actions">
           <a class="btn ghost" href="#soundControl">Siren ve ses</a>
@@ -228,7 +280,10 @@
             <div class="house3d-slot" data-house3d-slot="idle"></div>
           </figure>
           <div class="no-device-copy">
-            <div class="w-hero-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5M5 9.5V21h14V9.5M9.5 21v-6h5v6"/></svg></div>
+            <div class="w-hero-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M3 10.5 12 3l9 7.5M5 9.5V21h14V9.5M9.5 21v-6h5v6" />
+              </svg></div>
             <h2 id="noDeviceTitle">Cihaz aranıyor</h2>
             <p id="noDeviceMsg">Cihaz bağlantısı bekleniyor…</p>
             <a id="noDeviceAction" class="btn primary" href="./settings.html#accountCard">Hesap ve roller</a>
@@ -238,672 +293,746 @@
     </section>
 
     <div class="mission-main">
-    <div id="banner" class="banner" role="status" hidden></div>
+      <div id="banner" class="banner" role="status" hidden></div>
 
-    <!-- 2. CANLI GÜVENLİK & TELEMETRİ VİTRİNİ -->
-    <section class="scrolly-section telemetry-section" id="telemetry" aria-label="Sensörler">
-      <div class="section-badge-header">
-        <h2 class="sec-title">Sensörler</h2>
-        <p class="sec-subtitle">Gaz, duman, yağmur, sarsıntı ve alev sensörlerinden gelen son değerler.</p>
-      </div>
-      <div class="card section-device-empty" data-device-empty>
-        <p data-device-message>Cihaz bağlantısı bekleniyor…</p>
-        <a class="btn ghost" href="./settings.html#accountCard" data-device-action>Cihaz ve hesap ayarları</a>
-      </div>
-      <div data-device-content hidden>
+      <!-- 2. CANLI GÜVENLİK & TELEMETRİ VİTRİNİ -->
+      <section class="scrolly-section telemetry-section" id="telemetry" aria-label="Sensörler">
+        <div class="section-badge-header">
+          <h2 class="sec-title">Sensörler</h2>
+          <p class="sec-subtitle">Gaz, duman, yağmur, sarsıntı ve alev sensörlerinden gelen son değerler.</p>
+        </div>
+        <div class="card section-device-empty" data-device-empty>
+          <p data-device-message>Cihaz bağlantısı bekleniyor…</p>
+          <a class="btn ghost" href="./settings.html#accountCard" data-device-action>Cihaz ve hesap ayarları</a>
+        </div>
+        <div data-device-content hidden>
 
-      <div class="telemetry-panoramic-grid">
-        <!-- Gaz & Duman Ana Vitrin Kartı -->
-        <article class="card tilt-card gauge-card panoramic-card" id="gasCard" data-state="unknown">
-          <div class="card-head">
-            <div class="head-title">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M8.5 14.5A3.5 3.5 0 0 0 12 18a3.5 3.5 0 0 0 3.5-3.5c0-2-1.5-3-2-4.5-.5 1.5-1.5 2-1.5 2s-.5-1.5-1-2.5c-.8 1.5-2.5 3-2.5 5Z"/>
-                <path d="M12 2c1 3 4 5.5 5.5 8.5a7 7 0 1 1-13 3.5c0-4 3.5-7.5 5-10.5.5 2 2 3 2.5 3 .5-.5 1-2.5 0-4.5Z"/>
-              </svg>
-              <h3>Gaz ve duman</h3>
-            </div>
-            <span class="chip" id="gasChip" data-state="unknown">—</span>
+          <div class="telemetry-panoramic-grid">
+            <!-- Gaz & Duman Ana Vitrin Kartı -->
+            <article class="card tilt-card gauge-card panoramic-card" id="gasCard" data-state="unknown">
+              <div class="card-head">
+                <div class="head-title">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                    stroke-linejoin="round" aria-hidden="true">
+                    <path
+                      d="M8.5 14.5A3.5 3.5 0 0 0 12 18a3.5 3.5 0 0 0 3.5-3.5c0-2-1.5-3-2-4.5-.5 1.5-1.5 2-1.5 2s-.5-1.5-1-2.5c-.8 1.5-2.5 3-2.5 5Z" />
+                    <path
+                      d="M12 2c1 3 4 5.5 5.5 8.5a7 7 0 1 1-13 3.5c0-4 3.5-7.5 5-10.5.5 2 2 3 2.5 3 .5-.5 1-2.5 0-4.5Z" />
+                  </svg>
+                  <h3>Gaz ve duman</h3>
+                </div>
+                <span class="chip" id="gasChip" data-state="unknown">—</span>
+              </div>
+
+              <div class="telemetry-readout-row">
+                <div class="telemetry-main-val">
+                  <p class="value"><span id="gasPpm">—</span><small>PPM</small></p>
+                  <span class="readout-caption">Hava kalitesi · MQ-2 sensörü</span>
+                </div>
+
+                <!-- 20 Segmentli Cyber LED Bar & Enerji Çubuğu -->
+                <div class="cyber-gauge-wrap" role="img" aria-label="Gaz seviyesi göstergesi">
+                  <div class="seg-meter" id="gasSegMeter">
+                    <!-- 20 adet LED segmenti dinamik aydınlatılır -->
+                    <span class="seg"></span><span class="seg"></span><span class="seg"></span><span class="seg"></span>
+                    <span class="seg"></span><span class="seg"></span><span class="seg"></span><span class="seg"></span>
+                    <span class="seg"></span><span class="seg"></span><span class="seg"></span><span class="seg"></span>
+                    <span class="seg"></span><span class="seg"></span><span class="seg"></span><span class="seg"></span>
+                    <span class="seg"></span><span class="seg"></span><span class="seg"></span><span class="seg"></span>
+                  </div>
+                  <div class="gauge">
+                    <div class="gauge-fill" id="gasFill" style="width:0%"></div>
+                    <div class="gauge-mark" id="markWarn" title="Uyarı Eşiği"></div>
+                    <div class="gauge-mark danger" id="markDanger" title="Tehlike Eşiği"></div>
+                  </div>
+                  <div class="gauge-labels">
+                    <span>0 PPM</span>
+                    <span id="labelWarn">250 uyarı</span>
+                    <span id="labelDanger">400 tehlike</span>
+                    <span>10.000</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Canlı Telemetri Osiloskop / DSP Çizgisi -->
+              <div class="telemetry-bar" id="gasTelemetryBar" aria-hidden="true">
+                <div class="telemetry-head">
+                  <span class="telemetry-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                      stroke-linejoin="round">
+                      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                    </svg>
+                    Sinyal geçmişi
+                  </span>
+                  <span class="telemetry-delta" id="gasDeltaBadge">Δ 0 PPM</span>
+                </div>
+                <div class="telemetry-scope">
+                  <svg class="telemetry-svg" viewBox="0 0 100 40" preserveAspectRatio="none">
+                    <line x1="0" y1="20" x2="100" y2="20" class="scope-grid-center" />
+                    <path class="scope-path scope-raw" id="gasRawWave" d="M0,20 L100,20" />
+                    <path class="scope-path scope-filt" id="gasFiltWave" d="M0,20 L100,20" />
+                  </svg>
+                  <div class="telemetry-legend">
+                    <span class="tl-raw"><span class="tl-dot"></span>Ham Sinyal (gasRaw)</span>
+                    <span class="tl-filt"><span class="tl-dot"></span>EMA Filtrelenmiş (gasFiltered)</span>
+                  </div>
+                </div>
+
+                <!-- DSP Sinyal-Gürültü & SNR Spektrum Çubukları -->
+                <div class="snr-spectrum-wrap" id="snrSpectrumWrap">
+                  <div class="snr-header">
+                    <span class="snr-title">SNR SİNYAL-GÜRÜLTÜ ANALİZÖRÜ</span>
+                    <span class="snr-badge" id="snrBadge" data-state="ok">SNR: 98 dB · STABİL</span>
+                  </div>
+                  <div class="snr-bars" id="snrBars" aria-label="Gürültü spektrum çubukları">
+                    <div class="snr-bar">
+                      <div class="snr-bar-fill" style="height:12%;"></div>
+                    </div>
+                    <div class="snr-bar">
+                      <div class="snr-bar-fill" style="height:18%;"></div>
+                    </div>
+                    <div class="snr-bar">
+                      <div class="snr-bar-fill" style="height:10%;"></div>
+                    </div>
+                    <div class="snr-bar">
+                      <div class="snr-bar-fill" style="height:15%;"></div>
+                    </div>
+                    <div class="snr-bar">
+                      <div class="snr-bar-fill" style="height:22%;"></div>
+                    </div>
+                    <div class="snr-bar">
+                      <div class="snr-bar-fill" style="height:14%;"></div>
+                    </div>
+                    <div class="snr-bar">
+                      <div class="snr-bar-fill" style="height:19%;"></div>
+                    </div>
+                    <div class="snr-bar">
+                      <div class="snr-bar-fill" style="height:11%;"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card-foot">
+                <span id="gasRaw">ham: —</span>
+                <span id="gasBase">taban: —</span>
+              </div>
+            </article>
+
+            <!-- Yağmur Sensörü & Nem Durumu Kartı -->
+            <article class="card tilt-card panoramic-card" id="rainCard">
+              <div class="card-head">
+                <div class="head-title">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                    stroke-linejoin="round" aria-hidden="true">
+                    <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242" />
+                    <path d="M16 14v6M8 14v6M12 16v6" />
+                  </svg>
+                  <h3>Yağmur</h3>
+                </div>
+                <span class="chip" id="rainChip" data-state="unknown">—</span>
+              </div>
+
+              <div class="rain-showcase-box">
+                <div class="rain-visual-icon" aria-hidden="true">
+                  <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <path d="M12 40 A16 16 0 0 1 44 26 A12 12 0 0 1 56 40" stroke="var(--primary)" />
+                    <line x1="20" y1="46" x2="16" y2="56" stroke="var(--accent)" stroke-width="3"
+                      stroke-dasharray="2 4" />
+                    <line x1="32" y1="46" x2="28" y2="56" stroke="var(--accent)" stroke-width="3"
+                      stroke-dasharray="2 4" />
+                    <line x1="44" y1="46" x2="40" y2="56" stroke="var(--accent)" stroke-width="3"
+                      stroke-dasharray="2 4" />
+                  </svg>
+                </div>
+                <div class="rain-data-block">
+                  <p class="value"><span id="rainValue">—</span></p>
+                  <p class="rain-desc">Yağmur algılandığında pencereyi otomatik kapatır.</p>
+                </div>
+              </div>
+
+              <div class="card-foot">
+                <span id="rainRaw">ham: —</span>
+                <span id="rainMode">otomatik kapama: aktif</span>
+              </div>
+            </article>
+
+            <!-- Titreşim / Sarsıntı &amp; Kurcalama Sensörü Kartı -->
+            <article class="card tilt-card panoramic-card" id="vibCard" data-state="unknown">
+              <div class="card-head">
+                <div class="head-title">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                    stroke-linejoin="round" aria-hidden="true">
+                    <path d="M2 12h3l2.5-7 4 15 2.5-9 2 3h6" />
+                  </svg>
+                  <h3>Sarsıntı ve hareket</h3>
+                </div>
+                <span class="chip" id="vibChip" data-state="unknown">—</span>
+              </div>
+
+              <div class="rain-showcase-box">
+                <div class="rain-visual-icon" aria-hidden="true">
+                  <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <path d="M8 32h6l5-16 10 34 6-24 5 8h16" stroke="var(--primary)" />
+                    <circle cx="32" cy="32" r="26" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="3 6"
+                      opacity="0.6" />
+                  </svg>
+                </div>
+                <div class="rain-data-block">
+                  <p class="value"><span id="vibValue">—</span></p>
+                  <p class="rain-desc">Sarsıntı veya kurcalama algılandığında haber verir.</p>
+                  <div class="mini-bar-wrap" style="margin-top:0.6rem;">
+                    <div class="mini-bar-fill" id="vibFill"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card-foot">
+                <span id="vibRaw">ham: —</span>
+                <span id="vibMode">sarsıntı izleme: aktif</span>
+              </div>
+            </article>
+
+            <!-- Alev / Yangın Sensörü Kartı -->
+            <article class="card tilt-card panoramic-card" id="flameCard" data-state="unknown">
+              <div class="card-head">
+                <div class="head-title">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                    stroke-linejoin="round" aria-hidden="true">
+                    <path
+                      d="M8.5 14.5A3.5 3.5 0 0 0 12 18a3.5 3.5 0 0 0 3.5-3.5c0-2-1.5-3-2-4.5-.5 1.5-1.5 2-1.5 2s-.5-1.5-1-2.5c-.8 1.5-2.5 3-2.5 5Z" />
+                    <path
+                      d="M12 2c1 3 4 5.5 5.5 8.5a7 7 0 1 1-13 3.5c0-4 3.5-7.5 5-10.5.5 2 2 3 2.5 3 .5-.5 1-2.5 0-4.5Z" />
+                  </svg>
+                  <h3>Alev</h3>
+                </div>
+                <span class="chip" id="flameChip" data-state="unknown">—</span>
+              </div>
+
+              <div class="rain-showcase-box">
+                <div class="rain-visual-icon" aria-hidden="true">
+                  <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <path d="M32 7c3 9 11 15 15 24a15 15 0 1 1-30 0C17 22 25 16 28 7c1 6 4 8 4 8s2-4 0-8Z"
+                      stroke="var(--danger)" />
+                    <path d="M32 30c1.5 4 5 7 5 11a5 5 0 0 1-10 0c0-4 3.5-7 5-11Z" stroke="var(--accent)" />
+                  </svg>
+                </div>
+                <div class="rain-data-block">
+                  <p class="value"><span id="flameValue">—</span></p>
+                  <p class="rain-desc">Alev algılandığında alarmı başlatır.</p>
+                  <div class="mini-bar-wrap" style="margin-top:0.6rem;">
+                    <div class="mini-bar-fill" id="flameFill"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card-foot">
+                <span id="flameRaw">ham: —</span>
+                <span id="flameMode">alev izleme: aktif</span>
+              </div>
+            </article>
           </div>
+        </div>
+      </section>
 
-          <div class="telemetry-readout-row">
-            <div class="telemetry-main-val">
-              <p class="value"><span id="gasPpm">—</span><small>PPM</small></p>
-              <span class="readout-caption">Hava kalitesi · MQ-2 sensörü</span>
-            </div>
+      <!-- 3. OTONOM SAVUNMA & AKTÜATÖR İSTASYONU -->
+      <section class="scrolly-section command-section" id="command-center"
+        aria-label="Otonom Savunma ve Aktüatör Konsolu">
+        <div class="section-badge-header">
+          <h2 class="sec-title">Cihaz kontrolü</h2>
+          <p class="sec-subtitle">Fan, pompa, siren, pencere ve panjuru tek dokunuşla yönetin.</p>
+        </div>
+        <div class="card section-device-empty" data-device-empty>
+          <p data-device-message>Cihaz bağlantısı bekleniyor…</p>
+          <a class="btn ghost" href="./settings.html#accountCard" data-device-action>Cihaz ve hesap ayarları</a>
+        </div>
+        <div data-device-content hidden>
 
-            <!-- 20 Segmentli Cyber LED Bar & Enerji Çubuğu -->
-            <div class="cyber-gauge-wrap" role="img" aria-label="Gaz seviyesi göstergesi">
-              <div class="seg-meter" id="gasSegMeter">
-                <!-- 20 adet LED segmenti dinamik aydınlatılır -->
-                <span class="seg"></span><span class="seg"></span><span class="seg"></span><span class="seg"></span>
-                <span class="seg"></span><span class="seg"></span><span class="seg"></span><span class="seg"></span>
-                <span class="seg"></span><span class="seg"></span><span class="seg"></span><span class="seg"></span>
-                <span class="seg"></span><span class="seg"></span><span class="seg"></span><span class="seg"></span>
-                <span class="seg"></span><span class="seg"></span><span class="seg"></span><span class="seg"></span>
-              </div>
-              <div class="gauge">
-                <div class="gauge-fill" id="gasFill" style="width:0%"></div>
-                <div class="gauge-mark" id="markWarn" title="Uyarı Eşiği"></div>
-                <div class="gauge-mark danger" id="markDanger" title="Tehlike Eşiği"></div>
-              </div>
-              <div class="gauge-labels">
-                <span>0 PPM</span>
-                <span id="labelWarn">250 uyarı</span>
-                <span id="labelDanger">400 tehlike</span>
-                <span>10.000</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Canlı Telemetri Osiloskop / DSP Çizgisi -->
-          <div class="telemetry-bar" id="gasTelemetryBar" aria-hidden="true">
-            <div class="telemetry-head">
-              <span class="telemetry-title">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+          <div class="card tilt-card command-card" aria-label="Cihaz kontrolü">
+            <div class="card-head">
+              <div class="head-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                  stroke-linejoin="round" aria-hidden="true">
+                  <rect x="2" y="3" width="20" height="14" rx="2" />
+                  <line x1="8" y1="21" x2="16" y2="21" />
+                  <line x1="12" y1="17" x2="12" y2="21" />
                 </svg>
-                Sinyal geçmişi
-              </span>
-              <span class="telemetry-delta" id="gasDeltaBadge">Δ 0 PPM</span>
-            </div>
-            <div class="telemetry-scope">
-              <svg class="telemetry-svg" viewBox="0 0 100 40" preserveAspectRatio="none">
-                <line x1="0" y1="20" x2="100" y2="20" class="scope-grid-center" />
-                <path class="scope-path scope-raw" id="gasRawWave" d="M0,20 L100,20" />
-                <path class="scope-path scope-filt" id="gasFiltWave" d="M0,20 L100,20" />
-              </svg>
-              <div class="telemetry-legend">
-                <span class="tl-raw"><span class="tl-dot"></span>Ham Sinyal (gasRaw)</span>
-                <span class="tl-filt"><span class="tl-dot"></span>EMA Filtrelenmiş (gasFiltered)</span>
+                <h3>Cihaz kontrolü</h3>
               </div>
+              <span class="hint" id="controlHint"></span>
             </div>
 
-            <!-- DSP Sinyal-Gürültü & SNR Spektrum Çubukları -->
-            <div class="snr-spectrum-wrap" id="snrSpectrumWrap">
-              <div class="snr-header">
-                <span class="snr-title">SNR SİNYAL-GÜRÜLTÜ ANALİZÖRÜ</span>
-                <span class="snr-badge" id="snrBadge" data-state="ok">SNR: 98 dB · STABİL</span>
+            <div class="controls-grid controls">
+              <!-- Havalandırma Fanı -->
+              <div class="ctrl-group">
+                <div class="ctrl-header">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                    stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="2" />
+                    <path d="M12 10a4 4 0 0 0-4-4c-2.2 0-3 1.8-1.5 3.5L10 12" />
+                    <path d="M14 12a4 4 0 0 0 4-4c0-2.2-1.8-3-3.5-1.5L12 10" />
+                    <path d="M12 14a4 4 0 0 0 4 4c2.2 0 3-1.8 1.5-3.5L14 12" />
+                    <path d="M10 12a4 4 0 0 0-4 4c0 2.2 1.8 3 3.5 1.5L12 14" />
+                  </svg>
+                  <span class="ctrl-label">Havalandırma</span>
+                </div>
+                <div class="radial-btn-wrapper">
+                  <svg class="radial-countdown-ring" id="fanCountdownSvg" viewBox="0 0 100 100" aria-hidden="true">
+                    <circle class="ring-bg" cx="50" cy="50" r="44"></circle>
+                    <circle class="ring-progress fan-ring" id="fanRingCircle" cx="50" cy="50" r="44"></circle>
+                  </svg>
+                  <button class="btn" type="button" data-device="fan" data-action="toggle">
+                    <span id="fanState">Kapalı</span>
+                  </button>
+                  <span class="radial-time-badge" id="fanTimeBadge" hidden>120s</span>
+                </div>
               </div>
-              <div class="snr-bars" id="snrBars" aria-label="Gürültü spektrum çubukları">
-                <div class="snr-bar"><div class="snr-bar-fill" style="height:12%;"></div></div>
-                <div class="snr-bar"><div class="snr-bar-fill" style="height:18%;"></div></div>
-                <div class="snr-bar"><div class="snr-bar-fill" style="height:10%;"></div></div>
-                <div class="snr-bar"><div class="snr-bar-fill" style="height:15%;"></div></div>
-                <div class="snr-bar"><div class="snr-bar-fill" style="height:22%;"></div></div>
-                <div class="snr-bar"><div class="snr-bar-fill" style="height:14%;"></div></div>
-                <div class="snr-bar"><div class="snr-bar-fill" style="height:19%;"></div></div>
-                <div class="snr-bar"><div class="snr-bar-fill" style="height:11%;"></div></div>
+
+              <!-- Su Motoru (Güvenlik Korumalı Çift Dokunuş) -->
+              <div class="ctrl-group">
+                <div class="ctrl-header">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                    stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
+                    <path d="M8 14h2l2-3 2 5 2-2h2" />
+                  </svg>
+                  <span class="ctrl-label">Su pompası</span>
+                </div>
+                <div class="radial-btn-wrapper">
+                  <svg class="radial-countdown-ring" id="pumpCountdownSvg" viewBox="0 0 100 100" aria-hidden="true">
+                    <circle class="ring-bg" cx="50" cy="50" r="44"></circle>
+                    <circle class="ring-progress pump-ring" id="pumpRingCircle" cx="50" cy="50" r="44"></circle>
+                  </svg>
+                  <button class="btn danger" type="button" data-device="pump" data-action="toggle">
+                    <span id="pumpState">Kapalı</span>
+                  </button>
+                  <span class="radial-time-badge" id="pumpTimeBadge" hidden>5:00</span>
+                </div>
               </div>
-            </div>
-          </div>
 
-          <div class="card-foot">
-            <span id="gasRaw">ham: —</span>
-            <span id="gasBase">taban: —</span>
-          </div>
-        </article>
-
-        <!-- Yağmur Sensörü & Nem Durumu Kartı -->
-        <article class="card tilt-card panoramic-card" id="rainCard">
-          <div class="card-head">
-            <div class="head-title">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/>
-                <path d="M16 14v6M8 14v6M12 16v6"/>
-              </svg>
-              <h3>Yağmur</h3>
-            </div>
-            <span class="chip" id="rainChip" data-state="unknown">—</span>
-          </div>
-
-          <div class="rain-showcase-box">
-            <div class="rain-visual-icon" aria-hidden="true">
-              <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 40 A16 16 0 0 1 44 26 A12 12 0 0 1 56 40" stroke="var(--primary)" />
-                <line x1="20" y1="46" x2="16" y2="56" stroke="var(--accent)" stroke-width="3" stroke-dasharray="2 4"/>
-                <line x1="32" y1="46" x2="28" y2="56" stroke="var(--accent)" stroke-width="3" stroke-dasharray="2 4"/>
-                <line x1="44" y1="46" x2="40" y2="56" stroke="var(--accent)" stroke-width="3" stroke-dasharray="2 4"/>
-              </svg>
-            </div>
-            <div class="rain-data-block">
-              <p class="value"><span id="rainValue">—</span></p>
-              <p class="rain-desc">Yağmur algılandığında pencereyi otomatik kapatır.</p>
-            </div>
-          </div>
-
-          <div class="card-foot">
-            <span id="rainRaw">ham: —</span>
-            <span id="rainMode">otomatik kapama: aktif</span>
-          </div>
-        </article>
-
-        <!-- Titreşim / Sarsıntı &amp; Kurcalama Sensörü Kartı -->
-        <article class="card tilt-card panoramic-card" id="vibCard" data-state="unknown">
-          <div class="card-head">
-            <div class="head-title">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M2 12h3l2.5-7 4 15 2.5-9 2 3h6"/>
-              </svg>
-              <h3>Sarsıntı ve hareket</h3>
-            </div>
-            <span class="chip" id="vibChip" data-state="unknown">—</span>
-          </div>
-
-          <div class="rain-showcase-box">
-            <div class="rain-visual-icon" aria-hidden="true">
-              <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M8 32h6l5-16 10 34 6-24 5 8h16" stroke="var(--primary)" />
-                <circle cx="32" cy="32" r="26" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="3 6" opacity="0.6"/>
-              </svg>
-            </div>
-            <div class="rain-data-block">
-              <p class="value"><span id="vibValue">—</span></p>
-              <p class="rain-desc">Sarsıntı veya kurcalama algılandığında haber verir.</p>
-              <div class="mini-bar-wrap" style="margin-top:0.6rem;">
-                <div class="mini-bar-fill" id="vibFill"></div>
+              <!-- Hoparlör & Siren (I2S MAX98357A) -->
+              <div class="ctrl-group span-2" id="soundControl">
+                <div class="ctrl-header">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                    stroke-linejoin="round" aria-hidden="true">
+                    <path d="M11 5 6 9H2v6h4l5 4z" />
+                    <path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14" />
+                  </svg>
+                  <span class="ctrl-label">Siren ve ses</span>
+                </div>
+                <div class="btn-row">
+                  <button class="btn" type="button" data-device="sound" data-action="toggle">
+                    <span id="soundState">Sessiz</span>
+                  </button>
+                  <button class="btn sm warn" type="button" data-device="sound" data-action="siren">Siren Çal</button>
+                  <button class="btn sm" type="button" data-device="sound" data-action="test">Test Tonu</button>
+                  <button class="btn sm ghost" type="button" data-device="sound" data-action="beep">Kısa Bip</button>
+                </div>
+                <div class="servo-angle-box">
+                  <div class="servo-angle-row">
+                    <input type="range" min="0" max="100" value="70" class="servo-slider" id="sndVolume"
+                      aria-label="Hoparlör ses seviyesi">
+                    <span class="servo-angle-val" id="sndVolumeVal">70%</span>
+                  </div>
+                  <span class="hint" id="sndModeInfo"></span>
+                </div>
               </div>
-            </div>
-          </div>
 
-          <div class="card-foot">
-            <span id="vibRaw">ham: —</span>
-            <span id="vibMode">sarsıntı izleme: aktif</span>
-          </div>
-        </article>
-
-        <!-- Alev / Yangın Sensörü Kartı -->
-        <article class="card tilt-card panoramic-card" id="flameCard" data-state="unknown">
-          <div class="card-head">
-            <div class="head-title">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M8.5 14.5A3.5 3.5 0 0 0 12 18a3.5 3.5 0 0 0 3.5-3.5c0-2-1.5-3-2-4.5-.5 1.5-1.5 2-1.5 2s-.5-1.5-1-2.5c-.8 1.5-2.5 3-2.5 5Z"/>
-                <path d="M12 2c1 3 4 5.5 5.5 8.5a7 7 0 1 1-13 3.5c0-4 3.5-7.5 5-10.5.5 2 2 3 2.5 3 .5-.5 1-2.5 0-4.5Z"/>
-              </svg>
-              <h3>Alev</h3>
-            </div>
-            <span class="chip" id="flameChip" data-state="unknown">—</span>
-          </div>
-
-          <div class="rain-showcase-box">
-            <div class="rain-visual-icon" aria-hidden="true">
-              <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M32 7c3 9 11 15 15 24a15 15 0 1 1-30 0C17 22 25 16 28 7c1 6 4 8 4 8s2-4 0-8Z" stroke="var(--danger)" />
-                <path d="M32 30c1.5 4 5 7 5 11a5 5 0 0 1-10 0c0-4 3.5-7 5-11Z" stroke="var(--accent)" />
-              </svg>
-            </div>
-            <div class="rain-data-block">
-              <p class="value"><span id="flameValue">—</span></p>
-              <p class="rain-desc">Alev algılandığında alarmı başlatır.</p>
-              <div class="mini-bar-wrap" style="margin-top:0.6rem;">
-                <div class="mini-bar-fill" id="flameFill"></div>
+              <!-- Titreşim / Sarsıntı Sensörü Kontrolü -->
+              <div class="ctrl-group">
+                <div class="ctrl-header">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                    stroke-linejoin="round" aria-hidden="true">
+                    <path d="M2 12h3l2.5-7 4 15 2.5-9 2 3h6" />
+                  </svg>
+                  <span class="ctrl-label">Sarsıntı sensörü</span>
+                </div>
+                <button class="btn" type="button" data-device="vibration" data-action="toggle">
+                  <span id="vibEnableState">Açık</span>
+                </button>
+                <button class="btn sm ghost" type="button" data-device="vibration" data-action="test"
+                  style="margin-top:0.45rem;">
+                  Alarmı Simüle Et
+                </button>
               </div>
-            </div>
-          </div>
 
-          <div class="card-foot">
-            <span id="flameRaw">ham: —</span>
-            <span id="flameMode">alev izleme: aktif</span>
-          </div>
-        </article>
-      </div>
-      </div>
-    </section>
-
-    <!-- 3. OTONOM SAVUNMA & AKTÜATÖR İSTASYONU -->
-    <section class="scrolly-section command-section" id="command-center" aria-label="Otonom Savunma ve Aktüatör Konsolu">
-      <div class="section-badge-header">
-        <h2 class="sec-title">Cihaz kontrolü</h2>
-        <p class="sec-subtitle">Fan, pompa, siren, pencere ve panjuru tek dokunuşla yönetin.</p>
-      </div>
-      <div class="card section-device-empty" data-device-empty>
-        <p data-device-message>Cihaz bağlantısı bekleniyor…</p>
-        <a class="btn ghost" href="./settings.html#accountCard" data-device-action>Cihaz ve hesap ayarları</a>
-      </div>
-      <div data-device-content hidden>
-
-      <div class="card tilt-card command-card" aria-label="Cihaz kontrolü">
-        <div class="card-head">
-          <div class="head-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <rect x="2" y="3" width="20" height="14" rx="2"/>
-              <line x1="8" y1="21" x2="16" y2="21"/>
-              <line x1="12" y1="17" x2="12" y2="21"/>
-            </svg>
-            <h3>Cihaz kontrolü</h3>
-          </div>
-          <span class="hint" id="controlHint"></span>
-        </div>
-
-        <div class="controls-grid controls">
-          <!-- Havalandırma Fanı -->
-          <div class="ctrl-group">
-            <div class="ctrl-header">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <circle cx="12" cy="12" r="2"/>
-                <path d="M12 10a4 4 0 0 0-4-4c-2.2 0-3 1.8-1.5 3.5L10 12"/>
-                <path d="M14 12a4 4 0 0 0 4-4c0-2.2-1.8-3-3.5-1.5L12 10"/>
-                <path d="M12 14a4 4 0 0 0 4 4c2.2 0 3-1.8 1.5-3.5L14 12"/>
-                <path d="M10 12a4 4 0 0 0-4 4c0 2.2 1.8 3 3.5 1.5L12 14"/>
-              </svg>
-              <span class="ctrl-label">Havalandırma</span>
-            </div>
-            <div class="radial-btn-wrapper">
-              <svg class="radial-countdown-ring" id="fanCountdownSvg" viewBox="0 0 100 100" aria-hidden="true">
-                <circle class="ring-bg" cx="50" cy="50" r="44"></circle>
-                <circle class="ring-progress fan-ring" id="fanRingCircle" cx="50" cy="50" r="44"></circle>
-              </svg>
-              <button class="btn" type="button" data-device="fan" data-action="toggle">
-                <span id="fanState">Kapalı</span>
-              </button>
-              <span class="radial-time-badge" id="fanTimeBadge" hidden>120s</span>
-            </div>
-          </div>
-
-          <!-- Su Motoru (Güvenlik Korumalı Çift Dokunuş) -->
-          <div class="ctrl-group">
-            <div class="ctrl-header">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
-                <path d="M8 14h2l2-3 2 5 2-2h2"/>
-              </svg>
-              <span class="ctrl-label">Su pompası</span>
-            </div>
-            <div class="radial-btn-wrapper">
-              <svg class="radial-countdown-ring" id="pumpCountdownSvg" viewBox="0 0 100 100" aria-hidden="true">
-                <circle class="ring-bg" cx="50" cy="50" r="44"></circle>
-                <circle class="ring-progress pump-ring" id="pumpRingCircle" cx="50" cy="50" r="44"></circle>
-              </svg>
-              <button class="btn danger" type="button" data-device="pump" data-action="toggle">
-                <span id="pumpState">Kapalı</span>
-              </button>
-              <span class="radial-time-badge" id="pumpTimeBadge" hidden>5:00</span>
-            </div>
-          </div>
-
-          <!-- Hoparlör & Siren (I2S MAX98357A) -->
-          <div class="ctrl-group span-2" id="soundControl">
-            <div class="ctrl-header">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M11 5 6 9H2v6h4l5 4z"/>
-                <path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14"/>
-              </svg>
-              <span class="ctrl-label">Siren ve ses</span>
-            </div>
-            <div class="btn-row">
-              <button class="btn" type="button" data-device="sound" data-action="toggle">
-                <span id="soundState">Sessiz</span>
-              </button>
-              <button class="btn sm warn" type="button" data-device="sound" data-action="siren">Siren Çal</button>
-              <button class="btn sm" type="button" data-device="sound" data-action="test">Test Tonu</button>
-              <button class="btn sm ghost" type="button" data-device="sound" data-action="beep">Kısa Bip</button>
-            </div>
-            <div class="servo-angle-box">
-              <div class="servo-angle-row">
-                <input type="range" min="0" max="100" value="70" class="servo-slider" id="sndVolume" aria-label="Hoparlör ses seviyesi">
-                <span class="servo-angle-val" id="sndVolumeVal">70%</span>
+              <!-- Alev / Yangın Sensörü Kontrolü -->
+              <div class="ctrl-group">
+                <div class="ctrl-header">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                    stroke-linejoin="round" aria-hidden="true">
+                    <path
+                      d="M8.5 14.5A3.5 3.5 0 0 0 12 18a3.5 3.5 0 0 0 3.5-3.5c0-2-1.5-3-2-4.5-.5 1.5-1.5 2-1.5 2s-.5-1.5-1-2.5c-.8 1.5-2.5 3-2.5 5Z" />
+                    <path
+                      d="M12 2c1 3 4 5.5 5.5 8.5a7 7 0 1 1-13 3.5c0-4 3.5-7.5 5-10.5.5 2 2 3 2.5 3 .5-.5 1-2.5 0-4.5Z" />
+                  </svg>
+                  <span class="ctrl-label">Alev sensörü</span>
+                </div>
+                <button class="btn" type="button" data-device="flame" data-action="toggle">
+                  <span id="flameEnableState">Açık</span>
+                </button>
+                <button class="btn sm ghost" type="button" data-device="flame" data-action="test"
+                  style="margin-top:0.45rem;">
+                  Alarmı Simüle Et
+                </button>
               </div>
-              <span class="hint" id="sndModeInfo"></span>
-            </div>
-          </div>
 
-          <!-- Titreşim / Sarsıntı Sensörü Kontrolü -->
-          <div class="ctrl-group">
-            <div class="ctrl-header">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M2 12h3l2.5-7 4 15 2.5-9 2 3h6"/>
-              </svg>
-              <span class="ctrl-label">Sarsıntı sensörü</span>
-            </div>
-            <button class="btn" type="button" data-device="vibration" data-action="toggle">
-              <span id="vibEnableState">Açık</span>
-            </button>
-            <button class="btn sm ghost" type="button" data-device="vibration" data-action="test" style="margin-top:0.45rem;">
-              Alarmı Simüle Et
-            </button>
-          </div>
+              <!-- Otomatik Müdahale -->
+              <div class="ctrl-group">
+                <div class="ctrl-header">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                    stroke-linejoin="round" aria-hidden="true">
+                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                  </svg>
+                  <span class="ctrl-label">Otomatik müdahale</span>
+                </div>
+                <button class="btn" type="button" data-device="auto" data-action="toggle">
+                  <span id="autoState">Açık</span>
+                </button>
+              </div>
 
-          <!-- Alev / Yangın Sensörü Kontrolü -->
-          <div class="ctrl-group">
-            <div class="ctrl-header">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M8.5 14.5A3.5 3.5 0 0 0 12 18a3.5 3.5 0 0 0 3.5-3.5c0-2-1.5-3-2-4.5-.5 1.5-1.5 2-1.5 2s-.5-1.5-1-2.5c-.8 1.5-2.5 3-2.5 5Z"/>
-                <path d="M12 2c1 3 4 5.5 5.5 8.5a7 7 0 1 1-13 3.5c0-4 3.5-7.5 5-10.5.5 2 2 3 2.5 3 .5-.5 1-2.5 0-4.5Z"/>
-              </svg>
-              <span class="ctrl-label">Alev sensörü</span>
-            </div>
-            <button class="btn" type="button" data-device="flame" data-action="toggle">
-              <span id="flameEnableState">Açık</span>
-            </button>
-            <button class="btn sm ghost" type="button" data-device="flame" data-action="test" style="margin-top:0.45rem;">
-              Alarmı Simüle Et
-            </button>
-          </div>
+              <!-- Pencere Servosu + Hassas Açı Kontrolü -->
+              <div class="ctrl-group span-2">
+                <div class="ctrl-header">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                    stroke-linejoin="round" aria-hidden="true">
+                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                    <path d="M12 3v18M3 12h18" />
+                  </svg>
+                  <span class="ctrl-label">Pencere</span>
+                </div>
+                <div class="btn-row">
+                  <button class="btn sm" type="button" data-device="window" data-action="open">Tam Aç (180°)</button>
+                  <button class="btn sm" type="button" data-device="window" data-action="ajar">Aralık (90°)</button>
+                  <button class="btn sm" type="button" data-device="window" data-action="shut">Kapat (0°)</button>
+                  <button class="btn sm ghost" type="button" data-device="window" data-action="stop">Serbest
+                    Bırak</button>
+                </div>
+                <div class="servo-angle-box">
+                  <div class="servo-angle-row">
+                    <input type="range" min="0" max="180" value="180" class="servo-slider" id="windowSlider"
+                      aria-label="Pencere açısı">
+                    <span class="servo-angle-val" id="windowAngleVal">180°</span>
+                    <button class="btn sm primary" type="button" id="applyWindowBtn">Açıyı Uygula</button>
+                  </div>
+                </div>
+              </div>
 
-          <!-- Otomatik Müdahale -->
-          <div class="ctrl-group">
-            <div class="ctrl-header">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-              </svg>
-              <span class="ctrl-label">Otomatik müdahale</span>
-            </div>
-            <button class="btn" type="button" data-device="auto" data-action="toggle">
-              <span id="autoState">Açık</span>
-            </button>
-          </div>
+              <!-- Panjur Servosu + Hassas Açı Kontrolü -->
+              <div class="ctrl-group span-2">
+                <div class="ctrl-header">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                    stroke-linejoin="round" aria-hidden="true">
+                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                    <path d="M7 3v18M12 3v18M17 3v18" />
+                  </svg>
+                  <span class="ctrl-label">Panjur</span>
+                </div>
+                <div class="btn-row">
+                  <button class="btn sm" type="button" data-device="blind" data-action="open">Aç (180°)</button>
+                  <button class="btn sm" type="button" data-device="blind" data-action="shut">Kapat (0°)</button>
+                  <button class="btn sm ghost" type="button" data-device="blind" data-action="stop">Serbest
+                    Bırak</button>
+                </div>
+                <div class="servo-angle-box">
+                  <div class="servo-angle-row">
+                    <input type="range" min="0" max="180" value="0" class="servo-slider" id="blindSlider"
+                      aria-label="Panjur açısı">
+                    <span class="servo-angle-val" id="blindAngleVal">0°</span>
+                    <button class="btn sm primary" type="button" id="applyBlindBtn">Açıyı Uygula</button>
+                  </div>
+                </div>
+              </div>
 
-          <!-- Pencere Servosu + Hassas Açı Kontrolü -->
-          <div class="ctrl-group span-2">
-            <div class="ctrl-header">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <rect x="3" y="3" width="18" height="18" rx="2"/>
-                <path d="M12 3v18M3 12h18"/>
-              </svg>
-              <span class="ctrl-label">Pencere</span>
-            </div>
-            <div class="btn-row">
-              <button class="btn sm" type="button" data-device="window" data-action="open">Tam Aç (180°)</button>
-              <button class="btn sm" type="button" data-device="window" data-action="ajar">Aralık (90°)</button>
-              <button class="btn sm" type="button" data-device="window" data-action="shut">Kapat (0°)</button>
-              <button class="btn sm ghost" type="button" data-device="window" data-action="stop">Serbest Bırak</button>
-            </div>
-            <div class="servo-angle-box">
-              <div class="servo-angle-row">
-                <input type="range" min="0" max="180" value="180" class="servo-slider" id="windowSlider" aria-label="Pencere açısı">
-                <span class="servo-angle-val" id="windowAngleVal">180°</span>
-                <button class="btn sm primary" type="button" id="applyWindowBtn">Açıyı Uygula</button>
+              <!-- Acil Durum Simülasyon Tatbikatı -->
+              <div class="ctrl-group span-2 simulation-drill-box">
+                <div class="ctrl-header">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                    stroke-linejoin="round" aria-hidden="true">
+                    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+                    <line x1="12" y1="9" x2="12" y2="13" />
+                    <line x1="12" y1="17" x2="12.01" y2="17" />
+                  </svg>
+                  <span class="ctrl-label">Test ve bakım</span>
+                </div>
+                <button class="btn warn drill-btn" type="button" data-device="test" data-action="simulate_alarm">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                    stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                  </svg>
+                  5 saniyelik alarm testi
+                </button>
+                <button class="btn" type="button" data-device="gas" data-action="recalibrate">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                    stroke-linejoin="round" aria-hidden="true">
+                    <path
+                      d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                  Gaz sensörünü kalibre et
+                </button>
               </div>
             </div>
           </div>
+        </div>
+      </section>
 
-          <!-- Panjur Servosu + Hassas Açı Kontrolü -->
-          <div class="ctrl-group span-2">
-            <div class="ctrl-header">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <rect x="3" y="3" width="18" height="18" rx="2"/>
-                <path d="M7 3v18M12 3v18M17 3v18"/>
-              </svg>
-              <span class="ctrl-label">Panjur</span>
+      <!-- 4. ZAMAN SERİSİ & ANALİTİK RADAR -->
+      <section class="scrolly-section analytics-section" id="analytics" aria-label="Sensör geçmişi">
+        <div class="section-badge-header">
+          <h2 class="sec-title">Son 24 saat</h2>
+          <p class="sec-subtitle">Sensör değerlerini ve alarmları zaman içinde görün.</p>
+        </div>
+        <div class="card section-device-empty" data-device-empty>
+          <p data-device-message>Cihaz bağlantısı bekleniyor…</p>
+          <a class="btn ghost" href="./settings.html#accountCard" data-device-action>Cihaz ve hesap ayarları</a>
+        </div>
+        <div data-device-content hidden>
+
+          <article class="card tilt-card analytics-card" id="historyCard">
+            <div class="card-head">
+              <div class="head-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                  stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                </svg>
+                <h3>Sensör geçmişi</h3>
+              </div>
+              <span class="chip" id="histChip" data-state="unknown">-</span>
             </div>
-            <div class="btn-row">
-              <button class="btn sm" type="button" data-device="blind" data-action="open">Aç (180°)</button>
-              <button class="btn sm" type="button" data-device="blind" data-action="shut">Kapat (0°)</button>
-              <button class="btn sm ghost" type="button" data-device="blind" data-action="stop">Serbest Bırak</button>
+
+            <div class="hist-range" role="group" aria-label="Zaman aralığı">
+              <button class="btn sm" type="button" data-span="60">1 Saat</button>
+              <button class="btn sm" type="button" data-span="180">3 Saat</button>
+              <button class="btn sm" type="button" data-span="720">12 Saat</button>
+              <button class="btn sm primary" type="button" data-span="1440">24 Saat</button>
+              <button class="btn sm ghost" type="button" id="histRefreshBtn"
+                title="Cihazdan yeniden çek">Yenile</button>
             </div>
-            <div class="servo-angle-box">
-              <div class="servo-angle-row">
-                <input type="range" min="0" max="180" value="0" class="servo-slider" id="blindSlider" aria-label="Panjur açısı">
-                <span class="servo-angle-val" id="blindAngleVal">0°</span>
-                <button class="btn sm primary" type="button" id="applyBlindBtn">Açıyı Uygula</button>
+
+            <div class="hist-metrics">
+              <div class="hm"><span>En yüksek gaz</span><strong id="histMaxPpm">—</strong></div>
+              <div class="hm"><span>En yüksek yağmur</span><strong id="histMaxRain">—</strong></div>
+              <div class="hm"><span>Alarm süresi</span><strong id="histAlarmTime">—</strong></div>
+              <div class="hm"><span>Örnek sayısı</span><strong id="histCount">—</strong></div>
+            </div>
+
+            <div class="hist-canvas-wrap">
+              <canvas id="histCanvas" height="260" aria-label="Gaz ve yağmur geçmiş grafiği"></canvas>
+              <p class="hist-empty" id="histEmpty">Henüz örnek yok. Kart yaklaşık 60 saniyede bir örnek kaydeder; birkaç
+                dakika sonra bu grafiği inceleyin.</p>
+            </div>
+
+            <div class="hist-legend" aria-hidden="true">
+              <span class="lg lg-gaz">Gaz PPM</span>
+              <span class="lg lg-yagmur">Yağmur %</span>
+              <span class="lg lg-alarm">Alarm / Tehlike Eşiği</span>
+              <span class="lg lg-ariza">Sensör arızası</span>
+            </div>
+
+            <!-- 5. Olay Anı Telemetri Kara Kutusu (Incident Blackbox Recorder & Replay Scrubber) -->
+            <div class="blackbox-wrap" id="blackboxWrap">
+              <div class="blackbox-head">
+                <div class="blackbox-title">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10" />
+                    <polygon points="10 8 16 12 10 16 10 8" />
+                  </svg>
+                  <span>Olay oynatıcı</span>
+                </div>
+                <div class="blackbox-actions">
+                  <select class="blackbox-select" id="blackboxSelect" aria-label="Kayıtlı olay seçin">
+                    <option value="">Olay Yükleniyor…</option>
+                  </select>
+                </div>
+              </div>
+              <div class="blackbox-body" id="blackboxBody" data-state="normal">
+                <div class="blackbox-scrubber-row">
+                  <button class="btn sm icon-btn" id="bbPlayBtn" type="button" title="Oynat / Duraklat"
+                    aria-label="Oynat / Duraklat">▶</button>
+                  <input type="range" class="blackbox-scrubber" id="bbScrubber" min="0" max="60" value="0" step="1"
+                    aria-label="Zaman çubuğu">
+                  <span class="bb-time" id="bbTimeLabel">-00:00</span>
+                </div>
+                <div class="blackbox-readout-grid">
+                  <div class="bb-item"><span class="bb-lbl">Zaman:</span><strong id="bbValTime">—</strong></div>
+                  <div class="bb-item"><span class="bb-lbl">Gaz Seviyesi:</span><strong id="bbValPpm">— PPM</strong>
+                  </div>
+                  <div class="bb-item"><span class="bb-lbl">Ham ADC:</span><strong id="bbValRaw">—</strong></div>
+                  <div class="bb-item"><span class="bb-lbl">Yağmur:</span><strong id="bbValRain">—</strong></div>
+                  <div class="bb-item"><span class="bb-lbl">Havalandırma:</span><strong id="bbValFan">—</strong></div>
+                  <div class="bb-item"><span class="bb-lbl">Su Pompası:</span><strong id="bbValPump">—</strong></div>
+                </div>
               </div>
             </div>
-          </div>
 
-          <!-- Acil Durum Simülasyon Tatbikatı -->
-          <div class="ctrl-group span-2 simulation-drill-box">
-            <div class="ctrl-header">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
-                <line x1="12" y1="9" x2="12" y2="13"/>
-                <line x1="12" y1="17" x2="12.01" y2="17"/>
-              </svg>
-              <span class="ctrl-label">Test ve bakım</span>
-            </div>
-            <button class="btn warn drill-btn" type="button" data-device="test" data-action="simulate_alarm">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-              </svg>
-              5 saniyelik alarm testi
-            </button>
-            <button class="btn" type="button" data-device="gas" data-action="recalibrate">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/>
-                <circle cx="12" cy="12" r="3"/>
-              </svg>
-              Gaz sensörünü kalibre et
-            </button>
-          </div>
+            <p class="card-foot">
+              <span id="histRange">aralık: —</span>
+              <span id="histSource">kaynak: —</span>
+            </p>
+          </article>
         </div>
-      </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- 4. ZAMAN SERİSİ & ANALİTİK RADAR -->
-    <section class="scrolly-section analytics-section" id="analytics" aria-label="Sensör geçmişi">
-      <div class="section-badge-header">
-        <h2 class="sec-title">Son 24 saat</h2>
-        <p class="sec-subtitle">Sensör değerlerini ve alarmları zaman içinde görün.</p>
-      </div>
-      <div class="card section-device-empty" data-device-empty>
-        <p data-device-message>Cihaz bağlantısı bekleniyor…</p>
-        <a class="btn ghost" href="./settings.html#accountCard" data-device-action>Cihaz ve hesap ayarları</a>
-      </div>
-      <div data-device-content hidden>
-
-      <article class="card tilt-card analytics-card" id="historyCard">
-        <div class="card-head">
-          <div class="head-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-            </svg>
-            <h3>Sensör geçmişi</h3>
-          </div>
-          <span class="chip" id="histChip" data-state="unknown">-</span>
+      <section class="scrolly-section diagnostics-section" id="diagnostics" aria-label="Sistem Teşhisi ve Bulut Ağı">
+        <div class="section-badge-header">
+          <h2 class="sec-title">Sistem sağlığı</h2>
+          <p class="sec-subtitle">Kartın bağlantısı, sinyali ve kaynak kullanımı.</p>
         </div>
-
-        <div class="hist-range" role="group" aria-label="Zaman aralığı">
-          <button class="btn sm" type="button" data-span="60">1 Saat</button>
-          <button class="btn sm" type="button" data-span="180">3 Saat</button>
-          <button class="btn sm" type="button" data-span="720">12 Saat</button>
-          <button class="btn sm primary" type="button" data-span="1440">24 Saat</button>
-          <button class="btn sm ghost" type="button" id="histRefreshBtn" title="Cihazdan yeniden çek">Yenile</button>
+        <div class="card section-device-empty" data-device-empty>
+          <p data-device-message>Cihaz bağlantısı bekleniyor…</p>
+          <a class="btn ghost" href="./settings.html#accountCard" data-device-action>Cihaz ve hesap ayarları</a>
         </div>
+        <div data-device-content hidden>
 
-        <div class="hist-metrics">
-          <div class="hm"><span>En yüksek gaz</span><strong id="histMaxPpm">—</strong></div>
-          <div class="hm"><span>En yüksek yağmur</span><strong id="histMaxRain">—</strong></div>
-          <div class="hm"><span>Alarm süresi</span><strong id="histAlarmTime">—</strong></div>
-          <div class="hm"><span>Örnek sayısı</span><strong id="histCount">—</strong></div>
-        </div>
-
-        <div class="hist-canvas-wrap">
-          <canvas id="histCanvas" height="260" aria-label="Gaz ve yağmur geçmiş grafiği"></canvas>
-          <p class="hist-empty" id="histEmpty">Henüz örnek yok. Kart yaklaşık 60 saniyede bir örnek kaydeder; birkaç dakika sonra bu grafiği inceleyin.</p>
-        </div>
-
-        <div class="hist-legend" aria-hidden="true">
-          <span class="lg lg-gaz">Gaz PPM</span>
-          <span class="lg lg-yagmur">Yağmur %</span>
-          <span class="lg lg-alarm">Alarm / Tehlike Eşiği</span>
-          <span class="lg lg-ariza">Sensör arızası</span>
-        </div>
-
-        <!-- 5. Olay Anı Telemetri Kara Kutusu (Incident Blackbox Recorder & Replay Scrubber) -->
-        <div class="blackbox-wrap" id="blackboxWrap">
-          <div class="blackbox-head">
-            <div class="blackbox-title">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <circle cx="12" cy="12" r="10"/>
-                <polygon points="10 8 16 12 10 16 10 8"/>
-              </svg>
-              <span>Olay oynatıcı</span>
-            </div>
-            <div class="blackbox-actions">
-              <select class="blackbox-select" id="blackboxSelect" aria-label="Kayıtlı olay seçin">
-                <option value="">Olay Yükleniyor…</option>
-              </select>
-            </div>
-          </div>
-          <div class="blackbox-body" id="blackboxBody" data-state="normal">
-            <div class="blackbox-scrubber-row">
-              <button class="btn sm icon-btn" id="bbPlayBtn" type="button" title="Oynat / Duraklat" aria-label="Oynat / Duraklat">▶</button>
-              <input type="range" class="blackbox-scrubber" id="bbScrubber" min="0" max="60" value="0" step="1" aria-label="Zaman çubuğu">
-              <span class="bb-time" id="bbTimeLabel">-00:00</span>
-            </div>
-            <div class="blackbox-readout-grid">
-              <div class="bb-item"><span class="bb-lbl">Zaman:</span><strong id="bbValTime">—</strong></div>
-              <div class="bb-item"><span class="bb-lbl">Gaz Seviyesi:</span><strong id="bbValPpm">— PPM</strong></div>
-              <div class="bb-item"><span class="bb-lbl">Ham ADC:</span><strong id="bbValRaw">—</strong></div>
-              <div class="bb-item"><span class="bb-lbl">Yağmur:</span><strong id="bbValRain">—</strong></div>
-              <div class="bb-item"><span class="bb-lbl">Havalandırma:</span><strong id="bbValFan">—</strong></div>
-              <div class="bb-item"><span class="bb-lbl">Su Pompası:</span><strong id="bbValPump">—</strong></div>
-            </div>
-          </div>
-        </div>
-
-        <p class="card-foot">
-          <span id="histRange">aralık: —</span>
-          <span id="histSource">kaynak: —</span>
-        </p>
-      </article>
-      </div>
-    </section>
-
-    <section class="scrolly-section diagnostics-section" id="diagnostics" aria-label="Sistem Teşhisi ve Bulut Ağı">
-      <div class="section-badge-header">
-        <h2 class="sec-title">Sistem sağlığı</h2>
-        <p class="sec-subtitle">Kartın bağlantısı, sinyali ve kaynak kullanımı.</p>
-      </div>
-      <div class="card section-device-empty" data-device-empty>
-        <p data-device-message>Cihaz bağlantısı bekleniyor…</p>
-        <a class="btn ghost" href="./settings.html#accountCard" data-device-action>Cihaz ve hesap ayarları</a>
-      </div>
-      <div data-device-content hidden>
-
-      <article class="card tilt-card span-2 diagnostics-card" id="diagnosticsCard">
-        <div class="card-head">
-          <div class="head-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <rect x="4" y="4" width="16" height="16" rx="2"/>
-              <rect x="9" y="9" width="6" height="6"/>
-              <path d="M15 2v2M9 2v2M20 15h2M20 9h2M9 20v2M15 20v2M2 9h2M2 15h2"/>
-            </svg>
-            <h3>Sistem durumu</h3>
-          </div>
-          <div style="display:flex; align-items:center; gap:0.5rem;">
-            <span class="latency-badge" id="latencyBadge" title="Sunucu yanıt gecikmesi">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-              </svg>
-              <span id="pingMs">0 ms</span>
-            </span>
-            <span class="chip" id="sysChip" data-state="unknown">—</span>
-          </div>
-        </div>
-
-        <dl class="kv diagnostics-kv">
-          <!-- Çalışma Süresi -->
-          <div class="kv-item">
-            <div class="kv-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <circle cx="12" cy="12" r="10"/>
-                <polyline points="12 6 12 12 16 14"/>
-              </svg>
-            </div>
-            <div class="kv-data">
-              <dt>Çalışma süresi</dt>
-              <dd id="uptime">—</dd>
-            </div>
-          </div>
-
-          <!-- Sinyal (RSSI) -->
-          <div class="kv-item">
-            <div class="kv-icon">
-              <svg class="rssi-bars" id="rssiSvg" data-level="0" viewBox="0 0 24 24" aria-hidden="true">
-                <rect class="bar b1" x="3" y="16" width="3.5" height="5" rx="1"/>
-                <rect class="bar b2" x="8.5" y="12" width="3.5" height="9" rx="1"/>
-                <rect class="bar b3" x="14" y="7" width="3.5" height="14" rx="1"/>
-                <rect class="bar b4" x="19.5" y="2" width="3.5" height="19" rx="1"/>
-              </svg>
-            </div>
-            <div class="kv-data">
-              <dt>Wi-Fi sinyali</dt>
-              <dd id="rssi">—</dd>
-            </div>
-          </div>
-
-          <!-- IP Adresi -->
-          <div class="kv-item">
-            <div class="kv-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <circle cx="12" cy="12" r="10"/>
-                <line x1="2" y1="12" x2="22" y2="12"/>
-                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1 4-10z"/>
-              </svg>
-            </div>
-            <div class="kv-data">
-              <dt>Yerel IP</dt>
-              <dd id="ip">—</dd>
-            </div>
-          </div>
-
-          <!-- Boş RAM / Heap -->
-          <div class="kv-item">
-            <div class="kv-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <rect x="4" y="4" width="16" height="16" rx="2"/>
-                <rect x="8" y="8" width="8" height="8" rx="1"/>
-                <line x1="4" y1="9" x2="2" y2="9"/><line x1="4" y1="15" x2="2" y2="15"/>
-                <line x1="20" y1="9" x2="22" y2="9"/><line x1="20" y1="15" x2="22" y2="15"/>
-                <line x1="9" y1="4" x2="9" y2="2"/><line x1="15" y1="4" x2="15" y2="2"/>
-                <line x1="9" y1="20" x2="9" y2="22"/><line x1="15" y1="20" x2="15" y2="22"/>
-              </svg>
-            </div>
-            <div class="kv-data" style="width:100%;">
-              <dt>Boş bellek</dt>
-              <dd id="heap">—</dd>
-              <div class="mini-bar-wrap">
-                <div class="mini-bar-fill" id="heapFill"></div>
+          <article class="card tilt-card span-2 diagnostics-card" id="diagnosticsCard">
+            <div class="card-head">
+              <div class="head-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                  stroke-linejoin="round" aria-hidden="true">
+                  <rect x="4" y="4" width="16" height="16" rx="2" />
+                  <rect x="9" y="9" width="6" height="6" />
+                  <path d="M15 2v2M9 2v2M20 15h2M20 9h2M9 20v2M15 20v2M2 9h2M2 15h2" />
+                </svg>
+                <h3>Sistem durumu</h3>
+              </div>
+              <div style="display:flex; align-items:center; gap:0.5rem;">
+                <span class="latency-badge" id="latencyBadge" title="Sunucu yanıt gecikmesi">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round" aria-hidden="true">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                  </svg>
+                  <span id="pingMs">0 ms</span>
+                </span>
+                <span class="chip" id="sysChip" data-state="unknown">—</span>
               </div>
             </div>
-          </div>
 
-          <!-- Firmware -->
-          <div class="kv-item">
-            <div class="kv-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <polyline points="4 17 10 11 4 5"/>
-                <line x1="12" y1="19" x2="20" y2="19"/>
-              </svg>
-            </div>
-            <div class="kv-data">
-              <dt>Yazılım sürümü</dt>
-              <dd id="fw">—</dd>
-            </div>
-          </div>
+            <dl class="kv diagnostics-kv">
+              <!-- Çalışma Süresi -->
+              <div class="kv-item">
+                <div class="kv-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                    stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
+                </div>
+                <div class="kv-data">
+                  <dt>Çalışma süresi</dt>
+                  <dd id="uptime">—</dd>
+                </div>
+              </div>
 
-          <!-- Depolama / LittleFS -->
-          <div class="kv-item">
-            <div class="kv-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <ellipse cx="12" cy="5" rx="9" ry="3"/>
-                <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
-                <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
-              </svg>
-            </div>
-            <div class="kv-data">
-              <dt>Depolama</dt>
-              <dd id="fsState">—</dd>
-            </div>
-          </div>
-        </dl>
+              <!-- Sinyal (RSSI) -->
+              <div class="kv-item">
+                <div class="kv-icon">
+                  <svg class="rssi-bars" id="rssiSvg" data-level="0" viewBox="0 0 24 24" aria-hidden="true">
+                    <rect class="bar b1" x="3" y="16" width="3.5" height="5" rx="1" />
+                    <rect class="bar b2" x="8.5" y="12" width="3.5" height="9" rx="1" />
+                    <rect class="bar b3" x="14" y="7" width="3.5" height="14" rx="1" />
+                    <rect class="bar b4" x="19.5" y="2" width="3.5" height="19" rx="1" />
+                  </svg>
+                </div>
+                <div class="kv-data">
+                  <dt>Wi-Fi sinyali</dt>
+                  <dd id="rssi">—</dd>
+                </div>
+              </div>
 
-        <p class="card-foot">
-          <span id="lastUpdate">son güncelleme: —</span>
-          <span id="clientCount">bağlı istemci: 0</span>
-        </p>
-      </article>
-      </div>
-    </section>
+              <!-- IP Adresi -->
+              <div class="kv-item">
+                <div class="kv-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                    stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="2" y1="12" x2="22" y2="12" />
+                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1 4-10z" />
+                  </svg>
+                </div>
+                <div class="kv-data">
+                  <dt>Yerel IP</dt>
+                  <dd id="ip">—</dd>
+                </div>
+              </div>
 
-    <noscript>
-      <div class="banner warn">
-        <strong>JavaScript Gerekli</strong>
-        Bu panel Deneyap Kart ile gerçek zamanlı iletişim kurmak için JavaScript gerektirir.
-      </div>
-    </noscript>
-  </div>
+              <!-- Boş RAM / Heap -->
+              <div class="kv-item">
+                <div class="kv-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                    stroke-linejoin="round" aria-hidden="true">
+                    <rect x="4" y="4" width="16" height="16" rx="2" />
+                    <rect x="8" y="8" width="8" height="8" rx="1" />
+                    <line x1="4" y1="9" x2="2" y2="9" />
+                    <line x1="4" y1="15" x2="2" y2="15" />
+                    <line x1="20" y1="9" x2="22" y2="9" />
+                    <line x1="20" y1="15" x2="22" y2="15" />
+                    <line x1="9" y1="4" x2="9" y2="2" />
+                    <line x1="15" y1="4" x2="15" y2="2" />
+                    <line x1="9" y1="20" x2="9" y2="22" />
+                    <line x1="15" y1="20" x2="15" y2="22" />
+                  </svg>
+                </div>
+                <div class="kv-data" style="width:100%;">
+                  <dt>Boş bellek</dt>
+                  <dd id="heap">—</dd>
+                  <div class="mini-bar-wrap">
+                    <div class="mini-bar-fill" id="heapFill"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Firmware -->
+              <div class="kv-item">
+                <div class="kv-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                    stroke-linejoin="round" aria-hidden="true">
+                    <polyline points="4 17 10 11 4 5" />
+                    <line x1="12" y1="19" x2="20" y2="19" />
+                  </svg>
+                </div>
+                <div class="kv-data">
+                  <dt>Yazılım sürümü</dt>
+                  <dd id="fw">—</dd>
+                </div>
+              </div>
+
+              <!-- Depolama / LittleFS -->
+              <div class="kv-item">
+                <div class="kv-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                    stroke-linejoin="round" aria-hidden="true">
+                    <ellipse cx="12" cy="5" rx="9" ry="3" />
+                    <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
+                    <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+                  </svg>
+                </div>
+                <div class="kv-data">
+                  <dt>Depolama</dt>
+                  <dd id="fsState">—</dd>
+                </div>
+              </div>
+            </dl>
+
+            <p class="card-foot">
+              <span id="lastUpdate">son güncelleme: —</span>
+              <span id="clientCount">bağlı istemci: 0</span>
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <noscript>
+        <div class="banner warn">
+          <strong>JavaScript Gerekli</strong>
+          Bu panel Deneyap Kart ile gerçek zamanlı iletişim kurmak için JavaScript gerektirir.
+        </div>
+      </noscript>
+    </div>
   </main>
 
   <!-- Site alt bilgisi -->
@@ -911,36 +1040,62 @@
     <div class="footer-inner">
       <div class="footer-col brand-col">
         <div class="footer-brand">
-          <span class="f-pulse"></span>
+          <img src="./icons/icon-192.png" alt="" class="footer-brand-logo" width="32" height="32">
+          <span class="f-pulse" aria-hidden="true"></span>
           <strong>DD Ev Koruma</strong>
         </div>
-        <p class="f-desc">Evinizdeki gaz, duman, su ve hareket sensörlerini tek yerden izleyin. Bir sorun olduğunda haberiniz olsun.</p>
-        <span class="f-meta">Deneyap Kart</span>
+        <p class="f-desc">Evinizdeki gaz, duman, alev, su baskını ve sarsıntı sensörlerini tek yerden izleyin; tehlike
+          anında hızla önlem alın.</p>
+        <span class="f-meta">Deneyap Kart · Akıllı Ev Güvenliği</span>
       </div>
 
-      <div class="footer-col links-col">
-        <span class="f-heading">Sayfalar</span>
-        <a href="#hero">Panel</a>
+      <nav class="footer-col links-col" aria-label="Panel bölümleri">
+        <span class="f-heading">Panel</span>
+        <a href="#hero">Genel bakış</a>
         <a href="#telemetry">Sensörler</a>
         <a href="#command-center">Kontrol</a>
         <a href="#analytics">Geçmiş</a>
-        <a href="./events.html">Olaylar</a>
         <a href="#diagnostics">Sistem</a>
+      </nav>
+
+      <nav class="footer-col links-col" aria-label="İzleme ve güvenlik">
+        <span class="f-heading">İzleme ve güvenlik</span>
+        <a href="./events.html">Olay günlüğü</a>
         <a href="./earthquake.html">Deprem izleme</a>
+        <a href="./settings.html#accountCard">Hesap ve roller</a>
         <a href="./privacy.html">Gizlilik ve hesap silme</a>
-      </div>
+      </nav>
 
       <div class="footer-col actions-col">
-        <span class="f-heading">Ayarlar</span>
-        <a href="./settings.html" class="footer-settings-link">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
-            <circle cx="12" cy="12" r="3"/>
-          </svg>
-          Cihaz ve bildirim ayarları
-        </a>
-        <p class="f-copy">© 2026 Deneyap Teknoloji Atölyeleri</p>
+        <span class="f-heading">Hızlı işlemler</span>
+        <div class="footer-action-stack">
+          <a href="./settings.html" class="footer-settings-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+              stroke-linejoin="round" aria-hidden="true">
+              <path
+                d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            <span>Cihaz ve bildirim ayarları</span>
+          </a>
+          <a href="./events.html" class="footer-secondary-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+              stroke-linejoin="round" aria-hidden="true">
+              <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+            </svg>
+            <span>Olay kayıtlarını aç</span>
+          </a>
+        </div>
       </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p class="f-copy">© 2026 Deneyap Teknoloji Atölyeleri · DD Ev Koruma</p>
+      <nav class="footer-legal" aria-label="Yasal bağlantılar">
+        <a href="./privacy.html">Gizlilik Politikası</a>
+        <a href="./privacy.html#hesap-silme">Hesap Silme</a>
+      </nav>
     </div>
   </footer>
 
@@ -950,31 +1105,42 @@
   <!-- Mobil Hızlı Alt Navigasyon Barı -->
   <nav class="bottom-nav product-nav" aria-label="Ana gezinme">
     <a href="#hero" data-nav="hero" class="active" aria-current="page">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M3 10.5 12 3l9 7.5"/>
-        <path d="M5 9.5V21h14V9.5"/>
-        <path d="M9.5 21v-6h5v6"/>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+        stroke-linejoin="round" aria-hidden="true">
+        <path d="M3 10.5 12 3l9 7.5" />
+        <path d="M5 9.5V21h14V9.5" />
+        <path d="M9.5 21v-6h5v6" />
       </svg>
       <span>Panel</span>
     </a>
     <a href="#telemetry">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l2-7 4 14 2-7h6"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+        stroke-linejoin="round" aria-hidden="true">
+        <path d="M3 12h4l2-7 4 14 2-7h6" />
+      </svg>
       <span>Sensörler</span>
     </a>
     <a href="#command-center">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 17h16M9 4v6m6 4v6"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+        stroke-linejoin="round" aria-hidden="true">
+        <path d="M4 7h16M4 17h16M9 4v6m6 4v6" />
+      </svg>
       <span>Kontrol</span>
     </a>
     <a href="./events.html">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9m-8 12a2 2 0 0 0 4 0"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+        stroke-linejoin="round" aria-hidden="true">
+        <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9m-8 12a2 2 0 0 0 4 0" />
+      </svg>
       <span>Olaylar</span>
     </a>
     <button type="button" class="bottom-nav-more" id="mobileMoreBtn" aria-haspopup="dialog" aria-expanded="false">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <rect x="3" y="3" width="7" height="7" rx="1.5"/>
-        <rect x="14" y="3" width="7" height="7" rx="1.5"/>
-        <rect x="3" y="14" width="7" height="7" rx="1.5"/>
-        <rect x="14" y="14" width="7" height="7" rx="1.5"/>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+        stroke-linejoin="round" aria-hidden="true">
+        <rect x="3" y="3" width="7" height="7" rx="1.5" />
+        <rect x="14" y="3" width="7" height="7" rx="1.5" />
+        <rect x="3" y="14" width="7" height="7" rx="1.5" />
+        <rect x="14" y="14" width="7" height="7" rx="1.5" />
       </svg>
       <span>Diğer</span>
     </button>
@@ -1005,4 +1171,5 @@
   <script defer src="./js/mobile-app.js"></script>
 
 </body>
+
 </html>

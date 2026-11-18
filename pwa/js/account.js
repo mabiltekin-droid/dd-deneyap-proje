@@ -216,6 +216,7 @@
   }
 
   async function doSignUp() {
+    if (busy) return;
     const email = $('authEmail').value.trim();
     const pass = $('authPass').value;
     if (!email) return setResult('E-posta girin.', 'err');
@@ -248,6 +249,7 @@
   };
 
   async function doSocialSignIn(provider) {
+    if (busy) return;
     const android = window.AndroidApp;
     const nativeBridge = window.DeneyapGoogleSignIn || android;
     const nativeGoogle = provider === 'google' && nativeBridge
@@ -268,8 +270,18 @@
     if (btn) btn.disabled = true;
     setResult(def.label + ' ile giriş yapılıyor…');
     try {
+      let idToken = null;
+      if (nativeGoogle) {
+        idToken = await nativeBridge.getGoogleIdToken();
+        if (!idToken) {
+          const invalidErr = new Error('Google kimlik belirteci alınamadı.');
+          invalidErr.code = 'auth/invalid-credential';
+          invalidErr.human = 'Google hesabı doğrulanamadı. Tekrar deneyin.';
+          throw invalidErr;
+        }
+      }
       const r = nativeGoogle
-        ? await App.Auth.signInWithProvider('google', await nativeBridge.getGoogleIdToken())
+        ? await App.Auth.signInWithProvider('google', idToken)
         : await App.Auth.signInWithProvider(provider);
       if (r && r.redirect) {
         setResult(def.label + ' sayfasına yönlendiriliyorsunuz…');
@@ -282,7 +294,10 @@
       if (e && (e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request')) {
         setResult(def.label + ' girişi iptal edildi.', 'err');
       } else {
-        setResult(e.human || e.message, 'err');
+        const msg = (e && (e.human || e.message))
+          || (typeof e === 'string' && e)
+          || (def.label + ' girişi başarısız oldu. Tekrar deneyin.');
+        setResult(msg, 'err');
       }
     } finally {
       busy = false;

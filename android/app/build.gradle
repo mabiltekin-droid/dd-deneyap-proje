@@ -65,6 +65,8 @@ android {
 }
 
 dependencies {
+    // AppCompat tema ve FragmentActivity / CredentialManager / BiometricPrompt uyumluluğu için.
+    implementation 'androidx.appcompat:appcompat:1.7.0'
     // Edge-to-edge güvenli alanları (durum çubuğu / klavye) için.
     implementation 'androidx.core:core:1.13.1'
     // "Chrome'da aç" için Custom Tabs.
