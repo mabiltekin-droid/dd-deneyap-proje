@@ -19,6 +19,11 @@
     el.className = 'result' + (kind ? ' ' + kind : '');
   }
 
+  function setChromeFallback(visible) {
+    const row = $('googleChromeFallbackRow');
+    if (row) row.hidden = !visible;
+  }
+
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
@@ -57,6 +62,7 @@
     }
 
     if (snap.signedIn) {
+      setChromeFallback(false);
       $('authUserEmail').textContent = (snap.user && snap.user.email) || '—';
       $('authUserRole').textContent = snap.isAdmin ? 'Sistem Yöneticisi (Platform Admin)' : 'Kullanıcı';
       $('authUserSince').textContent =
@@ -164,6 +170,7 @@
     if (!email || !pass) return setResult('E-posta ve şifre girin.', 'err');
     busy = true;
     $('authSignInBtn').disabled = true;
+    setChromeFallback(false);
     setResult('Giriş yapılıyor…');
     try {
       await App.Auth.signIn(email, pass);
@@ -250,12 +257,14 @@
 
   async function doSocialSignIn(provider) {
     if (busy) return;
+    setChromeFallback(false);
     const android = window.AndroidApp;
     const nativeBridge = window.DeneyapGoogleSignIn || android;
     const nativeGoogle = provider === 'google' && nativeBridge
       && typeof nativeBridge.getGoogleIdToken === 'function';
     if (provider === 'google' && android && !nativeGoogle) {
       setResult('Google girişi bu uygulama sürümünde kullanılamıyor. Uygulamayı güncelleyin veya e-posta ve şifreyle giriş yapın.', 'err');
+      setChromeFallback(typeof android.openInChrome === 'function');
       return;
     }
     if (!nativeGoogle && android && typeof android.openInChrome === 'function') {
@@ -287,6 +296,7 @@
         setResult(def.label + ' sayfasına yönlendiriliyorsunuz…');
         return;
       }
+      setChromeFallback(false);
       setResult('Giriş başarılı.', 'ok');
       App.sound && App.sound.ok ? App.sound.ok() : (App.sound && App.sound.click());
       App.haptic && App.haptic(40);
@@ -298,6 +308,9 @@
           || (typeof e === 'string' && e)
           || (def.label + ' girişi başarısız oldu. Tekrar deneyin.');
         setResult(msg, 'err');
+        if (provider === 'google' && android && typeof android.openInChrome === 'function') {
+          setChromeFallback(true);
+        }
       }
     } finally {
       busy = false;
@@ -792,6 +805,14 @@
       const id = SOCIAL_BTN[p].id;
       if ($(id)) $(id).addEventListener('click', function () { doSocialSignIn(p); });
     });
+    if ($('googleChromeFallbackBtn')) {
+      $('googleChromeFallbackBtn').addEventListener('click', function () {
+        const android = window.AndroidApp;
+        if (android && typeof android.openInChrome === 'function') {
+          android.openInChrome();
+        }
+      });
+    }
     $('authSignOutBtn').addEventListener('click', doSignOut);
     const deletionDialog = $('accountDeletionDialog');
     const deletionButton = $('accountDeleteRequestBtn');

@@ -110,7 +110,7 @@ public class MainActivity extends Activity {
         } catch (Throwable first) {
             try {
                 activity.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
-            } catch (ActivityNotFoundException second) {
+            } catch (Throwable second) {
                 Toast.makeText(activity,
                         "Açılacak tarayıcı bulunamadı.", Toast.LENGTH_LONG).show();
             }

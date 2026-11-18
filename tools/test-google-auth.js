@@ -268,8 +268,11 @@ async function nativeFailure() {
   page.port.reply({ error: 'Google girişi bu cihazda başlatılamadı.', code: 'auth/native-request-failed' });
   await until(() => !button.disabled, 'Native request failure should restore the sign-in button');
   assert.match(page.element('authResult').textContent, /başlatılamadı/i);
+  assert.equal(page.element('googleChromeFallbackRow').hidden, false, 'Native failure should expose browser fallback button');
   assert.equal(page.app.Auth.snapshot().signedIn, false);
   assert.equal(page.externalOpens(), 0);
+  page.element('googleChromeFallbackBtn').click();
+  assert.equal(page.externalOpens(), 1, 'Tapping the browser fallback button should open Chrome');
 }
 
 async function nativeTimeout() {
@@ -431,12 +434,39 @@ async function legacyWebView() {
   page.element('googleSignInBtn').click();
   assert.equal(page.externalOpens(), 0);
   assert.match(page.element('authResult').textContent, /uygulamayı güncelleyin/i);
+  assert.equal(page.element('googleChromeFallbackRow').hidden, false, 'Legacy WebView should expose browser fallback button');
   assert.equal(page.app.Auth.snapshot().signedIn, false);
   assert.deepEqual(backend.calls, []);
+  page.element('googleChromeFallbackBtn').click();
+  assert.equal(page.externalOpens(), 1, 'Browser fallback button should launch Chrome when tapped');
+}
+
+async function browserInternalPopupFallbackAndRedirectRestore() {
+  const backend = mockBackend();
+  backend.auth.popupError = authError('auth/internal-error');
+  const before = mockPage(backend);
+  await ready(before);
+  before.element('googleSignInBtn').click();
+  await until(() => !before.element('googleSignInBtn').disabled, 'Mobile internal popup failure should fall back to redirect');
+  assert.deepEqual(backend.calls, [{ action: 'popup', provider: 'google.com' }, { action: 'redirect', provider: 'google.com' }]);
+  const persistedUser = {
+    uid: 'google-qa-user',
+    email: 'qa@example.test',
+    emailVerified: true,
+    displayName: 'QA fixture',
+    metadata: { creationTime: '2026-01-01' },
+    getIdToken: async () => 'mock-firebase-session',
+    reload: async () => {}
+  };
+  backend.auth.getRedirectResult = async () => ({ user: null });
+  backend.auth.currentUser = persistedUser;
+  const after = mockPage(backend, { local: before.local, session: before.session });
+  await ready(after);
+  assert.equal(after.app.Auth.snapshot().signedIn, true, 'Persisted Firebase user should complete redirect login even when getRedirectResult returns null');
 }
 
 (async () => {
-  for (const check of [nativeSuccess, nativeFailure, nativeTimeout, browserPopup, browserRedirect, redirectFailure, legacyWebView, googleSignOutOffline, googleSignOutFailure, staleFirebaseAuthCallback, profileGoogleSignOut, profileGoogleSignOutFailure]) {
+  for (const check of [nativeSuccess, nativeFailure, nativeTimeout, browserPopup, browserRedirect, redirectFailure, legacyWebView, googleSignOutOffline, googleSignOutFailure, staleFirebaseAuthCallback, profileGoogleSignOut, profileGoogleSignOutFailure, browserInternalPopupFallbackAndRedirectRestore]) {
     await check();
     console.log('PASS ' + check.name);
   }

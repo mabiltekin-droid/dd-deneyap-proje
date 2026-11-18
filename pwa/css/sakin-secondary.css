@@ -277,6 +277,10 @@ html.js-no-hash .settings-studio-main:not(.is-overview):not(.is-tabbed) {
   color: var(--text);
 }
 
+#authSignedOut #googleChromeFallbackRow:not([hidden]) {
+  margin: -0.45rem 0 1rem;
+}
+
 #authSignedOut #forgotPasswordBtn {
   color: var(--primary);
   text-decoration: underline;

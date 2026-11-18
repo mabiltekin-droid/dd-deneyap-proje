@@ -44,10 +44,10 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
 import androidx.biometric.BiometricManager;
 import androidx.biometric.BiometricPrompt;
 import androidx.core.content.ContextCompat;
-import androidx.fragment.app.FragmentActivity;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
@@ -71,7 +71,7 @@ import java.util.concurrent.Executor;
  * yerel menü, aşağı çekerek yenileme, çift geri tuşu ve Android kısayolları
  * bu sınıfta yönetilir.</p>
  */
-public class WebViewActivity extends FragmentActivity {
+public class WebViewActivity extends AppCompatActivity {
 
     public static final String EXTRA_URL = "url";
     public static final String EXTRA_FROM_SHORTCUT = "from_shortcut";
@@ -847,7 +847,7 @@ public class WebViewActivity extends FragmentActivity {
                         }
 
                         Executor executor = ContextCompat.getMainExecutor(WebViewActivity.this);
-                        BiometricPrompt biometricPrompt = new BiometricPrompt((FragmentActivity) WebViewActivity.this,
+                        BiometricPrompt biometricPrompt = new BiometricPrompt(WebViewActivity.this,
                                 executor, new BiometricPrompt.AuthenticationCallback() {
                             @Override
                             public void onAuthenticationError(int errorCode, @NonNull CharSequence errString) {

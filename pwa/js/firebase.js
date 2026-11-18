@@ -1299,7 +1299,8 @@
     } catch (e) {
       const code = e && e.code;
       if (!googleIdToken && (code === 'auth/popup-blocked' ||
-          code === 'auth/operation-not-supported-in-this-environment')) {
+          code === 'auth/operation-not-supported-in-this-environment' ||
+          code === 'auth/internal-error')) {
         // Açılır pencere engellendi/desteklenmiyor → tam sayfa yönlendirme.
         saveRedirectProvider(name);
         try {
@@ -1329,12 +1330,13 @@
     try {
       var _fbP = needFirebase(); if (_fbP) await _fbP;
       const result = await auth.getRedirectResult();
-      if (!result || !result.user) {
+      const user = (result && result.user) || auth.currentUser || await restoredUser();
+      if (!user) {
         const error = new Error('Yönlendirme sonucu bulunamadı.');
         error.code = 'auth/missing-redirect-result';
         throw error;
       }
-      return { provider: provider, session: await providerSession(result.user, provider) };
+      return { provider: provider, session: await providerSession(user, provider) };
     } catch (e) {
       if (e.human) throw e;
       throw socialError(e, def.label);

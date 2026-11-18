@@ -21,6 +21,7 @@ import androidx.webkit.JavaScriptReplyProxy;
 import androidx.webkit.WebViewCompat;
 import androidx.webkit.WebViewFeature;
 
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption;
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption;
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential;
 
@@ -99,19 +100,26 @@ final class GoogleSignInBridge {
 
         boolean pageFinishedFallback = false;
         try {
-            Set<String> origins = Collections.singleton("https://" + origin.getHost() + ":" + httpsPort(origin));
+            int port = httpsPort(origin);
+            String originRule = "https://" + origin.getHost() + (port == 443 ? "" : ":" + port);
+            Set<String> origins = Collections.singleton(originRule);
             WebViewCompat.addWebMessageListener(webView, PORT_NAME, origins,
                     (view, message, source, isMainFrame, reply) -> {
-                        if (!isMainFrame || source == null || view == null
-                                || !matchesOrigin(source.toString()) || !matchesOrigin(view.getUrl())
-                                || message.getType() != androidx.webkit.WebMessageCompat.TYPE_STRING) return;
-                        String data = message.getData();
-                        if (data == null || data.length() > 40) return;
-                        String[] parts = data.split(":", 2);
-                        if (parts.length != 2 || !parts[1].matches("[0-9]{1,12}")) return;
-                        if (REQUEST_TOKEN.equals(parts[0])) requestIdToken(parts[1], reply);
-                        else if ("cancelGoogleSignIn".equals(parts[0]) && pending != null
-                                && pending.id().equals(parts[1])) cancel();
+                        try {
+                            if (!isMainFrame || source == null || view == null
+                                    || !matchesOrigin(source.toString()) || !matchesOrigin(view.getUrl())
+                                    || message == null
+                                    || message.getType() != androidx.webkit.WebMessageCompat.TYPE_STRING) return;
+                            String data = message.getData();
+                            if (data == null || data.length() > 40) return;
+                            String[] parts = data.split(":", 2);
+                            if (parts.length != 2 || !parts[1].matches("[0-9]{1,12}")) return;
+                            if (REQUEST_TOKEN.equals(parts[0])) requestIdToken(parts[1], reply);
+                            else if ("cancelGoogleSignIn".equals(parts[0]) && pending != null
+                                    && pending.id().equals(parts[1])) cancel();
+                        } catch (Throwable t) {
+                            Log.w(LOG_TAG, "web_message_failed", t);
+                        }
                     });
             if (WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
                 WebViewCompat.addDocumentStartJavaScript(webView, SCRIPT, origins);
@@ -181,18 +189,42 @@ final class GoogleSignInBridge {
         pending = request;
         Log.d(LOG_TAG, "credential_requested");
         try {
+            activity.runOnUiThread(() -> startCredentialRequest(request, reply, true));
+        } catch (Throwable t) {
+            Log.w(LOG_TAG, "credential_dispatch_failed", t);
+            finish(request, reply, "error", "Google girişi bu cihazda başlatılamadı.",
+                    "auth/native-request-failed");
+        }
+    }
+
+    private void startCredentialRequest(Request request, JavaScriptReplyProxy reply,
+                                        boolean useSignInWithGoogleOption) {
+        if (!isActivityAlive()) {
+            if (pending == request) pending = null;
+            return;
+        }
+        if (pending != request || request.cancellation().isCanceled()) return;
+        try {
             String clientId = resolveWebClientId();
-            GetCredentialRequest credentials = new GetCredentialRequest.Builder()
-                    .addCredentialOption(new GetSignInWithGoogleOption.Builder(clientId).build())
-                    .build();
-            CredentialManager.create(activity).getCredentialAsync(activity, credentials, request.cancellation(),
+            GetCredentialRequest.Builder builder = new GetCredentialRequest.Builder();
+            if (useSignInWithGoogleOption) {
+                builder.addCredentialOption(new GetSignInWithGoogleOption.Builder(clientId).build());
+            } else {
+                builder.addCredentialOption(new GetGoogleIdOption.Builder()
+                        .setFilterByAuthorizedAccounts(false)
+                        .setServerClientId(clientId)
+                        .setAutoSelectEnabled(false)
+                        .build());
+            }
+            CredentialManager.create(activity).getCredentialAsync(activity, builder.build(),
+                    request.cancellation(),
                     ContextCompat.getMainExecutor(activity),
                     new CredentialManagerCallback<GetCredentialResponse, GetCredentialException>() {
                         @Override
                         public void onResult(GetCredentialResponse result) {
                             try {
                                 if (!isActivityAlive()) {
-                                    pending = null;
+                                    if (pending == request) pending = null;
                                     return;
                                 }
                                 if (result != null && result.getCredential() instanceof CustomCredential credential
@@ -216,7 +248,13 @@ final class GoogleSignInBridge {
                         public void onError(GetCredentialException error) {
                             try {
                                 if (!isActivityAlive()) {
-                                    pending = null;
+                                    if (pending == request) pending = null;
+                                    return;
+                                }
+                                Log.w(LOG_TAG, "credential_error:" + (error != null ? error.getClass().getSimpleName() : "null"), error);
+                                if (useSignInWithGoogleOption && shouldRetryWithGoogleIdOption(error)
+                                        && pending == request && !request.cancellation().isCanceled()) {
+                                    startCredentialRequest(request, reply, false);
                                     return;
                                 }
                                 finishWithError(request, reply, error);
@@ -232,6 +270,12 @@ final class GoogleSignInBridge {
             finish(request, reply, "error", "Google girişi bu cihazda başlatılamadı.",
                     "auth/native-request-failed");
         }
+    }
+
+    private static boolean shouldRetryWithGoogleIdOption(GetCredentialException error) {
+        return error instanceof NoCredentialException
+                || error instanceof GetCredentialUnsupportedException
+                || error instanceof GetCredentialProviderConfigurationException;
     }
 
     private void finishWithError(Request request, JavaScriptReplyProxy reply,
