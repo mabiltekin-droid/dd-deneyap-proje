@@ -187,6 +187,9 @@ self.addEventListener('pushsubscriptionchange', function (event) {
 
 function pageKeys(url) {
   const name = url.pathname.replace(/^\//, '').replace(/\/$|\.html$/g, '') || 'index';
+  if (name === 'settings/login' || name === 'settings/signup') {
+    return ['/settings', '/settings.html'].map(path => new URL(path, url.origin));
+  }
   if (!PAGES.has(name)) return [];
   const paths = name === 'index' ? ['/', '/index.html', '/index'] : ['/' + name, '/' + name + '.html'];
   return paths.map(path => new URL(path, url.origin));

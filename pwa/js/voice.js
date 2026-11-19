@@ -1076,7 +1076,11 @@
         speakFeedback(dest.toast);
       } else {
         if (App.toast) App.toast(dest.toast, { kind: 'ok', duration: 2000 });
-        nav.goUrl(pageHref('settings', dest.panelId ? '#' + dest.panelId : ''));
+        if (dest.panelId === 'accountCard') {
+          nav.goUrl('/settings/login');
+        } else {
+          nav.goUrl(pageHref('settings', dest.panelId ? '#' + dest.panelId : ''));
+        }
       }
       return dest.panelId ? ('nav:settings:' + dest.panelId) : 'nav:settings';
     }

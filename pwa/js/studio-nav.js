@@ -165,6 +165,23 @@
     bar.hidden = !(currentId && FORM_SAVE_PANELS[currentId]);
   }
 
+  function authRouteMode() {
+    var p = (window.location.pathname || '').toLowerCase();
+    if (/\/settings\/signup\/?$/.test(p)) return 'signup';
+    if (/\/settings\/login\/?$/.test(p)) return 'login';
+    return '';
+  }
+
+  function settingsBasePath() {
+    var p = window.location.pathname || '/settings.html';
+    if (/\/settings\/(login|signup)\/?$/i.test(p)) {
+      var pill = document.querySelector('.nav-settings-pill');
+      var href = pill ? (pill.getAttribute('href') || '') : '';
+      return href.indexOf('.html') !== -1 ? '/settings.html' : '/settings';
+    }
+    return p;
+  }
+
   function showOverview(options) {
     var root = mainRoot();
     var overview = byId('settingsOverview');
@@ -180,8 +197,8 @@
     updateActiveStyles();
     syncActionsBar();
 
-    if (options.clearHash && window.location.hash && window.history.replaceState) {
-      window.history.replaceState(window.history.state, '', window.location.pathname + window.location.search);
+    if (options.clearHash && (window.location.hash || authRouteMode()) && window.history.replaceState) {
+      window.history.replaceState(window.history.state, '', settingsBasePath() + window.location.search);
     }
     if (options.focus) focusEl(byId('settingsOverviewTitle'));
     if (options.scroll) scrollTop();
@@ -544,7 +561,10 @@
 
   function panelFromHash() {
     var raw = (window.location.hash || '').replace(/^#/, '');
-    if (!raw) return null;
+    if (!raw) {
+      if (authRouteMode()) return panelById('accountCard');
+      return null;
+    }
     try { raw = decodeURIComponent(raw); } catch (e) { /* yoksay */ }
 
     var direct = panelById(raw);
@@ -592,10 +612,17 @@
     if (options.hash !== false) {
       try {
         var history = window.history;
-        if (fromOverview && !window.location.hash) {
-          history.pushState({ settingsOverviewParent: true }, '', '#' + id);
+        var nextUrl;
+        if (id === 'accountCard') {
+          var mode = options.authMode || authRouteMode() || 'login';
+          nextUrl = '/settings/' + mode + (window.location.search || '');
         } else {
-          history.replaceState(history.state, '', '#' + id);
+          nextUrl = settingsBasePath() + (window.location.search || '') + '#' + id;
+        }
+        if (fromOverview && !window.location.hash && !authRouteMode()) {
+          history.pushState({ settingsOverviewParent: true }, '', nextUrl);
+        } else {
+          history.replaceState(history.state, '', nextUrl);
         }
       } catch (e) { /* yoksay */ }
     }
@@ -766,7 +793,8 @@
 
     var hashed = panelFromHash();
     if (hashed && !hashed.hidden) {
-      activate(hashed.id, { hash: false, scroll: false });
+      var normalizeLegacyAccountHash = hashed.id === 'accountCard' && !authRouteMode();
+      activate(hashed.id, { hash: normalizeLegacyAccountHash, scroll: false });
     } else {
       showOverview();
     }
@@ -780,7 +808,7 @@
       return;
     }
 
-    showOverview({ focus: !window.location.hash, scroll: !window.location.hash });
+    showOverview({ focus: !window.location.hash && !authRouteMode(), scroll: !window.location.hash && !authRouteMode() });
   }
 
   function boot() {
@@ -789,6 +817,7 @@
 
     document.addEventListener('keydown', onKeyDown);
     window.addEventListener('hashchange', onHashChange);
+    window.addEventListener('popstate', onHashChange);
     window.addEventListener('resize', updateHeaderOffset);
 
     if (document.readyState === 'loading') {

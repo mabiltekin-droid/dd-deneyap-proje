@@ -291,6 +291,10 @@ function serveStatic(req, res, pathname) {
   applySecurity(res);
   let rel = decodeURIComponent(pathname);
   if (rel === '/' || rel === '') rel = '/index.html';
+  else if (rel === '/settings/login' || rel === '/settings/login/' ||
+           rel === '/settings/signup' || rel === '/settings/signup/') {
+    rel = '/settings.html';
+  }
 
   const file = path.join(ROOT, path.normalize(rel));
   /* dizin dışına çıkmaya çalışan istekleri reddet */

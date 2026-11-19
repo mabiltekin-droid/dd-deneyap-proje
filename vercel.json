@@ -12,6 +12,14 @@
     {
       "source": "/__/firebase/(.*)",
       "destination": "https://ddproje-9f594.firebaseapp.com/__/firebase/$1"
+    },
+    {
+      "source": "/settings/login",
+      "destination": "/settings.html"
+    },
+    {
+      "source": "/settings/signup",
+      "destination": "/settings.html"
     }
   ],
   "crons": [

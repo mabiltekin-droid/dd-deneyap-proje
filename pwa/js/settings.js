@@ -682,7 +682,7 @@
 
     if (!rows.length) {
       box.innerHTML = '<p class="help">Hesabınıza bağlı cihaz yok. Bağlamak için ' +
-        '<a href="#accountCard">Hesap ve roller</a> bölümünü kullanın. Panel bir cihazı ' +
+        '<a href="/settings/login">Hesap ve roller</a> bölümünü kullanın. Panel bir cihazı ' +
         'gördüğünde (MQTT durumu) cihaz buraya otomatik eklenir.</p>';
       return;
     }

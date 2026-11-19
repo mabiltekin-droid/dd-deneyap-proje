@@ -275,7 +275,7 @@ function mockPage(backend, {
   api = createMobileAuthHarness(),
   local = storage(),
   session = storage(),
-  href = 'https://example.test/settings.html#accountCard',
+  href = 'https://example.test/settings/login',
   autoInit = true
 } = {}) {
   const elements = new Map();
@@ -332,6 +332,9 @@ function mockPage(backend, {
     crypto: crypto.webcrypto,
     location: locationObj,
     history: {
+      pushState(_, __, nextUrl) {
+        locationHref = new URL(nextUrl, locationHref).href;
+      },
       replaceState(_, __, nextUrl) {
         locationHref = new URL(nextUrl, locationHref).href;
       }
@@ -867,37 +870,43 @@ async function profileGoogleSignOutFailure() {
 
 async function legalConsentBlocksUncheckedSignIn() {
   const backend = mockBackend();
-  const page = mockPage(backend);
+  const page = mockPage(backend, { href: 'https://example.test/settings/login' });
   await ready(page);
 
   const cb = page.element('authLegalConsent');
   cb.checked = false;
 
-  page.element('authEmail').value = 'ali@example.test';
-  page.element('authPass').value = 'GucluSifre1!';
-
-  /* İlk kez giriş/kayıt: sosyal giriş ve hesap oluşturma engellenir */
+  /* 1. /settings/login üzerinde onay kutusu gerekmeden giriş yapılabilir */
+  assert.equal(page.element('authLoginView').hidden, false);
+  assert.equal(page.element('authSignUpView').hidden, true);
   page.element('googleSignInBtn').click();
-  page.element('githubSignInBtn').click();
-  page.element('appleSignInBtn').click();
+  await until(() => !page.element('googleSignInBtn').disabled, 'Login on /settings/login should not require consent checkbox');
+  assert.equal(page.app.Auth.snapshot().signedIn, true);
+  await page.app.Auth.signOut();
+  backend.calls.length = 0;
+
+  /* 2. "Kayıt Ol" düğmesi /settings/signup görünümüne geçirir */
+  page.element('goToSignUpBtn').click();
+  assert.equal(page.globals.location.pathname, '/settings/signup');
+  assert.equal(page.element('authLoginView').hidden, true);
+  assert.equal(page.element('authSignUpView').hidden, false);
+
+  /* 3. /settings/signup üzerinde kutucuk işaretlenmeden Google/GitHub/Apple/E-posta kaydı engellenir */
+  page.element('signUpEmail').value = 'ali@example.test';
+  page.element('signUpPass').value = 'GucluSifre1!';
+  page.element('googleSignUpBtn').click();
+  page.element('githubSignUpBtn').click();
+  page.element('appleSignUpBtn').click();
   page.element('authSignUpBtn').click();
   await until(() => /Kullanım Koşulları|Gizlilik Politikası/.test(page.element('authResult').textContent),
-    'Legal consent message should appear');
-
+    'Legal consent message should appear on /settings/signup');
   assert.equal(backend.calls.length, 0);
   assert.equal(page.app.Auth.snapshot().signedIn, false);
 
-  /* İlk kez kutucuk işaretlenip Google ile giriş yapılır */
+  /* 4. Kutucuk işaretlenince kayıt akışı ilerler */
   cb.checked = true;
-  page.element('googleSignInBtn').click();
-  await until(() => !page.element('googleSignInBtn').disabled, 'Google sign-in should proceed once consent is checked');
-  assert.equal(page.app.Auth.snapshot().signedIn, true);
-
-  /* Çıkış yapıp aynı cihazda tekrar girişte kutucuk zorunlu olmamalı */
-  await page.app.Auth.signOut();
-  cb.checked = false;
-  page.element('googleSignInBtn').click();
-  await until(() => !page.element('googleSignInBtn').disabled, 'Returning Google sign-in should not require re-checking consent');
+  page.element('googleSignUpBtn').click();
+  await until(() => !page.element('googleSignUpBtn').disabled, 'Sign-up should proceed once consent is checked');
   assert.equal(page.app.Auth.snapshot().signedIn, true);
 }
 

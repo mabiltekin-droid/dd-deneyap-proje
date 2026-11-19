@@ -165,9 +165,9 @@
 
   function buildBrowserAuthUrl(state) {
     const baseHref = (location && location.origin && location.origin !== 'null')
-      ? (location.origin + (location.pathname || '/settings.html'))
-      : './settings.html';
-    return baseHref + '?native_auth=google&state=' + encodeURIComponent(state) + '&return=app#accountCard';
+      ? (location.origin + '/settings/login')
+      : '/settings/login';
+    return baseHref + '?native_auth=google&state=' + encodeURIComponent(state) + '&return=app';
   }
 
   function esc(s) {
@@ -333,25 +333,42 @@
 
   /* ------------------------------------------------ kayıt / giriş --------- */
 
-  const LEGAL_CONSENT_KEY = 'deneyap.legalConsentAccepted';
+  const SOCIAL_SIGNUP_BTN = {
+    google: { id: 'googleSignUpBtn', label: 'Google' },
+    github: { id: 'githubSignUpBtn', label: 'GitHub' },
+    apple:  { id: 'appleSignUpBtn',  label: 'Apple' }
+  };
 
-  function hasLegalConsentAccepted() {
+  function authModeFromPath() {
     try {
-      return localStorage.getItem(LEGAL_CONSENT_KEY) === '1';
-    } catch (e) {
-      return false;
+      const p = (location && location.pathname) ? location.pathname.toLowerCase() : '';
+      if (/\/settings\/signup\/?$/.test(p)) return 'signup';
+    } catch (e) { /* yoksay */ }
+    return 'login';
+  }
+
+  function setAuthMode(mode, opts) {
+    const target = mode === 'signup' ? 'signup' : 'login';
+    const loginView = $('authLoginView');
+    const signUpView = $('authSignUpView');
+    if (loginView) loginView.hidden = (target !== 'login');
+    if (signUpView) signUpView.hidden = (target !== 'signup');
+    setResult('');
+    if (opts && opts.pushState && window.history && typeof window.history.pushState === 'function') {
+      const nextUrl = '/settings/' + target + ((location && location.search) || '');
+      try {
+        if (!location || location.pathname !== '/settings/' + target) {
+          window.history.pushState({ authMode: target }, '', nextUrl);
+        }
+      } catch (e) { /* yoksay */ }
+    }
+    const card = $('accountCard');
+    if (card && card.classList && card.classList.contains('is-tab-active')) {
+      document.title = (target === 'signup' ? 'Kayıt Ol' : 'Giriş Yap') + ' · DD Ev Koruma';
     }
   }
 
-  function markLegalConsentAccepted() {
-    try {
-      localStorage.setItem(LEGAL_CONSENT_KEY, '1');
-    } catch (e) { /* yoksay */ }
-  }
-
-  function requireLegalConsent(isHandoff, options) {
-    const force = !!(options && options.force);
-    if (!force && hasLegalConsentAccepted()) return true;
+  function requireSignUpConsent() {
     const cb = $('authLegalConsent');
     if (!cb || cb.checked) return true;
     const wrap = $('authLegalConsentWrap');
@@ -360,10 +377,9 @@
       void wrap.offsetWidth;
       wrap.classList.add('is-missing');
     }
-    const msg = 'İlk kez hesap oluşturmak veya ilk kez giriş yapmak için Kullanım Koşulları ve Gizlilik Politikası onay kutusunu işaretleyin.';
-    if (isHandoff) setHandoffStatus(msg, 'err');
-    else setResult(msg, 'err');
-    if (App.toast) App.toast('İlk kayıt için Kullanım Koşulları ve Gizlilik Politikası onayını işaretleyin.', { kind: 'warn' });
+    const msg = 'Kayıt olmak için Kullanım Koşulları ve Gizlilik Politikası onay kutusunu işaretleyin.';
+    setResult(msg, 'err');
+    if (App.toast) App.toast('Önce Kullanım Koşulları ve Gizlilik Politikası onayını işaretleyin.', { kind: 'warn' });
     try { cb.focus(); } catch (e) { /* yoksay */ }
     return false;
   }
@@ -379,7 +395,6 @@
     setResult('Giriş yapılıyor…');
     try {
       await App.Auth.signIn(email, pass);
-      markLegalConsentAccepted();
       setResult('Giriş başarılı.', 'ok');
       App.sound && App.sound.ok ? App.sound.ok() : (App.sound && App.sound.click());
       App.haptic && App.haptic(40);
@@ -430,18 +445,19 @@
 
   async function doSignUp() {
     if (busy) return;
-    if (!requireLegalConsent(false, { force: true })) return;
-    const email = $('authEmail').value.trim();
-    const pass = $('authPass').value;
+    if (!requireSignUpConsent()) return;
+    const emailEl = $('signUpEmail') || $('authEmail');
+    const passEl = $('signUpPass') || $('authPass');
+    const email = emailEl ? emailEl.value.trim() : '';
+    const pass = passEl ? passEl.value : '';
     if (!email) return setResult('E-posta girin.', 'err');
     const sorun = App.passwordIssue ? App.passwordIssue(pass) : '';
     if (sorun) return setResult(sorun, 'err');
     busy = true;
-    $('authSignUpBtn').disabled = true;
+    if ($('authSignUpBtn')) $('authSignUpBtn').disabled = true;
     setResult('Hesap açılıyor…');
     try {
       const r = await App.Auth.signUp(email, pass, email.split('@')[0]);
-      markLegalConsentAccepted();
       if (r && r.pending) {
         setResult('Hesap oluşturuldu. E-postanıza gelen bağlantıya tıklayıp ' +
                   'onaylayın, sonra giriş yapın.', 'ok');
@@ -776,7 +792,6 @@
 
   async function startHandoffGoogleSignIn(state) {
     if (busy || !AUTH_STATE_RE.test(state || '')) return;
-    if (!requireLegalConsent(true)) return;
     busy = true;
     const btn = $('nativeAuthGoogleBtn');
     if (btn) btn.disabled = true;
@@ -806,9 +821,10 @@
     }
   }
 
-  async function doSocialSignIn(provider) {
+  async function doSocialSignIn(provider, opts) {
     if (busy) return;
-    if (!requireLegalConsent(false)) return;
+    const isSignUp = !!(opts && opts.isSignUp);
+    if (isSignUp && !requireSignUpConsent()) return;
     setChromeFallback(false);
     const android = window.AndroidApp;
     if (provider === 'google' && android) {
@@ -820,11 +836,11 @@
       }
       return;
     }
-    const def = SOCIAL_BTN[provider] || { id: '', label: provider };
+    const def = (isSignUp ? SOCIAL_SIGNUP_BTN[provider] : SOCIAL_BTN[provider]) || { id: '', label: provider };
     const btn = def.id ? $(def.id) : null;
     busy = true;
     if (btn) btn.disabled = true;
-    setResult(def.label + ' ile giriş yapılıyor…');
+    setResult(def.label + (isSignUp ? ' ile kayıt olunuyor…' : ' ile giriş yapılıyor…'));
     try {
       const r = await App.Auth.signInWithProvider(provider);
       if (r && r.redirect) {
@@ -832,8 +848,7 @@
         return;
       }
       setChromeFallback(false);
-      markLegalConsentAccepted();
-      setResult('Giriş başarılı.', 'ok');
+      setResult(isSignUp ? 'Kayıt ve giriş başarılı.' : 'Giriş başarılı.', 'ok');
       App.sound && App.sound.ok ? App.sound.ok() : (App.sound && App.sound.click());
       App.haptic && App.haptic(40);
     } catch (e) {
@@ -1330,17 +1345,37 @@
         e.preventDefault();
         doSignIn();
       });
-    } else {
+    } else if ($('authSignInBtn')) {
       $('authSignInBtn').addEventListener('click', doSignIn);
     }
-    $('authSignUpBtn').addEventListener('click', doSignUp);
+    if ($('authSignUpForm')) {
+      $('authSignUpForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        doSignUp();
+      });
+    } else if ($('authSignUpBtn')) {
+      $('authSignUpBtn').addEventListener('click', doSignUp);
+    }
+    if ($('goToSignUpBtn')) {
+      $('goToSignUpBtn').addEventListener('click', function (e) {
+        if (e && e.preventDefault) e.preventDefault();
+        setAuthMode('signup', { pushState: true });
+      });
+    }
+    if ($('goToLoginBtn')) {
+      $('goToLoginBtn').addEventListener('click', function (e) {
+        if (e && e.preventDefault) e.preventDefault();
+        setAuthMode('login', { pushState: true });
+      });
+    }
     ['google', 'github', 'apple'].forEach(function (p) {
-      const id = SOCIAL_BTN[p].id;
-      if ($(id)) $(id).addEventListener('click', function () { doSocialSignIn(p); });
+      const loginId = SOCIAL_BTN[p].id;
+      if ($(loginId)) $(loginId).addEventListener('click', function () { doSocialSignIn(p, { isSignUp: false }); });
+      const signUpId = SOCIAL_SIGNUP_BTN[p].id;
+      if ($(signUpId)) $(signUpId).addEventListener('click', function () { doSocialSignIn(p, { isSignUp: true }); });
     });
     if ($('googleChromeFallbackBtn')) {
       $('googleChromeFallbackBtn').addEventListener('click', function () {
-        if (!requireLegalConsent(false)) return;
         const android = window.AndroidApp;
         if (android && typeof android.openInChrome === 'function') {
           android.openInChrome();
@@ -1350,7 +1385,7 @@
     if ($('authLegalConsent')) {
       $('authLegalConsent').addEventListener('change', function () {
         const wrap = $('authLegalConsentWrap');
-        if (wrap && this.checked) wrap.classList.remove('is-missing');
+        if (wrap && wrap.classList && this.checked) wrap.classList.remove('is-missing');
       });
     }
     if ($('nativeAuthGoogleBtn')) {
@@ -1361,13 +1396,16 @@
     }
     if ($('nativeAuthContinueExistingBtn')) {
       $('nativeAuthContinueExistingBtn').addEventListener('click', async function () {
-        if (!requireLegalConsent(true)) return;
         const state = activeHandoffState();
         if (!state || !App.FB || typeof App.FB.token !== 'function') return;
         const token = await App.FB.token();
         if (token) await completeNativeAuthHandoff(state, token);
       });
     }
+    setAuthMode(authModeFromPath(), { pushState: false });
+    window.addEventListener('popstate', function () {
+      setAuthMode(authModeFromPath(), { pushState: false });
+    });
     $('authSignOutBtn').addEventListener('click', doSignOut);
     const deletionDialog = $('accountDeletionDialog');
     const deletionButton = $('accountDeleteRequestBtn');
@@ -1415,10 +1453,15 @@
       });
     }
 
-    /* Enter ile giriş */
+    /* Enter ile giriş / kayıt */
     ['authEmail', 'authPass'].forEach(function (id) {
-      $(id).addEventListener('keydown', function (e) {
+      if ($(id)) $(id).addEventListener('keydown', function (e) {
         if (e.key === 'Enter') { e.preventDefault(); doSignIn(); }
+      });
+    });
+    ['signUpEmail', 'signUpPass'].forEach(function (id) {
+      if ($(id)) $(id).addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); doSignUp(); }
       });
     });
 

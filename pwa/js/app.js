@@ -785,13 +785,13 @@
     let title = 'Oturum açılmadı';
     let message = 'Kendi cihazınızı görüntülemek ve yönetmek için hesabınıza giriş yapın.';
     let action = 'Hesaba git';
-    let href = './settings.html#accountCard';
+    let href = '/settings/login';
 
     if (App.Auth && App.Auth.needsCheck && dev && App.Auth.needsCheck(dev)) {
       title = 'Cihaz kontrol ediliyor';
       message = 'Cihaz erişiminiz doğrulanıyor.';
       action = 'Hesap ve roller';
-      href = './settings.html#accountCard';
+      href = '/settings/login';
     } else if (cs.code === 'connecting') {
       title = 'Bağlantı kontrol ediliyor';
       message = 'Oturum ve cihaz durumu doğrulanıyor…';
@@ -801,14 +801,14 @@
       title = 'Oturum açılmadı';
       message = 'Kendi cihazınızı görmek ve yönetmek için hesabınıza giriş yapın.';
       action = 'Hesaba git';
-      href = './settings.html#accountCard';
+      href = '/settings/login';
     } else if (cs.code === 'unbound') {
       title = 'Cihaz eşleşmedi';
       message = devState === 'free'
         ? 'Kartınızın aktivasyon kodunu girerek cihazı hesabınıza bağlayın.'
         : 'Hesabınıza henüz eşleşmiş bir Deneyap Kart bulunmuyor. Cihaz ekleyerek izlemeye başlayabilirsiniz.';
       action = 'Cihazı yönet';
-      href = './settings.html#accountCard';
+      href = '/settings/login';
     } else {
       title = cs.code === 'no_network' ? 'İnternet bağlantısı yok' : 'Cihaz çevrimdışı';
       message = cs.code === 'no_network'

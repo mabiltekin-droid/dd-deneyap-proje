@@ -303,7 +303,7 @@ html.js-no-hash .settings-studio-main:not(.is-overview):not(.is-tabbed) {
   display: flex;
   align-items: flex-start;
   gap: 0.65rem;
-  margin: 1rem 0 0;
+  margin: 0 0 0.9rem;
   padding: 0.72rem 0.85rem;
   border-radius: 10px;
   border: 1px solid var(--border);
@@ -355,15 +355,26 @@ html.js-no-hash .settings-studio-main:not(.is-overview):not(.is-tabbed) {
   75% { transform: translateX(4px); }
 }
 
-#authSignedOut #forgotPasswordBtn {
+#authSignedOut #forgotPasswordBtn,
+#authSignedOut #goToLoginBtn {
   color: var(--primary);
   text-decoration: underline;
   text-underline-offset: 0.15em;
 }
 
-#authSignedOut #authSignUpBtn {
+#authSignedOut #goToSignUpBtn {
   border-color: var(--primary);
   color: var(--text);
+  text-decoration: none;
+}
+
+#authSignedOut #goToLoginBtn {
+  text-decoration: none;
+}
+
+#authSignedOut #googleSignUpBtn {
+  width: 100%;
+  margin-bottom: 1rem;
 }
 
 #authSignedOut .social-row {
