@@ -126,15 +126,10 @@
             '<span class="mmd-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>' +
             '<span class="mmd-txt"><strong>Hesap ve roller</strong><small>Oturum ve aile erişimi</small></span>' +
           '</a>' +
-          (isIndex
-            ? '<button type="button" class="mmd-item" id="mobileMoreVoiceBtn">' +
-                '<span class="mmd-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v1a7 7 0 0 0 14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg></span>' +
-                '<span class="mmd-txt"><strong>Sesli komut</strong><small>Mikrofonla kontrol et</small></span>' +
-              '</button>'
-            : '<a class="mmd-item" href="./#hero">' +
-                '<span class="mmd-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9.5 21v-6h5v6"/></svg></span>' +
-                '<span class="mmd-txt"><strong>Panel</strong><small>Canlı özet ve sensörler</small></span>' +
-              '</a>') +
+          '<button type="button" class="mmd-item" id="mobileMoreVoiceBtn">' +
+            '<span class="mmd-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v1a7 7 0 0 0 14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg></span>' +
+            '<span class="mmd-txt"><strong>Sesli komut</strong><small>Mikrofonla kontrol et</small></span>' +
+          '</button>' +
         '</nav>' +
         '<div class="mmd-foot">' +
           '<button type="button" class="btn sm ghost" id="mobileMoreInstallBtn" hidden>Uygulamayı indir</button>' +

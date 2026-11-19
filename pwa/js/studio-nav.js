@@ -802,6 +802,7 @@
   window.App.StudioNav = {
     refresh: sync,
     show: function (id) { return activate(id, {}); },
+    showOverview: function () { showOverview({ clearHash: true, focus: true, scroll: true }); },
     open: openMenu,
     close: function () { closeMenu(true); }
   };

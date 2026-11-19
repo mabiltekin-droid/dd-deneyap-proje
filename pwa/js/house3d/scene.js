@@ -269,6 +269,16 @@
     }
   }
 
+  function consumePendingFocus() {
+    try {
+      const pending = window.sessionStorage && window.sessionStorage.getItem('deneyap_house3d_focus');
+      if (pending) {
+        window.sessionStorage.removeItem('deneyap_house3d_focus');
+        if (CAMERA_PRESETS[pending]) focusPreset(pending);
+      }
+    } catch (e) { /* yoksay */ }
+  }
+
   function syncMount() {
     const slot = findActiveSlot();
     if (!slot) return;
@@ -280,6 +290,7 @@
     if (booted) {
       resize();
       syncSkyUi();
+      consumePendingFocus();
       startLoop();
     }
   }
@@ -420,6 +431,7 @@
       if (fallbackEl) fallbackEl.hidden = true;
       resize();
       syncSkyUi();
+      consumePendingFocus();
       updateHud(lastTelemetry, lastMeta);
       initObservers();
       startLoop();
@@ -436,6 +448,12 @@
   House3D.init = init;
   House3D.syncMount = syncMount;
   House3D.focusView = focusPreset;
+  House3D.setNightMode = function (night) {
+    if (!effects) return;
+    effects.setNightOverride(!!night);
+    syncSkyUi();
+  };
+  House3D.toggleDayNight = toggleDayNight;
   House3D.updateTelemetry = function (data, meta) {
     lastTelemetry = data || null;
     lastMeta = meta || lastMeta;

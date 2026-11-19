@@ -57,4 +57,20 @@
     if (link.hash !== location.hash) history.pushState(null, '', link.hash);
     show(target);
   });
+  window.App = window.App || {};
+  window.App.navigatePanel = function (idOrHash) {
+    const clean = String(idOrHash || '').replace(/^#/, '');
+    if (!clean) return false;
+    const target = document.getElementById(clean);
+    const view = viewFor(target);
+    if (!view) return false;
+    const nextHash = '#' + clean;
+    try {
+      if (nextHash !== location.hash) history.pushState(null, '', nextHash);
+    } catch (e) {
+      location.hash = nextHash;
+    }
+    show(target);
+    return true;
+  };
 })();
