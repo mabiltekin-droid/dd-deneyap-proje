@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#faf4e9">
+  <title>Kullanım Koşulları — DD Ev Koruma</title>
+  <meta name="description" content="DD Ev Koruma kontrol paneli (PWA) ile Android ve iOS uygulamalarının kullanım koşulları, güvenlik uyarıları, donanım sorumlulukları ve yasal çerçeve.">
+  <link rel="icon" href="./icons/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="./fonts/dm-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="./fonts/fraunces-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="./css/redesign.css">
+  <link rel="stylesheet" href="./css/sakin-secondary.css">
+  <script src="./js/theme-boot.js"></script>
+</head>
+<body class="privacy-body">
+  <a href="#terms-main" class="privacy-skip">İçeriğe geç</a>
+  <div class="wrap">
+    <header>
+      <div class="brand">
+        <img src="./icons/icon-192.png" alt="">
+        <div>
+          <strong>DD Ev Koruma</strong>
+          <span>Kullanım Koşulları</span>
+        </div>
+      </div>
+      <a class="back" href="./">← Kontrol paneline dön</a>
+    </header>
+
+    <nav class="legal-tabs" aria-label="Yasal belgeler">
+      <a href="./privacy.html">Gizlilik Politikası</a>
+      <a href="./terms.html" aria-current="page">Kullanım Koşulları</a>
+    </nav>
+
+    <main>
+      <article class="card">
+        <h1 id="terms-main" tabindex="-1">Kullanım Koşulları</h1>
+        <p class="updated">Son güncelleme: 19 Kasım 2026 · Yürürlük kapsamı: <strong>ddproje.vercel.app</strong> web paneli (PWA), Android ve iOS uygulamaları</p>
+
+        <p>
+          Bu Kullanım Koşulları (&ldquo;Koşullar&rdquo;), <strong>DD Ev Koruma</strong> akıllı ev izleme panelini,
+          ilerici web uygulamasını (PWA), bağlantılı mobil uygulamaları ve destekleyici sunucu servislerini
+          (birlikte &ldquo;Hizmet&rdquo;) kullanan tüm gerçek ve tüzel kişiler (&ldquo;Kullanıcı&rdquo;) için
+          geçerli hak, yükümlülük ve güvenlik kurallarını düzenler.
+        </p>
+
+        <div class="note danger">
+          <strong>Kritik Can Güvenliği ve Acil Durum Uyarısı:</strong> DD Ev Koruma, yaşam güvenliği sertifikalı
+          bir yangın, gaz kaçağı, su baskını veya resmi afet erken uyarı sistemi <strong>değildir</strong>.
+          Gerçek bir tehlike veya acil durumda öncelikle yapıyı güvenli biçimde tahliye edin ve derhâl
+          <strong>112 Acil Çağrı Merkezi</strong> ile itfaiye, AFAD veya kolluk birimlerine başvurun.
+        </div>
+
+        <nav class="toc" aria-label="İçindekiler">
+          <a href="#kabul">1. Kapsam ve Kabul</a>
+          <a href="#nitelik">2. Hizmetin Niteliği</a>
+          <a href="#can-guvenligi">3. Güvenlik Sınırları</a>
+          <a href="#donanim">4. Donanım ve Elektrik</a>
+          <a href="#hesaplar">5. Hesap ve Roller</a>
+          <a href="#ucuncu-kisiler">6. Acil Kişiler</a>
+          <a href="#yasaklar">7. Yasaklı Kullanım</a>
+          <a href="#sureklilik">8. Hizmet Sürekliliği</a>
+          <a href="#mulkiyet">9. Fikri Mülkiyet</a>
+          <a href="#sorumluluk">10. Sorumluluk Sınırı</a>
+          <a href="#fesih">11. Fesih</a>
+          <a href="#hukuk">12. Uygulanacak Hukuk</a>
+        </nav>
+
+        <h2 id="kabul">1. Taraflar, kapsam ve koşulların kabulü</h2>
+        <p>
+          Hizmete erişerek, hesap oluşturarak, sosyal giriş yöntemlerinden birini seçerek veya bir Deneyap Kart /
+          ESP32 cihazını panele bağlayarak işbu Koşulları ve ayrılmaz parçası olan
+          <a href="./privacy.html">Gizlilik Politikası</a>&rsquo;nı okuduğunuzu, anladığınızı ve bağlayıcı
+          olarak kabul ettiğinizi beyan etmiş sayılırsınız. Bu Koşulları kabul etmiyorsanız Hizmeti kullanmamanız
+          gerekir.
+        </p>
+
+        <h2 id="nitelik">2. Hizmetin tanımı</h2>
+        <p>
+          DD Ev Koruma; uyumlu Deneyap Kart / ESP32 tabanlı sensör ve aktüatör düzeneklerinden gelen verilerin
+          yerel ağ (HTTP) veya bulut rölesi (MQTT over WebSocket) aracılığıyla görüntülenmesini, temel otomasyon
+          kuralları ile uzaktan röle/fan/servo kontrolünün yapılmasını, kamuya açık sismik veri akışlarının
+          izlenmesini ve bilgilendirme amaçlı push/FCM/e-posta uyarılarının gönderilmesini sağlayan bir kontrol
+          arayüzüdür.
+        </p>
+
+        <h2 id="can-guvenligi">3. Yaşam güvenliği, bildirimler ve deprem verisi sınırları</h2>
+        <ul>
+          <li><strong>Yardımcı izleme aracı:</strong> Sensör okumaları, görsel/sesli alarmlar ve gönderilen uyarılar yalnızca yardımcı bilgilendirme amacı taşır; EN/UL/CE sertifikalı endüstriyel gaz dedektörlerinin, yangın ihbar panellerinin veya resmi makam uyarı sistemlerinin yerine geçmez.</li>
+          <li><strong>İletim gecikmeleri ve kesintiler:</strong> Wi-Fi veya mobil internet kopmaları, cihazın güç kaybı, MQTT broker kesintileri, Android Doze / pil tasarrufu kısıtları, tarayıcı push servisi gecikmeleri veya e-posta sağlayıcı filtrelemeleri nedeniyle uyarılar geç iletilebilir ya da hiç ulaşmayabilir. Hizmet kritik tekil alarm kanalı olarak kullanılmamalıdır.</li>
+          <li><strong>Deprem ve afet verileri:</strong> Deprem İzleme bölümünde gösterilen olaylar EMSC, AFAD ve Kandilli kaynaklarından alınan kamuya açık kayıtlara dayanır; tahmini S-dalgası varış süresi matematiksel yaklaşımdır. Doğruluk, eksiksizlik veya gerçek zamanlı erken uyarı garantisi verilmez.</li>
+        </ul>
+
+        <h2 id="donanim">4. Donanım kurulumu, elektrik güvenliği ve uzaktan kontrol</h2>
+        <ul>
+          <li><strong>Fiziksel kurulum sorumluluğu:</strong> Deneyap Kart, MQ-2 gaz sensörü, alev/yağmur/titreşim sensörleri, röle modülleri, yüksek gerilim devreleri, vana/fan/servo bağlantılarının teknik standartlara ve elektrik güvenliği kurallarına uygun biçimde kurulması, kalibre edilmesi ve periyodik olarak bakımının yapılması tamamen Kullanıcının sorumluluğundadır.</li>
+          <li><strong>Uzaktan aktüatör komutları:</strong> Panel üzerinden verilen röle açma/kapama, fan çalıştırma, servo pencere açma/kapama veya otomatik kural tetiklemelerinin fiziksel ortamda yaratabileceği tüm mekanik ve elektriksel sonuçlardan Kullanıcı sorumludur.</li>
+          <li><strong>Uzaktan yazılım güncelleme (OTA):</strong> OTA firmware güncellemesi sırasında elektrik veya ağ kesintisi cihazın yanıt verememesine yol açabilir; güncelleme işlemini cihaz başında veya güvenli bir zaman diliminde başlatmak Kullanıcının sorumluluğundadır.</li>
+        </ul>
+
+        <h2 id="hesaplar">5. Hesap güvenliği, yaş şartı ve ev / aile rolleri</h2>
+        <p>
+          Hizmeti kullanmak için en az <strong>18 yaşında</strong> (veya hukuken tam fiil ehliyetine sahip) olmanız
+          gerekir. Hesap kimlik bilgilerinizin, oturum açtığınız cihazların güvenliğinin ve cihaz aktivasyon
+          kodlarının gizliliğinden siz sorumlusunuz.
+        </p>
+        <p>
+          Ev ve aile paylaşımı kapsamında oluşturulan davet kodlarıyla birden fazla kullanıcı aynı ev veya cihaza
+          erişebilir. Yetki düzeylerinin sınırları aşağıda özetlenmiştir:
+        </p>
+
+        <div tabindex="0" role="region" aria-labelledby="terms-roles-caption" class="legal-table-wrap">
+          <table class="legal-table">
+            <caption id="terms-roles-caption">Hesap ve ev/aile rollerine göre yetki ve sorumluluk dağılımı</caption>
+            <thead>
+              <tr>
+                <th scope="col">Rol</th>
+                <th scope="col">Temel yetkiler</th>
+                <th scope="col">Sorumluluk sınırı</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">Platform / Ev Yöneticisi (<code>admin</code>)</th>
+                <td data-label="Temel yetkiler">Cihaz bağlama/devretme, davet kodu ve rol yönetimi, sensör eşikleri, OTA ve tüm aktüatör komutları.</td>
+                <td data-label="Sorumluluk sınırı">Davet ettiği kullanıcıların erişim kapsamını denetlemekten ve süresi dolan yetkileri kaldırmaktan sorumludur.</td>
+              </tr>
+              <tr>
+                <th scope="row">Bakım Yetkilisi (<code>maintainer</code>)</th>
+                <td data-label="Temel yetkiler">Bağlı olduğu evde telemetri izleme, çalışma modu değiştirme ve günlük cihaz komutlarını kullanma.</td>
+                <td data-label="Sorumluluk sınırı">Gönderdiği tüm komut ve eşik değişikliklerinin fiziksel güvenliğe uygunluğundan sorumludur.</td>
+              </tr>
+              <tr>
+                <th scope="row">İzleyici (<code>viewer</code>)</th>
+                <td data-label="Temel yetkiler">Canlı sensör durumu ve olay günlüklerini salt okunur biçimde görüntüleme.</td>
+                <td data-label="Sorumluluk sınırı">Hesap erişimini üçüncü kişilere devretmemekle ve şüpheli oturumları yöneticisine bildirmekle yükümlüdür.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2 id="ucuncu-kisiler">6. Acil durum kişileri ve üçüncü kişi verileri</h2>
+        <p>
+          Acil durum bilgilendirme listesine eklediğiniz kişilerin e-posta adreslerini paylaşmadan önce söz konusu
+          kişileri bilgilendirdiğinizi ve kendilerinden gerekli açık rızayı/izni aldığınızı taahhüt edersiniz.
+          İlgili kişilerin listeye eklenmesinden veya yanlış/eski adres tanımlanmasından doğabilecek sorumluluk
+          Kullanıcıya aittir.
+        </p>
+
+        <h2 id="yasaklar">7. Kabul edilebilir kullanım ve yasaklı davranışlar</h2>
+        <p>Kullanıcı aşağıdaki eylemleri gerçekleştirmeyeceğini kabul eder:</p>
+        <ul>
+          <li>Kendisine ait veya yetkili olmadığı cihazlara, ev gruplarına, hesaplara veya MQTT konularına erişmeye çalışmak; aktivasyon/davet kodlarını kaba kuvvetle denemek.</li>
+          <li>API uç noktalarına, Firestore veritabanına veya bildirim servislerine olağan dışı yük bindirmek, spam niteliğinde toplu e-posta veya push tetiklemek.</li>
+          <li>Güvenlik mekanizmalarını, hız sınırlarını, Firestore kurallarını veya kimlik doğrulama akışlarını atlatmaya yönelik tersine mühendislik ya da yetkisiz sızma testi yapmak.</li>
+          <li>Hizmeti hukuka aykırı amaçlarla, üçüncü kişilerin haklarını ihlal ederek veya kamu düzenini bozacak biçimde kullanmak.</li>
+        </ul>
+        <p>
+          Bu kurallara veya yürürlükteki mevzuata aykırılık tespit edildiğinde hesap erişimi veya cihaz bağlantısı
+          önceden bildirim yapılmaksızın geçici olarak askıya alınabilir ya da sonlandırılabilir.
+        </p>
+
+        <h2 id="sureklilik">8. Hizmet sürekliliği, bakım ve değişiklikler</h2>
+        <p>
+          Hizmet, mevcut teknik imkânlar ölçüsünde &ldquo;olduğu gibi&rdquo; ve &ldquo;mevcut olduğu ölçüde&rdquo;
+          sunulmaktadır. Altyapı sağlayıcılarının (Firebase, Vercel, MQTT brokerları, mobil uygulama mağazaları)
+          bakım çalışmaları, güvenlik yamaları veya özellik iyileştirmeleri nedeniyle Hizmette geçici erişim
+          kesintileri veya arayüz/işlev değişiklikleri yaşanabilir. Hizmetin belirli bir kesintisiz çalışma
+          (SLA) taahhüdü altında sunulacağı garanti edilmez.
+        </p>
+
+        <h2 id="mulkiyet">9. Fikri mülkiyet ve açık kaynak bileşenler</h2>
+        <p>
+          DD Ev Koruma arayüzü, yazılım mimarisi, özgün 3D sahne/ikon varlıkları ve metinler üzerindeki haklar
+          proje hak sahiplerine aittir; projede yer alan üçüncü taraf kütüphaneler (ör. Firebase SDK, Three.js,
+          MQTT.js, GSAP, AndroidX) kendi açık kaynak lisans koşullarına tabidir. Bu Koşullar Kullanıcıya yalnızca
+          kişisel veya kurum içi ev güvenliği izleme amacıyla sınırlı, devredilemez ve münhasır olmayan bir
+          kullanım hakkı tanır.
+        </p>
+
+        <h2 id="sorumluluk">10. Sorumluluğun sınırlandırılması ve mücbir sebepler</h2>
+        <p>
+          Yürürlükteki emredici mevzuatın izin verdiği azami ölçüde ve Türk Borçlar Kanunu m. 115 kapsamında kasıt
+          veya ağır ihmal hâlleri ile tüketicinin mevzuattan doğan emredici hakları saklı kalmak kaydıyla;
+          Hizmetin kullanımından ya da kullanılamamasından, sensör/donanım arızalarından, hatalı kurulumdan,
+          üçüncü taraf bulut veya şebeke kesintilerinden, geciken bildirimlerden, elektrik/gaz kazalarından veya
+          doğal afet gibi mücbir sebeplerden doğan dolaylı zararlardan, veri/kâr kaybından veya fiziki mal/can
+          hasarlarından proje geliştiricileri ve işleticileri sorumlu tutulamaz.
+        </p>
+
+        <h2 id="fesih">11. Sözleşmenin sona ermesi ve hesap kapatma</h2>
+        <p>
+          Kullanıcı, Hizmeti kullanmayı dilediği zaman sonlandırabilir ve <a href="./privacy.html#hesap-silme">Gizlilik Politikası → Hesap Silme</a>
+          adımlarını izleyerek hesabının ve ilişkili verilerinin silinmesini talep edebilir. Koşulların esaslı
+          biçimde ihlali durumunda işletici tarafından Kullanıcı hesabı kalıcı olarak kapatılabilir. Fesih
+          hâlinde doğası gereği yürürlükte kalması gereken sorumluluk sınırı, fikri mülkiyet ve uyuşmazlık
+          hükümleri geçerliliğini sürdürür.
+        </p>
+
+        <h2 id="hukuk">12. Uygulanacak hukuk, uyuşmazlıklar ve değişiklikler</h2>
+        <p>
+          İşbu Koşullar Türkiye Cumhuriyeti hukukuna tabidir ve buna göre yorumlanır. Koşullardan doğabilecek
+          uyuşmazlıklarda tüketici sıfatına sahip kullanıcıların ikametgâhındaki veya işlemin yapıldığı yerdeki
+          Tüketici Hakem Heyetleri ile Tüketici Mahkemelerinin yasal yetkisi saklı kalmak üzere İstanbul (Çağlayan)
+          Mahkemeleri ve İcra Daireleri yetkilidir. Bu Koşulların herhangi bir hükmünün geçersiz sayılması, diğer
+          hükümlerin geçerliliğini etkilemez.
+        </p>
+        <p>
+          Koşullarda yapılan güncellemeler bu sayfada yayımlandığı tarihte yürürlüğe girer. Koşullara ilişkin
+          sorularınız ve teknik geri bildirimler için
+          <a href="https://github.com/mabiltekin-droid/dd-deneyap-proje/issues" target="_blank" rel="noopener">github.com/mabiltekin-droid/dd-deneyap-proje/issues</a>
+          üzerinden ulaşabilirsiniz.
+        </p>
+      </article>
+    </main>
+
+    <footer>
+      <div>DD Ev Koruma · <a href="./">Kontrol Paneli</a> · <a href="./settings.html">Ayarlar</a> · <a href="./privacy.html">Gizlilik Politikası</a></div>
+    </footer>
+  </div>
+</body>
+</html>

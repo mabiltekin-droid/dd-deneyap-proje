@@ -550,14 +550,26 @@
 
     // Sosyal giriş: 'google' | 'github' | 'apple'
     signInWithProvider: async function (provider, googleIdToken) {
-      if (initPromise) await initPromise;
       state.error = null;
       state.redirectError = null;
+      if (googleIdToken && initPromise) await initPromise;
       const r = await FB().signInWithProvider(provider, googleIdToken);
       if (r && r.redirect) return { redirect: true };
+      if (initPromise) await initPromise;
       state.session = r;
       resetDeviceAccess();
       await completeSocialLogin(r, provider);
+      return App.Auth.snapshot();
+    },
+
+    signInWithCustomToken: async function (customToken, provider) {
+      if (initPromise) await initPromise;
+      state.error = null;
+      state.redirectError = null;
+      const r = await FB().signInWithCustomToken(customToken, provider || 'google');
+      state.session = r;
+      resetDeviceAccess();
+      await completeSocialLogin(r, provider || 'google');
       return App.Auth.snapshot();
     },
 

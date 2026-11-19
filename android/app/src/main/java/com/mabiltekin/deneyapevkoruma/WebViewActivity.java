@@ -100,6 +100,7 @@ public class WebViewActivity extends AppCompatActivity {
     private String startUrl;
     private URI panelOrigin;
     private String failedPageUrl;
+    private Uri pendingCallbackUri;
     private boolean automaticRetryUsed;
     private Runnable automaticRetry;
     private long lastBackPress = 0L;
@@ -110,8 +111,16 @@ public class WebViewActivity extends AppCompatActivity {
 
         String configuredUrl = getString(R.string.start_url);
         panelOrigin = parseWebUrl(configuredUrl);
-        startUrl = getIntent().getStringExtra(EXTRA_URL);
-        if (startUrl == null || startUrl.trim().isEmpty()) {
+        Intent launchIntent = getIntent();
+        Uri launchData = launchIntent != null ? launchIntent.getData() : null;
+        if (isAuthCallbackUri(launchData)) {
+            pendingCallbackUri = launchData;
+        }
+        String requestedUrl = launchIntent != null ? launchIntent.getStringExtra(EXTRA_URL) : null;
+        URI parsedRequested = parseWebUrl(requestedUrl);
+        if (parsedRequested != null && isPanelUrl(parsedRequested)) {
+            startUrl = requestedUrl;
+        } else {
             startUrl = configuredUrl;
         }
 
@@ -275,7 +284,14 @@ public class WebViewActivity extends AppCompatActivity {
 
             @Override
             public void onPageFinished(WebView view, String url) {
-                if (googleSignIn != null) googleSignIn.onPageFinished(url);
+                if (googleSignIn != null) {
+                    googleSignIn.onPageFinished(url);
+                    if (pendingCallbackUri != null && isPanelUrl(parseWebUrl(url))) {
+                        Uri cb = pendingCallbackUri;
+                        pendingCallbackUri = null;
+                        googleSignIn.onAuthCallback(cb);
+                    }
+                }
                 progressBar.setVisibility(View.GONE);
                 swipeRefresh.setRefreshing(false);
                 if (errorView.getVisibility() != View.VISIBLE) {
@@ -525,11 +541,17 @@ public class WebViewActivity extends AppCompatActivity {
     }
 
     private boolean isPanelUrl(URI page) {
-        return panelOrigin != null && "https".equalsIgnoreCase(page.getScheme())
+        return page != null && panelOrigin != null && "https".equalsIgnoreCase(page.getScheme())
                 && "https".equalsIgnoreCase(panelOrigin.getScheme())
                 && panelOrigin.getHost().equalsIgnoreCase(page.getHost())
                 && (page.getPort() == -1 ? 443 : page.getPort())
                     == (panelOrigin.getPort() == -1 ? 443 : panelOrigin.getPort());
+    }
+
+    private static boolean isAuthCallbackUri(Uri uri) {
+        return uri != null
+                && "deneyapevkoruma".equalsIgnoreCase(uri.getScheme())
+                && "auth-callback".equalsIgnoreCase(uri.getHost());
     }
 
     private static URI parseWebUrl(String url) {
@@ -759,6 +781,19 @@ public class WebViewActivity extends AppCompatActivity {
                 runOnUiThread(() -> {
                     try {
                         MainActivity.openInChrome(WebViewActivity.this, currentUrl());
+                    } catch (Throwable ignored) { /* yoksay */ }
+                });
+            } catch (Throwable ignored) { /* yoksay */ }
+        }
+
+        @JavascriptInterface
+        public void openAuthInChrome(String url) {
+            try {
+                URI parsed = parseWebUrl(url);
+                final String target = (parsed != null && isPanelUrl(parsed)) ? url : startUrl;
+                runOnUiThread(() -> {
+                    try {
+                        MainActivity.openInChrome(WebViewActivity.this, target);
                     } catch (Throwable ignored) { /* yoksay */ }
                 });
             } catch (Throwable ignored) { /* yoksay */ }
@@ -1037,11 +1072,18 @@ public class WebViewActivity extends AppCompatActivity {
     public void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
+        if (intent == null) return;
+        Uri data = intent.getData();
+        if (isAuthCallbackUri(data)) {
+            if (googleSignIn != null) googleSignIn.onAuthCallback(data);
+            return;
+        }
         String url = intent.getStringExtra(EXTRA_URL);
         boolean fromShortcut = intent.getBooleanExtra(EXTRA_FROM_SHORTCUT, false);
         boolean fromNotification = intent.getBooleanExtra(EXTRA_FROM_NOTIFICATION, false);
+        URI parsed = parseWebUrl(url);
         if ((fromShortcut || fromNotification)
-                && url != null && !url.trim().isEmpty() && webView != null) {
+                && parsed != null && isPanelUrl(parsed) && webView != null) {
             startUrl = url;
             resetPageRecovery();
             showWebContent();

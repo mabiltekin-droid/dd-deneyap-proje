@@ -120,6 +120,11 @@
               return { user: wrapUser(cred.user), credential: cred.credential || null };
             });
           },
+          signInWithCustomToken: function (token) {
+            return authMod.signInWithCustomToken(rawAuth, token).then(function (cred) {
+              return { user: wrapUser(cred.user), credential: cred.credential || null };
+            });
+          },
           signOut: function () {
             return authMod.signOut(rawAuth);
           },

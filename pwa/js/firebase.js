@@ -1345,8 +1345,25 @@
     }
   }
 
+  async function signInWithCustomToken(customToken, providerName) {
+    var _fbP = needFirebase(); if (_fbP) await _fbP;
+    const name = providerName || 'google';
+    if (!customToken) {
+      const e = new Error('Oturum belirteci eksik.');
+      e.code = 'auth/invalid-custom-token';
+      e.human = 'Oturum anahtarı alınamadı. Tekrar deneyin.';
+      throw e;
+    }
+    try {
+      const cred = await auth.signInWithCustomToken(String(customToken));
+      return providerSession(cred.user, name);
+    } catch (e) {
+      throw socialError(e, (SOCIAL[name] && SOCIAL[name].label) || 'Google');
+    }
+  }
+
   async function providerSession(user, name) {
-    const def = SOCIAL[name];
+    const def = SOCIAL[name] || { label: 'Hesap' };
     // GitHub bazı hesaplarda e-posta paylaşmaz; profil için e-posta şart.
     if (!user.email) {
       try { await auth.signOut(); } catch (e) { /* yoksay */ }
@@ -1409,6 +1426,7 @@
     },
 
     signInWithProvider: signInWithProvider,
+    signInWithCustomToken: signInWithCustomToken,
     finishProviderRedirect: finishProviderRedirect,
     signInWithGoogle: signInWithGoogle,
     signInWithGithub: signInWithGithub,

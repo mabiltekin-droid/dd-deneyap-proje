@@ -281,6 +281,38 @@ html.js-no-hash .settings-studio-main:not(.is-overview):not(.is-tabbed) {
   margin: -0.45rem 0 1rem;
 }
 
+.native-auth-handoff:not([hidden]) {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.native-auth-handoff .help {
+  margin: 0;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+.native-auth-handoff #nativeAuthReturnLink:not([hidden]) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.auth-legal-note {
+  margin: 1rem 0 0;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.auth-legal-note a {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 0.16em;
+}
+
 #authSignedOut #forgotPasswordBtn {
   color: var(--primary);
   text-decoration: underline;
@@ -539,6 +571,145 @@ html.js-no-hash .settings-studio-main:not(.is-overview):not(.is-tabbed) {
   padding: 0.75rem 1rem;
   background: var(--terracotta-soft);
   color: var(--text);
+}
+
+.privacy-body .note.danger {
+  border-inline-start-color: #b42318;
+  background: color-mix(in srgb, #b42318 10%, var(--surface));
+}
+
+.privacy-body .legal-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-block: 0 1rem;
+}
+
+.privacy-body .legal-tabs a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0.45rem 0.95rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.privacy-body .legal-tabs a[aria-current="page"] {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--surface);
+}
+
+.privacy-body .legal-table-wrap {
+  overflow: auto;
+  max-inline-size: 100%;
+  margin: 0.95rem 0 1.4rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-alt);
+  container-type: inline-size;
+}
+
+.privacy-body .legal-table-wrap:focus-visible,
+.privacy-body .legal-tabs a:focus-visible,
+.privacy-body .toc a:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.privacy-body .legal-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  text-align: left;
+}
+
+.privacy-body .legal-table caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.privacy-body .legal-table thead th {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 1;
+  padding: 0.7rem 0.85rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 650;
+}
+
+.privacy-body .legal-table tbody th,
+.privacy-body .legal-table tbody td {
+  padding: 0.72rem 0.85rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.privacy-body .legal-table tbody tr:last-child th,
+.privacy-body .legal-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.privacy-body .legal-table tbody th {
+  color: var(--text);
+  font-weight: 650;
+}
+
+.privacy-body .legal-table tbody td {
+  color: var(--text-dim);
+}
+
+@container (width < 600px) {
+  .privacy-body .legal-table,
+  .privacy-body .legal-table thead,
+  .privacy-body .legal-table tbody,
+  .privacy-body .legal-table tr,
+  .privacy-body .legal-table th,
+  .privacy-body .legal-table td {
+    display: block;
+  }
+
+  .privacy-body .legal-table thead {
+    display: none;
+  }
+
+  .privacy-body .legal-table tbody tr {
+    padding: 0.75rem 0.85rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .privacy-body .legal-table tbody tr:last-child {
+    border-bottom: 0;
+  }
+
+  .privacy-body .legal-table tbody th {
+    padding: 0 0 0.35rem;
+    border-bottom: 0;
+    font-size: 0.96rem;
+  }
+
+  .privacy-body .legal-table tbody td {
+    padding: 0.2rem 0;
+    border-bottom: 0;
+  }
+
+  .privacy-body .legal-table tbody td::before {
+    content: attr(data-label) ": ";
+    color: var(--text);
+    font-weight: 650;
+  }
 }
 
 .privacy-body .grid {

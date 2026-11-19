@@ -139,6 +139,7 @@
         '<div class="mmd-foot">' +
           '<button type="button" class="btn sm ghost" id="mobileMoreInstallBtn" hidden>Uygulamayı indir</button>' +
           '<a class="btn sm ghost" href="./privacy' + ext + '">Gizlilik</a>' +
+          '<a class="btn sm ghost" href="./terms' + ext + '">Koşullar</a>' +
         '</div>' +
       '</div>';
 

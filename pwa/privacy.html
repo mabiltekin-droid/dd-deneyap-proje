@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#faf4e9">
-  <title>Gizlilik ve Veri Politikası — DD Ev Koruma</title>
-  <meta name="description" content="DD Ev Koruma PWA, Android ve iPhone uygulamaları gizlilik, veri işleme ve hesap silme politikası.">
+  <title>Gizlilik ve Kişisel Verilerin Korunması Politikası — DD Ev Koruma</title>
+  <meta name="description" content="DD Ev Koruma web paneli (PWA), Android ve iOS uygulamaları için 6698 sayılı KVKK uyumlu gizlilik, veri işleme, izinler ve hesap silme politikası.">
   <link rel="icon" href="./icons/favicon.svg" type="image/svg+xml">
   <link rel="preload" href="./fonts/dm-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="./fonts/fraunces-latin.woff2" as="font" type="font/woff2" crossorigin>
@@ -21,151 +21,314 @@
         <img src="./icons/icon-192.png" alt="">
         <div>
           <strong>DD Ev Koruma</strong>
-          <span>Gizlilik ve Veri Politikası</span>
+          <span>Gizlilik ve Kişisel Verilerin Korunması</span>
         </div>
       </div>
       <a class="back" href="./">← Kontrol paneline dön</a>
     </header>
 
+    <nav class="legal-tabs" aria-label="Yasal belgeler">
+      <a href="./privacy.html" aria-current="page">Gizlilik Politikası</a>
+      <a href="./terms.html">Kullanım Koşulları</a>
+    </nav>
+
     <main>
       <article class="card">
-        <h1>Gizlilik ve Kişisel Veriler Politikası</h1>
-        <p class="updated">Son güncelleme: 14 Kasım 2026 · Geçerli olduğu yerler: <strong>ddproje.vercel.app</strong> ile Android ve iPhone uygulamaları</p>
+        <h1 id="privacy-main" tabindex="-1">Gizlilik ve Kişisel Verilerin Korunması Politikası</h1>
+        <p class="updated">Son güncelleme: 19 Kasım 2026 · Yürürlük kapsamı: <strong>ddproje.vercel.app</strong> web paneli (PWA) ile Android ve iOS mobil uygulamaları</p>
 
         <p>
-          Bu politika, Deneyap Ev Koruma kontrol panelinin (PWA) ve Android ile iPhone uygulamalarının
-          hangi verileri işlediğini, neden işlediğini, kimlerle paylaştığını ve hesabınızı
-          nasıl silebileceğinizi açıklar. Uygulama bir ev güvenliği ve IoT kontrol panelidir;
-          hesap açmadan önce bu metni okumanız önerilir.
+          Bu Gizlilik ve Kişisel Verilerin Korunması Politikası (&ldquo;Politika&rdquo;), 6698 sayılı Kişisel
+          Verilerin Korunması Kanunu (&ldquo;KVKK&rdquo;) m. 10 kapsamındaki aydınlatma yükümlülüğü ve
+          uygulanabilir uluslararası veri koruma ilkeleri doğrultusunda; <strong>DD Ev Koruma</strong> akıllı ev
+          güvenliği kontrol paneli ve bağlantılı mobil uygulamalar aracılığıyla işlenen kişisel verilerin
+          kapsamını, işleme amaçlarını, hukuki sebeplerini, aktarım taraflarını, saklama sürelerini ve veri
+          sahibi haklarınızı açıklar.
         </p>
 
         <div class="note">
-          Bu proje bir hobi/atölye projesidir. Üretim ortamında kullanılan Firebase, Vercel ve
-          tarayıcı bildirim altyapıları üçüncü taraf hizmetlerdir. Hesap silme talepleri için
-          aşağıdaki <a href="#hesap-silme">Hesap Silme</a> bölümünü kullanın.
+          <strong>Özet taahhüt:</strong> Kişisel verileriniz üçüncü kişilere satılmaz, reklam ağlarıyla paylaşılmaz
+          ve davranışsal reklam profillemesi amacıyla kullanılmaz. Konum, mikrofon ve biyometrik doğrulama
+          izinleri yalnızca sizin açıkça tetiklediğiniz özellikler için cihaz içinde çalıştırılır; biyometrik
+          verileriniz veya ham ses kayıtlarınız sunucularımıza gönderilmez.
         </div>
 
         <nav class="toc" aria-label="İçindekiler">
-          <a href="#veriler">Veriler</a>
-          <a href="#amac">Amaçlar</a>
-          <a href="#paylasim">Paylaşım</a>
-          <a href="#saklama">Saklama</a>
-          <a href="#guvenlik">Güvenlik</a>
-          <a href="#haklar">Haklarınız</a>
-          <a href="#hesap-silme">Hesap Silme</a>
-          <a href="#cocuklar">Çocuklar</a>
-          <a href="#iletisim">İletişim</a>
+          <a href="#veri-sorumlusu">1. Kapsam</a>
+          <a href="#veriler">2. İşlenen Veriler</a>
+          <a href="#izinler">3. Cihaz İzinleri</a>
+          <a href="#amac">4. Amaç ve Hukuki Sebep</a>
+          <a href="#paylasim">5. Aktarım ve Alıcılar</a>
+          <a href="#saklama">6. Saklama ve İmha</a>
+          <a href="#guvenlik">7. Güvenlik Tedbirleri</a>
+          <a href="#haklar">8. KVKK Hakları</a>
+          <a href="#hesap-silme">9. Hesap Silme</a>
+          <a href="#cerezler">10. Çerezler</a>
+          <a href="#cocuklar">11. Çocuklar</a>
+          <a href="#iletisim">12. İletişim</a>
         </nav>
 
-        <h2 id="veriler">1. İşlenen veriler</h2>
-        <div class="grid">
-          <div class="mini"><strong>Hesap bilgileri</strong><span>E-posta, görünen ad, rol, davet kodu, oturum açma sağlayıcısı ve son giriş bilgisi.</span></div>
-          <div class="mini"><strong>Cihaz bilgileri</strong><span>Cihaz kimliği, cihaz adı, sahiplik, bağlantı durumu, aktivasyon kodu ve yazılım sürümü.</span></div>
-          <div class="mini"><strong>Telemetri ve olaylar</strong><span>Sensör ölçümleri, sıcaklık/nem/gaz/hareket verileri, komutlar, modlar, ayarlar ve olay günlükleri.</span></div>
-          <div class="mini"><strong>Güvenlik kayıtları</strong><span>Giriş/denetim kayıtları, kullanıcı aracısı, hata ve kötüye kullanım önleme kayıtları.</span></div>
-          <div class="mini"><strong>Bildirimler</strong><span>Web push aboneliği (uç nokta ve anahtarlar), Android FCM token'ı ve bildirim tercihleri.</span></div>
-          <div class="mini"><strong>Acil durum kişileri</strong><span>Yalnızca sizin eklediğiniz ad/yakınlık ve e-posta adresi; alarm anında bilgilendirme göndermek için kullanılır.</span></div>
-          <div class="mini"><strong>Yerel veriler</strong><span>Tarayıcıda/cihazda tutulan oturum, tema, son sekme ve çevrimdışı önbellek. Gün doğumu/batımı için girilen konum yalnızca cihazda saklanır, sunucuya gönderilmez.</span></div>
+        <h2 id="veri-sorumlusu">1. Veri sorumlusu ve kapsam</h2>
+        <p>
+          <strong>DD Ev Koruma</strong> platformu; Deneyap Kart / ESP32 tabanlı ev güvenliği donanımlarının
+          izlenmesi, sensör telemetrisinin görüntülenmesi, otomasyon/aktüatör komutlarının iletilmesi, afet ve
+          deprem takibinin sunulması ile acil durum bilgilendirmelerinin yönetilmesi amacıyla işletilmektedir.
+          Bu Politika; tarayıcı tabanlı ilerici web uygulamasını (PWA), Android uygulamasını
+          (<code>com.mabiltekin.deneyapevkoruma</code>) ve iOS üzerinden yapılan kullanımları kapsar.
+        </p>
+        <p>
+          Hizmeti kullanarak verilerinizin bu Politikada belirtilen teknik altyapı kapsamında işlendiğini kabul
+          etmiş olursunuz. Koşulları uygun bulmamanız hâlinde hesap oluşturmayabilir veya mevcut hesabınızı
+          <a href="#hesap-silme">Hesap Silme</a> adımlarını izleyerek kapatabilirsiniz. Platform kullanımına
+          ilişkin kurallar ve sorumluluk sınırları için lütfen <a href="./terms.html">Kullanım Koşulları</a>
+          belgemizi de inceleyin.
+        </p>
+
+        <h2 id="veriler">2. İşlenen kişisel veri kategorileri</h2>
+        <p>
+          Hizmetin sunulabilmesi için yalnızca ilgili işlevin gerektirdiği asgari düzeyde veri otomatik veya
+          kullanıcı beyanına dayalı yöntemlerle toplanır:
+        </p>
+
+        <div tabindex="0" role="region" aria-labelledby="privacy-data-caption" class="legal-table-wrap">
+          <table class="legal-table">
+            <caption id="privacy-data-caption">DD Ev Koruma tarafından işlenen veri kategorileri</caption>
+            <thead>
+              <tr>
+                <th scope="col">Kategori</th>
+                <th scope="col">Veri unsurları</th>
+                <th scope="col">Toplanma ve kullanım amacı</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">Kimlik ve hesap bilgileri</th>
+                <td data-label="Veri unsurları">E-posta adresi, görünen ad, profil avatarı tercihi, sistem rolü (<code>admin</code> / <code>user</code>), kimlik sağlayıcısı (E-posta, Google, GitHub, Apple), e-posta doğrulama durumu, davet kodu ve oturum zaman damgası (<code>auth_time</code>).</td>
+                <td data-label="Kullanım amacı">Kullanıcı hesabı oluşturma, kimlik doğrulama, kritik işlemlerde taze oturum doğrulaması ve rol tabanlı erişim kontrolü.</td>
+              </tr>
+              <tr>
+                <th scope="row">Ev, aile ve cihaz bağlama kayıtları</th>
+                <td data-label="Veri unsurları">Cihaz kimliği (ör. <code>DK-xxxx</code>), cihaz adı, aktivasyon kodu doğrulama durumu, sahiplik kimliği (<code>owner_id</code>), ev/aile grubu kayıtları (ev adı, üye rolleri: yönetici/bakım/izleyici), bağlantı durumu ve yazılım (OTA) sürüm bilgisi.</td>
+                <td data-label="Kullanım amacı">Donanım sahipliğinin doğrulanması, yetkisiz kontrolün önlenmesi, çoklu ev ve aile üyesi yetkilendirmesi.</td>
+              </tr>
+              <tr>
+                <th scope="row">Sensör telemetrisi ve olay günlükleri</th>
+                <td data-label="Veri unsurları">Gaz/duman (MQ-2 ppm), alev, yağmur/su baskını, titreşim/sarsıntı, sıcaklık, nem, röle/fan/servo/ışık durumları, çalışma modu (Evde, Gece, Tatil, İzleme), otomasyon zamanlamaları ve alarm geçmişi kayıtları.</td>
+                <td data-label="Kullanım amacı">Canlı kontrol paneli görünümü, 3D durum gösterimi, tarihsel analiz grafikleri, PDF/CSV raporlama ve alarm tetikleme.</td>
+              </tr>
+              <tr>
+                <th scope="row">Bildirim belirteçleri</th>
+                <td data-label="Veri unsurları">Web Push abonelik uç noktası ve şifreleme anahtarları, Android FCM kayıt token&rsquo;ı, bildirim kanalı/ses tercihleri ve haftalık özet ayarları.</td>
+                <td data-label="Kullanım amacı">Uygulama veya tarayıcı kapalıyken dahi kritik gaz, yangın, su baskını ve deprem uyarılarını iletme.</td>
+              </tr>
+              <tr>
+                <th scope="row">Acil durum e-posta kişileri</th>
+                <td data-label="Veri unsurları">Kullanıcı tarafından tanımlanan acil durum kişisinin adı/yakınlık etiketi, e-posta adresi ve aktiflik tercihi.</td>
+                <td data-label="Kullanım amacı">Kritik tehlike algılandığında yalnızca sizin belirlediğiniz kişilere bilgilendirme e-postası gönderilmesi.</td>
+              </tr>
+              <tr>
+                <th scope="row">Güvenlik, denetim ve oturum aktarım verileri</th>
+                <td data-label="Veri unsurları">Giriş/çıkış ve yönetici işlem kayıtları (zaman, işlem türü, tarayıcı/cihaz user-agent bilgisi), sunucuya gönderilen tek kullanımlık PKCE oturum doğrulama durum kodu (<code>mobile_auth_codes</code>).</td>
+                <td data-label="Kullanım amacı">Yetkisiz erişim tespiti, denetim izi tutulması ve mobil tarayıcı ile Android uygulaması arasında güvenli Google oturum aktarımı.</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
 
-        <h2 id="amac">2. İşleme amaçları ve hukuki dayanak</h2>
+        <h2 id="izinler">3. Cihaz izinleri ve yerel işleme</h2>
+        <p>
+          Mobil uygulamamız ve web panelimiz yalnızca ilgili özelliği etkinleştirdiğinizde cihaz izinleri ister:
+        </p>
         <ul>
-          <li>Hesabınızı oluşturmak, oturum açmanızı sağlamak ve hesabınızı güvenli tutmak.</li>
-          <li>Cihaz sahipliğini doğrulamak, cihazları hesabınıza bağlamak ve yetkisiz erişimi engellemek.</li>
-          <li>Telemetriyi göstermek, komutları iletmek, modları/zamanlamaları ve bildirimleri çalıştırmak.</li>
-          <li>Hataları ayıklamak, kötüye kullanımı tespit etmek ve hizmet güvenliğini sağlamak.</li>
-          <li>Yasal yükümlülükleri yerine getirmek ve taleplerinizi yanıtlamak.</li>
+          <li><strong>Konum izni (isteğe bağlı):</strong> Yalnızca <em>Deprem İzleme</em> ekranında merkez üssüne kuş uçuşu mesafe ve tahmini S-dalgası varış süresini hesaplamak ile otomasyon kuralları için gün doğumu/batımı saatini belirlemek amacıyla kullanılır. Koordinatlarınız sunucularımıza veya üçüncü kişilere aktarılmaz; yalnızca cihazınızın yerel tarayıcı depolamasında tutulabilir.</li>
+          <li><strong>Mikrofon izni (isteğe bağlı):</strong> Yalnızca sesli komut düğmesine bastığınızda tarayıcının/işletim sisteminin yerleşik konuşma tanıma arabirimine anlık erişim sağlar; ses kaydı alınmaz ve ses verisi sunucuya yüklenmez.</li>
+          <li><strong>Biyometrik doğrulama (Android <code>BiometricPrompt</code>):</strong> Kritik ayar ve komut koruması için cihaz işletim sisteminin sunduğu parmak izi veya yüz tanıma doğrulamasını tetikler. Biyometrik şablonlarınız hiçbir zaman uygulama tarafından okunmaz veya dışa aktarılmaz.</li>
+          <li><strong>Acil arama kısayolu (<code>ACTION_DIAL</code>):</strong> 112 Acil Yardım butonuna basıldığında doğrudan arama yapmak yerine telefonunuzun arama ekranını ilgili numarayı hazır getirerek açar; aramayı kullanıcı onaylar.</li>
+          <li><strong>Bildirim izni (Android 13+ / Web Push):</strong> Yalnızca onay verdiğinizde alarm ve sistem bildirimlerini göstermek için kullanılır; cihaz veya tarayıcı ayarlarından her an iptal edilebilir.</li>
+        </ul>
+
+        <h2 id="amac">4. İşleme amaçları ve hukuki sebepler</h2>
+        <p>Kişisel verileriniz KVKK m. 5/2 ve GDPR m. 6 uyarınca aşağıdaki hukuki sebeplere dayalı olarak işlenir:</p>
+        <ul>
+          <li><strong>Sözleşmenin kurulması ve ifası (KVKK m. 5/2-c):</strong> Üyelik hesabınızın açılması, cihaz bağlanması, canlı telemetri aktarımı, uzaktan komutların iletilmesi ve ev/aile rol paylaşımının yürütülmesi.</li>
+          <li><strong>Veri sorumlusunun meşru menfaati (KVKK m. 5/2-f):</strong> Hesap ve cihaz güvenliğinin sağlanması, denetim/giriş loglarının tutulması, hız sınırlaması, kötüye kullanımın ve yetkisiz erişimlerin engellenmesi, hata teşhisi.</li>
+          <li><strong>Hukuki yükümlülüklerin yerine getirilmesi (KVKK m. 5/2-ç):</strong> Yetkili kamu kurum ve kuruluşlarının usulüne uygun taleplerinin yanıtlanması ve hesap silme başvurularının sonuçlandırılması.</li>
+          <li><strong>Açık rıza (KVKK m. 5/1):</strong> İsteğe bağlı anlık/push bildirimlerin açılması, acil durum e-posta alıcılarının eklenmesi ve konum/mikrofon gibi isteğe bağlı cihaz izinlerinin etkinleştirilmesi. Açık rızaya dayalı tüm tercihleri uygulama içinden veya cihaz ayarlarından dilediğiniz zaman geri çekebilirsiniz.</li>
+        </ul>
+
+        <h2 id="paylasim">5. Üçüncü taraflara ve yurt dışına veri aktarımı</h2>
+        <p>
+          Kullanılan bulut ve iletişim altyapılarının niteliği gereği kişisel verileriniz, hizmetin kesintisiz
+          çalışması için zorunlu olan aşağıdaki alt işleyicilere/sağlayıcılara güvenli bağlantılar üzerinden
+          aktarılabilir. Bu kapsamda KVKK m. 9 çerçevesinde teknik altyapının yurt dışında bulunan veri
+          merkezlerinde işlenmesi söz konusu olabilir:
+        </p>
+
+        <div tabindex="0" role="region" aria-labelledby="privacy-vendors-caption" class="legal-table-wrap">
+          <table class="legal-table">
+            <caption id="privacy-vendors-caption">Hizmetin çalışmasında kullanılan üçüncü taraf altyapı sağlayıcıları</caption>
+            <thead>
+              <tr>
+                <th scope="col">Sağlayıcı</th>
+                <th scope="col">İşlev ve kapsam</th>
+                <th scope="col">Aktarılan veri</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">Google Firebase &amp; Google Cloud</th>
+                <td data-label="İşlev ve kapsam">Kimlik doğrulama (Firebase Authentication), Cloud Firestore veritabanı ve Firebase Cloud Messaging (FCM) mobil bildirimleri.</td>
+                <td data-label="Aktarılan veri">Hesap bilgileri, cihaz bağlama ve profil verileri, alarm geçmişi, FCM token&rsquo;ı, güvenlik kayıtları.</td>
+              </tr>
+              <tr>
+                <th scope="row">Vercel Inc.</th>
+                <td data-label="İşlev ve kapsam">Web paneli (PWA) barındırma, API uç noktaları (bildirim tetikleme, hesap silme talebi, mobil PKCE oturum aktarımı, haftalık özet).</td>
+                <td data-label="Aktarılan veri">HTTP istek üstbilgileri, oturum doğrulama belirteci (token), tetiklenen alarm bildirim yükleri.</td>
+              </tr>
+              <tr>
+                <th scope="row">EMQX / HiveMQ WSS Brokerları</th>
+                <td data-label="İşlev ve kapsam">Donanım (Deneyap Kart) ile kontrol paneli arasında gerçek zamanlı güvenli WebSocket MQTT telemetri ve komut iletimi.</td>
+                <td data-label="Aktarılan veri">Cihaz MQTT konusu, anlık sensör değerleri ve aktüatör komut mesajları (hesap kimliğiniz veya şifreniz MQTT yükünde taşınmaz).</td>
+              </tr>
+              <tr>
+                <th scope="row">Brevo veya Resend (E-posta iletimi)</th>
+                <td data-label="İşlev ve kapsam">Kritik alarm anlarında veya haftalık özetlerde bilgilendirme e-postası gönderimi.</td>
+                <td data-label="Aktarılan veri">Yalnızca sizin tanımladığınız alıcı e-posta adresi ve alarm/özet mesaj metni.</td>
+              </tr>
+              <tr>
+                <th scope="row">Google / GitHub / Apple (OAuth)</th>
+                <td data-label="İşlev ve kapsam">Yalnızca sosyal giriş seçeneklerini kullandığınızda kimlik doğrulama.</td>
+                <td data-label="Aktarılan veri">İlgili sağlayıcıdan onayınızla dönen temel kimlik (UID, e-posta, görünen ad).</td>
+              </tr>
+              <tr>
+                <th scope="row">EMSC / AFAD / Kandilli kaynakları</th>
+                <td data-label="İşlev ve kapsam">Deprem İzleme ekranında kamuya açık son sismik olayların listelenmesi.</td>
+                <td data-label="Kullanım notu">Genel sismik akış sorgulanır; kişisel kimlik veriniz veya GPS koordinatınız bu kaynaklara gönderilmez.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2 id="saklama">6. Verilerin saklama süreleri ve imha politikası</h2>
+        <p>Kişisel veriler işlenme amaçları için gereken makul süre boyunca saklanır ve sürenin dolması veya hesabın silinmesi üzerine imha edilir:</p>
+
+        <div tabindex="0" role="region" aria-labelledby="privacy-retention-caption" class="legal-table-wrap">
+          <table class="legal-table">
+            <caption id="privacy-retention-caption">Veri kategorilerine göre saklama süreleri</caption>
+            <thead>
+              <tr>
+                <th scope="col">Veri türü</th>
+                <th scope="col">Saklama süresi</th>
+                <th scope="col">Süre sonu işlemi</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">Hesap, profil ve cihaz sahiplik kayıtları</th>
+                <td data-label="Saklama süresi">Hesabınız aktif olduğu sürece</td>
+                <td data-label="Süre sonu işlemi">Hesap silme talebi üzerine en geç 30 gün içinde kalıcı silme veya anonimleştirme.</td>
+              </tr>
+              <tr>
+                <th scope="row">Alarm ve olay geçmişi kayıtları</th>
+                <td data-label="Saklama süresi">Kullanıcı/yönetici tarafından temizlenene veya hesap silinene kadar</td>
+                <td data-label="Süre sonu işlemi">Panelden manuel temizleme veya hesap kapatma sürecinde imha.</td>
+              </tr>
+              <tr>
+                <th scope="row">Giriş ve denetim kayıtları</th>
+                <td data-label="Saklama süresi">Sistem güvenliği ve kötüye kullanım önleme için makul süre</td>
+                <td data-label="Süre sonu işlemi">Süresi dolduğunda silinir veya anonimleştirilir.</td>
+              </tr>
+              <tr>
+                <th scope="row">Mobil tarayıcı giriş aktarım kodları (PKCE)</th>
+                <td data-label="Saklama süresi">En fazla 180 saniye (tek kullanımlık)</td>
+                <td data-label="Süre sonu işlemi">Kullanım anında anında, kullanılmazsa süre bitiminde otomatik olarak geçersiz kılınır ve silinir.</td>
+              </tr>
+              <tr>
+                <th scope="row">Ev/aile ve hesap davet kodları</th>
+                <td data-label="Saklama süresi">En fazla 7 gün (veya ilk kullanım anına kadar)</td>
+                <td data-label="Süre sonu işlemi">Kullanıldığında tükenir; yönetici tarafından her an iptal edilebilir.</td>
+              </tr>
+              <tr>
+                <th scope="row">Tarayıcı/uygulama önbelleği ve çevrimdışı veri</th>
+                <td data-label="Saklama süresi">Önbellek temizlenene veya uygulama kaldırılana kadar</td>
+                <td data-label="Süre sonu işlemi">Ayarlar → Yedekleme ve Bakım bölümünden tek dokunuşla temizlenebilir.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2 id="guvenlik">7. Teknik ve idari güvenlik tedbirleri</h2>
+        <p>Verilerinizin gizliliğini, bütünlüğünü ve erişilebilirliğini korumak için aşağıdaki katmanlı güvenlik önlemleri uygulanmaktadır:</p>
+        <ul>
+          <li><strong>İletişim güvenliği:</strong> Tüm web, API ve bulut bağlantıları HTTPS/TLS, MQTT akışları ise şifreli WSS protokolü üzerinden yürütülür; içerik güvenliği politikası (CSP) ve sıkı taşıma güvenliği (HSTS) başlıkları uygulanır.</li>
+          <li><strong>Sunucu tarafı yetkilendirme:</strong> Firestore güvenlik kuralları ile her kullanıcı yalnızca kendi profiline, üyesi olduğu ev/aile kayıtlarına ve kendi cihaz bağlamalarına erişebilir; rol yükseltmeleri sunucu tarafında denetlenir.</li>
+          <li><strong>Adım yükseltme (Step-Up):</strong> Rol değişikliği, davet üretme, aktivasyon kodu tanımlama ve cihaz devretme gibi hassas işlemler için kimlik belirtecindeki <code>auth_time</code> damgasının yakın tarihli olması (15–60 dakika) şart koşulur.</li>
+          <li><strong>PKCE korumalı mobil aktarım:</strong> Android uygulamasından harici güvenli tarayıcıya (Chrome Custom Tabs) geçişte SHA-256 tabanlı PKCE doğrulaması ve tek kullanımlık kısa ömürlü kod mekanizması kullanılır.</li>
+          <li><strong>Kullanıcı sorumluluğu:</strong> Hiçbir dijital sistem %100 mutlak güvenlik garanti edemez. Parolanızı, cihaz aktivasyon kodlarınızı ve donanım API belirteçlerinizi üçüncü kişilerle paylaşmayın; şüpheli bir durum fark ettiğinizde derhâl şifrenizi yenileyin ve oturumu kapatın.</li>
+        </ul>
+
+        <h2 id="haklar">8. KVKK m. 11 kapsamındaki haklarınız</h2>
+        <p>KVKK&rsquo;nın 11. maddesi uyarınca veri sahibi olarak şu haklara sahipsiniz:</p>
+        <ul>
+          <li>Kişisel verilerinizin işlenip işlenmediğini öğrenme ve işlenmişse buna ilişkin bilgi talep etme,</li>
+          <li>İşlenme amacını ve bunların amacına uygun kullanılıp kullanılmadığını öğrenme,</li>
+          <li>Yurt içinde veya yurt dışında kişisel verilerin aktarıldığı üçüncü kişileri bilme,</li>
+          <li>Eksik veya yanlış işlenmiş olması hâlinde bunların düzeltilmesini isteme,</li>
+          <li>KVKK m. 7 şartları çerçevesinde kişisel verilerin silinmesini veya yok edilmesini isteme ve bu işlemlerin aktarılan üçüncü kişilere bildirilmesini talep etme,</li>
+          <li>İşlenen verilerin münhasıran otomatik sistemler vasıtasıyla analiz edilmesi suretiyle aleyhinize bir sonucun ortaya çıkmasına itiraz etme,</li>
+          <li>Kanuna aykırı olarak işlenmesi sebebiyle zarara uğramanız hâlinde zararın giderilmesini talep etme.</li>
         </ul>
         <p>
-          KVKK kapsamında bu işlemler; sözleşmenin ifası, meşru menfaat (güvenlik ve hata ayıklama),
-          açık rıza (isteğe bağlı bildirimler) ve yasal yükümlülük dayanaklarına göre yapılır.
-          Bildirim iznini istediğiniz zaman cihaz/tarayıcı ayarlarından kapatabilirsiniz.
+          Talepleriniz niteliğine göre en kısa sürede ve en geç <strong>30 (otuz) gün</strong> içinde ücretsiz olarak
+          sonuçlandırılır. Ayrıca Kişisel Verileri Koruma Kurulu&rsquo;na başvurma hakkınız saklıdır.
         </p>
 
-        <h2 id="paylasim">3. Paylaşım ve üçüncü taraflar</h2>
-        <p>Verileriniz satılmaz. Hizmeti çalıştırmak için şu altyapılar kullanılır:</p>
+        <h2 id="hesap-silme">9. Hesap ve verilerin kalıcı olarak silinmesi</h2>
+        <p>
+          Google Play ve App Store gereksinimleri ile KVKK m. 7 çerçevesinde hesabınızı ve ilişkili tüm
+          verilerinizi doğrudan uygulama içinden silebilirsiniz:
+        </p>
         <ul>
-          <li><strong>Google Firebase / Google Cloud</strong> — kimlik doğrulama, Firestore veritabanı, FCM bildirimleri ve barındırma altyapısı.</li>
-          <li><strong>Vercel</strong> — web barındırma ve sunucusuz görevler (ör. haftalık özet, alarm e-postası tetikleme).</li>
-          <li><strong>Tarayıcı üreticisinin push servisi</strong> — yalnızca bildirim göndermek için; abonelik uç noktası ilgili tarayıcıya aittir.</li>
-          <li><strong>E-posta sağlayıcısı (Brevo veya Resend)</strong> — yalnızca acil durum kişisi olarak eklediğiniz adreslere alarm e-postası iletmek için; mesaj içeriği ve alıcı adresi sağlayıcıya iletilir.</li>
+          <li>Uygulamada <strong>Ayarlar → Hesap ve roller → Hesap Silme Talebi</strong> düğmesine tıklayın ve onaylayın.</li>
+          <li>Doğrulanmış kimlik belirteciniz üzerinden <code>/api/account-deletion</code> uç noktasına kaydedilen talebiniz yalnızca yetkili işlem sorumluları tarafından görülür ve kimlik doğrulaması sonrası işleme alınır.</li>
+          <li>Hesap silme işlemi tamamlandığında; kimlik doğrulama hesabınız, profiliniz, cihaz bağlama kayıtlarınız, push/FCM bildirim token&rsquo;larınız ve acil durum kişi listeleriniz en geç <strong>30 gün</strong> içinde kalıcı olarak silinir veya anonimleştirilir. İşlem sonucu hesabınıza kayıtlı e-posta adresine bildirilir.</li>
         </ul>
+        <a class="cta" href="./settings.html#accountCard">Hesap ayarlarını ve silme aracını aç</a>
+
+        <h2 id="cerezler">10. Çerezler ve yerel depolama teknolojileri</h2>
         <p>
-          Bu hizmetler verileri kendi altyapılarında ve yurt dışında işleyebilir. Ayrıntılar için
-          ilgili sağlayıcının gizlilik politikasına bakabilirsiniz. Yasal bir talep olması hâlinde
-          yetkili kurumlarla paylaşım yapılabilir.
+          Platformda üçüncü taraf reklam, takip veya yeniden pazarlama çerezleri kullanılmaz. Yalnızca
+          oturumunuzun sürdürülmesi, tema (açık/koyu) ve bağlantı tercihlerinizin hatırlanması, servis çalışanı
+          (Service Worker) ile çevrimdışı panel önbelleğinin sunulması ve güvenlik doğrulamaları için tarayıcı
+          <code>localStorage</code>, <code>sessionStorage</code> ve <code>IndexedDB</code> alanları kullanılır.
+          Tarayıcı veya uygulama verilerini temizlediğinizde yerel kayıtlar silinir ve oturumunuz kapanır.
         </p>
 
-        <h2 id="saklama">4. Saklama süresi</h2>
+        <h2 id="cocuklar">11. Çocukların gizliliği</h2>
         <p>
-          Hesap ve profil verileri hesabınız aktif olduğu sürece; cihaz bağlantıları ve telemetri,
-          hizmetin doğası gereği makul süre boyunca saklanır. Güvenlik/denetim kayıtları ve yedekler,
-          kötüye kullanımı önlemek ve yasal yükümlülükler için sınırlı süre daha tutulabilir.
-          Hesap silme talebiniz işleme alındığında profil, kimlik doğrulama hesabı, cihaz bağlantıları,
-          push aboneliği/FCM token'ı ve acil durum e-posta kişileri silinir veya anonimleştirilir;
-          yedeklerden silinmesi ek süre alabilir.
+          DD Ev Koruma, ev güvenliği ve donanım yönetimi amacıyla sunulduğundan <strong>18 yaşın altındaki</strong>
+          kişilere yönelik değildir; reşit olmayan bireylerden bilerek kişisel veri toplanmaz. Bir çocuğa ait
+          verilerin veli veya vasi onayı olmaksızın işlendiğini düşünüyorsanız lütfen iletişime geçin; ilgili
+          hesap ve veriler ivedilikle silinecektir.
         </p>
 
-        <h2 id="guvenlik">5. Güvenlik</h2>
+        <h2 id="iletisim">12. Politika değişiklikleri ve iletişim</h2>
         <p>
-          Veriler HTTPS üzerinden taşınır. Firebase Authentication, Firestore güvenlik kuralları,
-          rol tabanlı yetkilendirme, cihaz sahipliği ve kritik işlemlerde yeniden doğrulama gibi
-          önlemler kullanılır. Hiçbir sistem %100 güvenli değildir; hesap bilgilerinizi ve cihaz
-          aktivasyon kodlarınızı kimseyle paylaşmayın. Şüpheli bir durumda yöneticiyle iletişime geçin.
+          Teknolojik gelişmeler veya mevzuat güncellemeleri doğrultusunda bu Politika güncellenebilir. Güncel
+          metin her zaman bu adreste yayımlanır ve önemli değişikliklerde sayfa başındaki güncelleme tarihi
+          yenilenerek uygulama içinde duyurulur.
         </p>
-
-        <h2 id="haklar">6. Haklarınız</h2>
-        <p>KVKK ve uygulanabilir mevzuat kapsamında şu haklara sahipsiniz:</p>
-        <ul>
-          <li>Kişisel verilerinizin işlenip işlenmediğini öğrenme ve bilgi talep etme.</li>
-          <li>Eksik/yanlış verilerin düzeltilmesini isteme.</li>
-          <li>Koşulları oluştuğunda silinmesini veya anonimleştirilmesini isteme.</li>
-          <li>İşlemeye itiraz etme ve zararın giderilmesini talep etme.</li>
-        </ul>
-        <p>Başvurularınızı <a href="#iletisim">İletişim</a> bölümündeki kanaldan iletebilirsiniz.</p>
-
-        <h2 id="hesap-silme">7. Hesap silme</h2>
         <p>
-          Hesabınızı ve ilişkili verilerinizi silmek için uygulamada
-          <strong>Ayarlar → Hesap ve Roller → Hesap Silme Talebi</strong> düğmesini kullanın.
-          Talebiniz doğrulanmış oturumunuzdan alınır ve yalnızca işlemle ilgilenen
-          yetkili kişilerce görülür.
-        </p>
-        <a class="cta" href="./settings.html#accountCard">Hesap ayarlarını aç</a>
-        <p class="updated" style="margin-top:.8rem">Talebiniz en geç 30 gün içinde işlenir ve sonuç hesabınızdaki e-posta adresine bildirilir.</p>
-
-        <h2 id="cocuklar">8. Çocuklar</h2>
-        <p>
-          Uygulama 18 yaş altındaki kişilere yönelik değildir. Bir çocuğun verisinin işlendiğini
-          düşünüyorsanız, veli/vasi olarak iletişime geçin; veriyi silmek için gerekli adımları atarız.
-        </p>
-
-        <h2 id="cerezler">9. Çerezler ve yerel depolama</h2>
-        <p>
-          Reklam veya profilleme çerezi kullanılmaz. Oturumun sürdürülmesi, temanın hatırlanması ve
-          çevrimdışı çalışma için tarayıcı yerel depolaması/önbelleği kullanılır. Bu verileri
-          tarayıcı ayarlarından temizleyebilirsiniz; oturumunuz kapanabilir.
-        </p>
-
-        <h2>10. Değişiklikler</h2>
-        <p>
-          Bu politika güncellenebilir. Önemli değişikliklerde sayfanın üstündeki tarih güncellenir
-          ve uygulama içinde duyuru yapılabilir. Güncel sürüm her zaman bu sayfada yayımlanır.
-        </p>
-
-        <h2 id="iletisim">11. İletişim</h2>
-        <p>
-          Proje desteği ve genel gizlilik soruları için:
+          Gizlilik soruları ve teknik destek bildirimleri için:
           <a href="https://github.com/mabiltekin-droid/dd-deneyap-proje/issues" target="_blank" rel="noopener">github.com/mabiltekin-droid/dd-deneyap-proje/issues</a>.
-          Hesabınızı silmek için yukarıdaki özel talep akışını kullanın. Herkese açık konularda
-          kişisel bilgi, şifre, cihaz kodu veya erişim anahtarı paylaşmayın.
+          Hesap silme başvurularınız için kesinlikle herkese açık alanlara kişisel veri, parola veya cihaz kodu
+          yazmayın; yukarıdaki özel <a href="#hesap-silme">Hesap Silme</a> akışını kullanın.
         </p>
       </article>
     </main>
 
     <footer>
-      <div>Deneyap Ev Koruma · <a href="./">Kontrol Paneli</a> · <a href="./settings.html">Ayarlar</a></div>
-      <div style="margin-top:.35rem">Bu metin bir şablon niteliğindedir; yayından önce kendi iletişim ve veri sorumlusu bilgilerinizle gözden geçirin.</div>
+      <div>DD Ev Koruma · <a href="./">Kontrol Paneli</a> · <a href="./settings.html">Ayarlar</a> · <a href="./terms.html">Kullanım Koşulları</a></div>
     </footer>
   </div>
 </body>

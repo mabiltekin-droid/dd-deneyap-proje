@@ -4,6 +4,16 @@
   "outputDirectory": "public",
   "installCommand": "npm install",
   "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/__/auth/(.*)",
+      "destination": "https://ddproje-9f594.firebaseapp.com/__/auth/$1"
+    },
+    {
+      "source": "/__/firebase/(.*)",
+      "destination": "https://ddproje-9f594.firebaseapp.com/__/firebase/$1"
+    }
+  ],
   "crons": [
     {
       "path": "/api/digest",

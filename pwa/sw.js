@@ -2,7 +2,7 @@
 const VERSION = '2.31.0';
 const ASSET_VERSION = '';
 const CACHE_PREFIX = 'deneyap-pwa-v';
-const CACHE = CACHE_PREFIX + VERSION + '-r21-' + (ASSET_VERSION || 'dev');
+const CACHE = CACHE_PREFIX + VERSION + '-r22-' + (ASSET_VERSION || 'dev');
 const SHELL = './index.html';
 const NAVIGATION_TIMEOUT_MS = 6000;
 
@@ -11,6 +11,7 @@ const PRECACHE = [
   SHELL,
   './settings.html',
   './privacy.html',
+  './terms.html',
   './earthquake.html',
   './events.html',
   './css/style.css',
@@ -75,7 +76,7 @@ const PRECACHE = [
 
 const DEFERRED = /(?:vendor\/|shaders\.js|tier\.js|icon-512|logo-mark)/;
 const VERSIONED = /^\.\/(css|js)\//;
-const PAGES = new Set(['index', 'settings', 'events', 'privacy', 'earthquake']);
+const PAGES = new Set(['index', 'settings', 'events', 'privacy', 'terms', 'earthquake']);
 
 function precacheUrl(path) {
   if (!ASSET_VERSION) return path;
@@ -269,6 +270,6 @@ self.addEventListener('fetch', function (event) {
   const request = event.request;
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
-  if (url.origin !== self.location.origin || url.pathname.startsWith('/api/') || url.pathname === '/sw.js') return;
+  if (url.origin !== self.location.origin || url.pathname.startsWith('/api/') || url.pathname.startsWith('/__/') || url.pathname === '/sw.js') return;
   event.respondWith(serve(event, url));
 });

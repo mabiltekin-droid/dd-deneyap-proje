@@ -24,6 +24,152 @@
     if (row) row.hidden = !visible;
   }
 
+  const NATIVE_PENDING_KEY = 'deneyap.native_auth.pending';
+  const NATIVE_HANDOFF_STATE_KEY = 'deneyap.native_auth.handoff_state';
+  const AUTH_STATE_RE = /^[A-Za-z0-9_-]{16,80}$/;
+  const AUTH_CODE_RE = /^[A-Za-z0-9_-]{16,120}$/;
+
+  let activeClaimStop = null;
+  let handoffCompleting = false;
+
+  function toBase64Url(bytes) {
+    let bin = '';
+    for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    if (typeof btoa === 'function') {
+      return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+    let out = '';
+    for (let i = 0; i < bytes.length; i += 3) {
+      const a = bytes[i];
+      const b = i + 1 < bytes.length ? bytes[i + 1] : 0;
+      const c = i + 2 < bytes.length ? bytes[i + 2] : 0;
+      const n = (a << 16) | (b << 8) | c;
+      out += alphabet[(n >>> 18) & 63] + alphabet[(n >>> 12) & 63];
+      if (i + 1 < bytes.length) out += alphabet[(n >>> 6) & 63];
+      if (i + 2 < bytes.length) out += alphabet[n & 63];
+    }
+    return out;
+  }
+
+  function randomTokenBytes(size) {
+    const arr = new Uint8Array(size);
+    const cryptoObj = typeof crypto !== 'undefined' ? crypto : null;
+    if (cryptoObj && typeof cryptoObj.getRandomValues === 'function') {
+      cryptoObj.getRandomValues(arr);
+      return arr;
+    }
+    throw Object.assign(new Error('Güvenli rastgele üreteç kullanılamıyor.'), { code: 'auth/crypto-unavailable' });
+  }
+
+  async function makePkcePair() {
+    const cryptoObj = typeof crypto !== 'undefined' ? crypto : null;
+    if (!cryptoObj || !cryptoObj.subtle || typeof cryptoObj.subtle.digest !== 'function') {
+      throw Object.assign(
+        new Error('Bu ortamda güvenli tarayıcı girişi başlatılamıyor.'),
+        { code: 'auth/native-request-failed' }
+      );
+    }
+    const state = toBase64Url(randomTokenBytes(24));
+    const verifier = toBase64Url(randomTokenBytes(32));
+    const encoded = typeof TextEncoder !== 'undefined'
+      ? new TextEncoder().encode(verifier)
+      : Uint8Array.from(verifier, function (ch) { return ch.charCodeAt(0) & 255; });
+    const digest = await cryptoObj.subtle.digest('SHA-256', encoded);
+    const challenge = toBase64Url(new Uint8Array(digest));
+    return { state: state, verifier: verifier, challenge: challenge };
+  }
+
+  function savePendingNativeAuth(entry) {
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.setItem(NATIVE_PENDING_KEY, JSON.stringify(entry));
+      }
+    } catch (e) { /* yoksay */ }
+  }
+
+  function loadPendingNativeAuth() {
+    try {
+      if (typeof sessionStorage === 'undefined') return null;
+      const raw = sessionStorage.getItem(NATIVE_PENDING_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed || !AUTH_STATE_RE.test(parsed.state || '') || !parsed.verifier) {
+        sessionStorage.removeItem(NATIVE_PENDING_KEY);
+        return null;
+      }
+      if (parsed.expiresAt && Date.now() > Number(parsed.expiresAt)) {
+        sessionStorage.removeItem(NATIVE_PENDING_KEY);
+        return null;
+      }
+      return parsed;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function clearPendingNativeAuth() {
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.removeItem(NATIVE_PENDING_KEY);
+      }
+    } catch (e) { /* yoksay */ }
+  }
+
+  function saveHandoffState(state) {
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        if (state) sessionStorage.setItem(NATIVE_HANDOFF_STATE_KEY, state);
+        else sessionStorage.removeItem(NATIVE_HANDOFF_STATE_KEY);
+      }
+    } catch (e) { /* yoksay */ }
+  }
+
+  function activeHandoffState() {
+    if (window.AndroidApp) return '';
+    try {
+      const params = new URLSearchParams(location.search || '');
+      if (params.get('native_auth') === 'google') {
+        const s = params.get('state') || '';
+        if (AUTH_STATE_RE.test(s)) return s;
+      }
+    } catch (e) { /* yoksay */ }
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        const saved = sessionStorage.getItem(NATIVE_HANDOFF_STATE_KEY) || '';
+        if (AUTH_STATE_RE.test(saved)) return saved;
+      }
+    } catch (e) { /* yoksay */ }
+    return '';
+  }
+
+  function setHandoffStatus(text, kind) {
+    const el = $('nativeAuthStatus');
+    if (!el) return;
+    el.textContent = text || '';
+    el.className = 'result' + (kind ? ' ' + kind : '');
+  }
+
+  async function postMobileAuth(payload, bearerToken) {
+    const headers = { 'Content-Type': 'application/json' };
+    if (bearerToken) headers.Authorization = 'Bearer ' + bearerToken;
+    const response = await fetch('/api/mobile-auth', {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify(payload)
+    });
+    let data = {};
+    try { data = await response.json(); } catch (e) { data = {}; }
+    return { status: response.status, ok: response.ok, data: data };
+  }
+
+  function buildBrowserAuthUrl(state) {
+    const baseHref = (location && location.origin && location.origin !== 'null')
+      ? (location.origin + (location.pathname || '/settings.html'))
+      : './settings.html';
+    return baseHref + '?native_auth=google&state=' + encodeURIComponent(state) + '&return=app#accountCard';
+  }
+
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
@@ -47,12 +193,36 @@
   function render(snap) {
     const chip = $('authChip');
     const setup = !!snap.setupRequired;
+    const handoff = activeHandoffState();
 
     $('authSetupBanner').hidden = !setup;
 
-    $('authSignedOut').hidden = snap.signedIn;
-    $('authSignedIn').hidden = !snap.signedIn;
-    $('adminPanel').hidden = !snap.isAdmin;
+    if (handoff) {
+      $('authSignedOut').hidden = false;
+      $('authSignedIn').hidden = true;
+      $('adminPanel').hidden = true;
+      if ($('nativeAuthHandoff')) $('nativeAuthHandoff').hidden = false;
+      if ($('standardAuthBox')) $('standardAuthBox').hidden = true;
+      const continueBtn = $('nativeAuthContinueExistingBtn');
+      const googleBtnText = $('nativeAuthGoogleBtnText');
+      if (continueBtn) {
+        if (snap.signedIn && snap.user && snap.user.email) {
+          continueBtn.hidden = false;
+          const span = continueBtn.querySelector('span');
+          if (span) span.textContent = snap.user.email + ' ile uygulamaya dön';
+          if (googleBtnText) googleBtnText.textContent = 'Başka Google hesabıyla devam et';
+        } else {
+          continueBtn.hidden = true;
+          if (googleBtnText) googleBtnText.textContent = 'Google ile devam et';
+        }
+      }
+    } else {
+      if ($('nativeAuthHandoff')) $('nativeAuthHandoff').hidden = true;
+      if ($('standardAuthBox')) $('standardAuthBox').hidden = false;
+      $('authSignedOut').hidden = snap.signedIn;
+      $('authSignedIn').hidden = !snap.signedIn;
+      $('adminPanel').hidden = !snap.isAdmin;
+    }
 
     if (chip) {
       if (setup) { chip.dataset.state = 'warning'; chip.textContent = 'Şema yok'; }
@@ -255,19 +425,356 @@
     apple:  { id: 'appleSignInBtn',  label: 'Apple'  }
   };
 
+  function stopClaimMonitor() {
+    if (typeof activeClaimStop === 'function') {
+      const fn = activeClaimStop;
+      activeClaimStop = null;
+      fn();
+    }
+  }
+
+  function unlockGoogleButton() {
+    busy = false;
+    const btn = $('googleSignInBtn');
+    if (btn) btn.disabled = false;
+  }
+
+  function beginPendingClaimMonitor(state, verifier, opts) {
+    stopClaimMonitor();
+    opts = opts || {};
+    let settled = false;
+    let claiming = false;
+    let intervalId = null;
+
+    function cleanup() {
+      settled = true;
+      if (intervalId) { clearInterval(intervalId); intervalId = null; }
+      try {
+        if (typeof document !== 'undefined' && document.removeEventListener) {
+          document.removeEventListener('visibilitychange', onReturn);
+        }
+        if (typeof window !== 'undefined' && window.removeEventListener) {
+          window.removeEventListener('focus', onReturn);
+          window.removeEventListener('pageshow', onReturn);
+        }
+      } catch (e) { /* yoksay */ }
+      if (window.DeneyapNative && window.DeneyapNative._activeClaimHandler === onNativeCallback) {
+        delete window.DeneyapNative.onAuthCallback;
+        delete window.DeneyapNative._activeClaimHandler;
+      }
+      if (activeClaimStop === cleanup) activeClaimStop = null;
+    }
+
+    async function attemptClaim(code, fromReturnEvent) {
+      if (settled || claiming) return;
+      const snap = App.Auth && App.Auth.snapshot ? App.Auth.snapshot() : {};
+      if (snap.signedIn) {
+        clearPendingNativeAuth();
+        cleanup();
+        unlockGoogleButton();
+        return;
+      }
+      const stored = loadPendingNativeAuth();
+      if (!stored || stored.state !== state) {
+        cleanup();
+        unlockGoogleButton();
+        return;
+      }
+      claiming = true;
+      try {
+        const res = await postMobileAuth({
+          action: 'claim',
+          state: state,
+          verifier: verifier,
+          ...(code && AUTH_CODE_RE.test(code) ? { code: code } : {})
+        });
+        if (settled) return;
+        if (res.ok && res.data && res.data.customToken) {
+          clearPendingNativeAuth();
+          cleanup();
+          setResult('Google oturumu doğrulanıyor…');
+          await App.Auth.signInWithCustomToken(res.data.customToken, 'google');
+          setChromeFallback(false);
+          setResult('Giriş başarılı.', 'ok');
+          App.sound && App.sound.ok ? App.sound.ok() : (App.sound && App.sound.click());
+          App.haptic && App.haptic(40);
+          unlockGoogleButton();
+          return;
+        }
+        if (res.ok && res.data && res.data.pending) {
+          if (fromReturnEvent && busy) {
+            unlockGoogleButton();
+          }
+          return;
+        }
+        if (res.status === 410 || res.status === 404 || res.status === 403) {
+          clearPendingNativeAuth();
+          cleanup();
+          unlockGoogleButton();
+          setResult(res.status === 410
+            ? 'Google giriş süresi doldu. Tekrar deneyin.'
+            : 'Google girişi doğrulanamadı. Tekrar deneyin.', 'err');
+          if (window.AndroidApp && typeof window.AndroidApp.openInChrome === 'function') {
+            setChromeFallback(true);
+          }
+        }
+      } catch (e) {
+        if (fromReturnEvent && busy) unlockGoogleButton();
+      } finally {
+        claiming = false;
+      }
+    }
+
+    function onNativeCallback(cbCode, cbState) {
+      if (cbState && cbState !== state) return;
+      attemptClaim(cbCode, true);
+    }
+
+    function onReturn() {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      attemptClaim('', true);
+    }
+
+    window.DeneyapNative = window.DeneyapNative || {};
+    window.DeneyapNative.onAuthCallback = onNativeCallback;
+    window.DeneyapNative._activeClaimHandler = onNativeCallback;
+
+    try {
+      if (typeof document !== 'undefined' && document.addEventListener) {
+        document.addEventListener('visibilitychange', onReturn);
+      }
+      if (typeof window !== 'undefined' && window.addEventListener) {
+        window.addEventListener('focus', onReturn);
+        window.addEventListener('pageshow', onReturn);
+      }
+    } catch (e) { /* yoksay */ }
+
+    const pollMs = typeof opts.pollMs === 'number' ? opts.pollMs : 2000;
+    if (pollMs > 0) {
+      intervalId = setInterval(function () { attemptClaim('', false); }, pollMs);
+    }
+
+    activeClaimStop = cleanup;
+    return { attemptClaim: attemptClaim, cleanup: cleanup, isSettled: function () { return settled; } };
+  }
+
+  async function startAndroidBrowserGoogleSignIn() {
+    const android = window.AndroidApp;
+    const bridge = window.DeneyapGoogleSignIn;
+    const hasNativeBrowserBridge = bridge && typeof bridge.startBrowserSignIn === 'function';
+    const hasCustomAuthUrlBridge = android && typeof android.openAuthInChrome === 'function';
+    const hasLegacyChromeBridge = android && typeof android.openInChrome === 'function';
+
+    if (!hasNativeBrowserBridge && !hasCustomAuthUrlBridge && !hasLegacyChromeBridge) {
+      setResult('Google girişi bu uygulama sürümünde kullanılamıyor. Uygulamayı güncelleyin veya e-posta ve şifreyle giriş yapın.', 'err');
+      return;
+    }
+
+    const btn = $('googleSignInBtn');
+    busy = true;
+    if (btn) btn.disabled = true;
+    setChromeFallback(false);
+    setResult('Google girişi hazırlanıyor…');
+
+    let pkce;
+    try {
+      pkce = await makePkcePair();
+      const initRes = await postMobileAuth({
+        action: 'init',
+        state: pkce.state,
+        challenge: pkce.challenge
+      });
+      if (!initRes.ok || !initRes.data || !initRes.data.ok) {
+        throw Object.assign(
+          new Error('Google giriş oturumu başlatılamadı. Tekrar deneyin.'),
+          { code: 'auth/native-request-failed' }
+        );
+      }
+    } catch (e) {
+      unlockGoogleButton();
+      setResult((e && (e.human || e.message)) || 'Google girişi bu cihazda başlatılamadı.', 'err');
+      if (hasLegacyChromeBridge) setChromeFallback(true);
+      return;
+    }
+
+    const ttlSec = 180;
+    savePendingNativeAuth({
+      state: pkce.state,
+      verifier: pkce.verifier,
+      expiresAt: Date.now() + ttlSec * 1000
+    });
+
+    const authUrl = buildBrowserAuthUrl(pkce.state);
+    const monitor = beginPendingClaimMonitor(pkce.state, pkce.verifier);
+    setResult('Tarayıcıda Google girişi açılıyor… Giriş yaptıktan sonra uygulamaya döneceksiniz.');
+
+    if (hasNativeBrowserBridge) {
+      bridge.startBrowserSignIn(pkce.state).then(function (reply) {
+        if (reply && reply.code && reply.state === pkce.state) {
+          return monitor.attemptClaim(reply.code, true);
+        }
+      }).catch(function (err) {
+        if (monitor.isSettled()) return;
+        const code = err && err.code;
+        if (code === 'auth/native-sign-in-timeout') {
+          clearPendingNativeAuth();
+          monitor.cleanup();
+          unlockGoogleButton();
+          setResult((err && err.message) || 'Google girişinden yanıt alınamadı. Tekrar deneyin.', 'err');
+          if (hasLegacyChromeBridge) setChromeFallback(true);
+          return;
+        }
+        if (code === 'auth/cancelled-popup-request') {
+          monitor.cleanup();
+          clearPendingNativeAuth();
+          unlockGoogleButton();
+          setResult('Google girişi iptal edildi.', 'err');
+          return;
+        }
+        monitor.attemptClaim('', true).then(function () {
+          if (!monitor.isSettled()) {
+            if (code === 'auth/native-request-failed') {
+              monitor.cleanup();
+              clearPendingNativeAuth();
+            }
+            unlockGoogleButton();
+            setResult((err && err.message) || 'Google girişi tamamlanamadı. Tekrar deneyin.', 'err');
+            if (hasLegacyChromeBridge) setChromeFallback(true);
+          }
+        });
+      });
+      return;
+    }
+
+    if (hasCustomAuthUrlBridge) {
+      try {
+        android.openAuthInChrome(authUrl);
+      } catch (e) {
+        monitor.cleanup();
+        clearPendingNativeAuth();
+        unlockGoogleButton();
+        setResult('Google girişi tarayıcıda açılamadı. Tekrar deneyin.', 'err');
+        if (hasLegacyChromeBridge) setChromeFallback(true);
+      }
+      return;
+    }
+
+    /* Eski APK (v13-v15): WebView'in o anki adresini geçici olarak authUrl yapıp
+       AndroidApp.openInChrome() ile Chrome Custom Tabs'i bu URL'de açar. */
+    const originalHref = location.href;
+    try {
+      if (typeof history !== 'undefined' && typeof history.replaceState === 'function') {
+        history.replaceState(null, '', authUrl);
+      }
+      setTimeout(function () {
+        try {
+          android.openInChrome();
+        } catch (err) {
+          monitor.cleanup();
+          clearPendingNativeAuth();
+          unlockGoogleButton();
+          setResult('Tarayıcı açılamadı. Tekrar deneyin.', 'err');
+        }
+        setTimeout(function () {
+          try {
+            if (typeof history !== 'undefined' && typeof history.replaceState === 'function') {
+              history.replaceState(null, '', originalHref);
+            }
+          } catch (e2) { /* yoksay */ }
+        }, 1200);
+      }, 120);
+    } catch (e) {
+      monitor.cleanup();
+      clearPendingNativeAuth();
+      unlockGoogleButton();
+      setResult('Google girişi başlatılamadı. Tekrar deneyin.', 'err');
+    }
+  }
+
+  async function completeNativeAuthHandoff(state, idToken) {
+    if (handoffCompleting || !AUTH_STATE_RE.test(state || '') || !idToken) return;
+    handoffCompleting = true;
+    const btn = $('nativeAuthGoogleBtn');
+    const contBtn = $('nativeAuthContinueExistingBtn');
+    if (btn) btn.disabled = true;
+    if (contBtn) contBtn.disabled = true;
+    setHandoffStatus('Uygulama oturumu hazırlanıyor…');
+    try {
+      const res = await postMobileAuth({ action: 'complete', state: state }, idToken);
+      if (!res.ok || !res.data || !res.data.code) {
+        saveHandoffState('');
+        if (res.status === 404 || res.status === 410) {
+          setHandoffStatus('Giriş isteğinin süresi dolmuş. Uygulamaya dönüp "Google ile devam et" düğmesine yeniden dokunun.', 'err');
+        } else {
+          setHandoffStatus('Uygulama oturumu tamamlanamadı. Tekrar deneyin.', 'err');
+        }
+        return;
+      }
+      saveHandoffState('');
+      const returnUrl = 'deneyapevkoruma://auth-callback?code='
+        + encodeURIComponent(res.data.code) + '&state=' + encodeURIComponent(state);
+      const returnLink = $('nativeAuthReturnLink');
+      if (returnLink) {
+        returnLink.href = returnUrl;
+        returnLink.hidden = false;
+      }
+      if (contBtn) contBtn.hidden = true;
+      setHandoffStatus(
+        'Giriş tamamlandı! DD Ev Koruma uygulamasına yönlendiriliyorsunuz… '
+        + 'Otomatik dönmezse aşağıdaki "Uygulamaya dön" düğmesine veya üstteki kapat (✕) tuşuna dokunun.',
+        'ok'
+      );
+      try {
+        location.href = returnUrl;
+      } catch (e) { /* Düğmeyle devam edilebilir */ }
+    } catch (e) {
+      setHandoffStatus((e && (e.human || e.message)) || 'Bağlantı hatası. Tekrar deneyin.', 'err');
+    } finally {
+      handoffCompleting = false;
+      if (btn) btn.disabled = false;
+      if (contBtn) contBtn.disabled = false;
+    }
+  }
+
+  async function startHandoffGoogleSignIn(state) {
+    if (busy || !AUTH_STATE_RE.test(state || '')) return;
+    busy = true;
+    const btn = $('nativeAuthGoogleBtn');
+    if (btn) btn.disabled = true;
+    setHandoffStatus('Google girişi açılıyor…');
+    saveHandoffState(state);
+    try {
+      /* Kullanıcı tıklaması içinde senkron başlatılır ki mobil tarayıcı açılır pencereyi engellemesin. */
+      const res = await App.FB.signInWithProvider('google');
+      if (res && res.redirect) {
+        setHandoffStatus('Google sayfasına yönlendiriliyorsunuz…');
+        return;
+      }
+      if (!res || !res.access_token) {
+        throw new Error('Google oturum anahtarı alınamadı.');
+      }
+      await completeNativeAuthHandoff(state, res.access_token);
+    } catch (e) {
+      saveHandoffState('');
+      if (e && (e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request')) {
+        setHandoffStatus('Google girişi iptal edildi.', 'err');
+      } else {
+        setHandoffStatus((e && (e.human || e.message)) || 'Google girişi başarısız oldu. Tekrar deneyin.', 'err');
+      }
+    } finally {
+      busy = false;
+      if (btn) btn.disabled = false;
+    }
+  }
+
   async function doSocialSignIn(provider) {
     if (busy) return;
     setChromeFallback(false);
     const android = window.AndroidApp;
-    const nativeBridge = window.DeneyapGoogleSignIn || android;
-    const nativeGoogle = provider === 'google' && nativeBridge
-      && typeof nativeBridge.getGoogleIdToken === 'function';
-    if (provider === 'google' && android && !nativeGoogle) {
-      setResult('Google girişi bu uygulama sürümünde kullanılamıyor. Uygulamayı güncelleyin veya e-posta ve şifreyle giriş yapın.', 'err');
-      setChromeFallback(typeof android.openInChrome === 'function');
-      return;
+    if (provider === 'google' && android) {
+      return startAndroidBrowserGoogleSignIn();
     }
-    if (!nativeGoogle && android && typeof android.openInChrome === 'function') {
+    if (android && typeof android.openInChrome === 'function') {
       if (confirm('Tarayıcı açılacak ve oturum orada devam edecek. Devam edilsin mi?')) {
         android.openInChrome();
       }
@@ -279,19 +786,7 @@
     if (btn) btn.disabled = true;
     setResult(def.label + ' ile giriş yapılıyor…');
     try {
-      let idToken = null;
-      if (nativeGoogle) {
-        idToken = await nativeBridge.getGoogleIdToken();
-        if (!idToken) {
-          const invalidErr = new Error('Google kimlik belirteci alınamadı.');
-          invalidErr.code = 'auth/invalid-credential';
-          invalidErr.human = 'Google hesabı doğrulanamadı. Tekrar deneyin.';
-          throw invalidErr;
-        }
-      }
-      const r = nativeGoogle
-        ? await App.Auth.signInWithProvider('google', idToken)
-        : await App.Auth.signInWithProvider(provider);
+      const r = await App.Auth.signInWithProvider(provider);
       if (r && r.redirect) {
         setResult(def.label + ' sayfasına yönlendiriliyorsunuz…');
         return;
@@ -308,9 +803,6 @@
           || (typeof e === 'string' && e)
           || (def.label + ' girişi başarısız oldu. Tekrar deneyin.');
         setResult(msg, 'err');
-        if (provider === 'google' && android && typeof android.openInChrome === 'function') {
-          setChromeFallback(true);
-        }
       }
     } finally {
       busy = false;
@@ -813,6 +1305,20 @@
         }
       });
     }
+    if ($('nativeAuthGoogleBtn')) {
+      $('nativeAuthGoogleBtn').addEventListener('click', function () {
+        const state = activeHandoffState();
+        if (state) startHandoffGoogleSignIn(state);
+      });
+    }
+    if ($('nativeAuthContinueExistingBtn')) {
+      $('nativeAuthContinueExistingBtn').addEventListener('click', async function () {
+        const state = activeHandoffState();
+        if (!state || !App.FB || typeof App.FB.token !== 'function') return;
+        const token = await App.FB.token();
+        if (token) await completeNativeAuthHandoff(state, token);
+      });
+    }
     $('authSignOutBtn').addEventListener('click', doSignOut);
     const deletionDialog = $('accountDeletionDialog');
     const deletionButton = $('accountDeleteRequestBtn');
@@ -875,11 +1381,37 @@
       if (b && !b.disabled && !busy) onDelete(b);
     });
 
+    const handoff = activeHandoffState();
+    if (handoff && App.StudioNav && typeof App.StudioNav.show === 'function') {
+      try { App.StudioNav.show('accountCard', { focus: false }); } catch (e) { /* yoksay */ }
+    }
+
     App.Auth.onChange(render);
 
-    App.Auth.init().then(function (snap) {
+    App.Auth.init().then(async function (snap) {
       render(snap);
-      if (snap.redirectError && !snap.signedIn) setResult(snap.redirectError, 'err');
+      if (snap.redirectError && !snap.signedIn) {
+        if (handoff) setHandoffStatus(snap.redirectError, 'err');
+        else setResult(snap.redirectError, 'err');
+      }
+      if (handoff && snap.signedIn) {
+        let pendingHandoff = '';
+        try {
+          if (typeof sessionStorage !== 'undefined') {
+            pendingHandoff = sessionStorage.getItem(NATIVE_HANDOFF_STATE_KEY) || '';
+          }
+        } catch (e) { /* yoksay */ }
+        if (pendingHandoff === handoff && App.FB && typeof App.FB.token === 'function') {
+          const token = await App.FB.token();
+          if (token) await completeNativeAuthHandoff(handoff, token);
+        }
+      } else if (window.AndroidApp && !snap.signedIn) {
+        const pending = loadPendingNativeAuth();
+        if (pending) {
+          const monitor = beginPendingClaimMonitor(pending.state, pending.verifier);
+          monitor.attemptClaim('', false);
+        }
+      }
       return loadDevice();
     }).catch(function (e) {
       setResult(e.human || e.message, 'err');

@@ -182,7 +182,7 @@ test('warmup makes canonical and legacy URLs available offline without replacing
   const worker = await harness();
   await worker.dispatch('message', { data: { type: 'CACHE_OFFLINE' } }).response();
   worker.offline();
-  for (const page of ['settings', 'events', 'privacy', 'earthquake']) {
+  for (const page of ['settings', 'events', 'privacy', 'terms', 'earthquake']) {
     for (const route of ['/' + page, '/' + page + '.html']) {
       const response = await worker.request(route + '?source=test').response();
       assert.match(await response.text(), new RegExp('/' + page + '(?:\\.html)?$'));
