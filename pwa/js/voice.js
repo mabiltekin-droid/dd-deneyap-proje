@@ -390,7 +390,7 @@
       toast: 'Panel açıldı.',
       aliases: [
         'panel', 'ana sayfa', 'anasayfa', 'ana ekran', 'genel bakis',
-        'ev ozeti', 'kontrol paneli', 'baslangic', 'giris ekrani',
+        'ev ozeti', 'kontrol paneli', 'baslangic',
         'home', 'dashboard', 'ana menu', 'on ekran'
       ]
     },
@@ -573,11 +573,28 @@
       kind: 'settings',
       page: 'settings',
       panelId: 'accountCard',
-      label: 'Hesap ve roller',
-      toast: 'Hesap ve roller bölümü açıldı.',
+      authMode: 'login',
+      label: 'Giriş yap',
+      toast: 'Giriş ekranı açıldı.',
       aliases: [
-        'hesap', 'hesabim', 'hesap ve roller', 'oturum', 'giris yap',
-        'hesaba giris', 'hesap ayarlari', 'roller', 'yetkiler', 'kullanici hesabi', 'account'
+        'hesap', 'hesabim', 'hesap ve roller', 'oturum', 'oturum ac',
+        'giris', 'giris yap', 'giris ekrani', 'giris sayfasi', 'hesaba giris',
+        'hesap ayarlari', 'roller', 'yetkiler', 'kullanici hesabi', 'login', 'account'
+      ]
+    },
+    {
+      id: 'signup',
+      kind: 'settings',
+      page: 'settings',
+      panelId: 'accountCard',
+      authMode: 'signup',
+      routeCode: 'nav:settings:signup',
+      label: 'Kayıt ol',
+      toast: 'Kayıt ekranı açıldı.',
+      aliases: [
+        'kayit', 'kayit ol', 'kayit ekrani', 'kayit sayfasi', 'uye ol',
+        'uyelik', 'yeni hesap', 'yeni hesap ac', 'yeni hesap olustur',
+        'hesap olustur', 'yeni uyelik', 'signup', 'register'
       ]
     },
     {
@@ -989,8 +1006,15 @@
         }
         return false;
       },
-      showSettingsPanel: function (id) {
-        if (App.StudioNav && App.StudioNav.show) return App.StudioNav.show(id);
+      showSettingsPanel: function (id, opts) {
+        if (App.StudioNav && App.StudioNav.show) return App.StudioNav.show(id, opts || {});
+        return false;
+      },
+      setAuthMode: function (mode) {
+        if (App.Account && typeof App.Account.setAuthMode === 'function') {
+          App.Account.setAuthMode(mode, { pushState: true });
+          return true;
+        }
         return false;
       },
       showSettingsOverview: function () {
@@ -1060,13 +1084,17 @@
     }
 
     if (dest.kind === 'settings') {
+      const resultCode = dest.routeCode || (dest.panelId ? ('nav:settings:' + dest.panelId) : 'nav:settings');
       if (page === 'settings') {
         let ok = true;
         if (dest.panelId) {
-          ok = nav.showSettingsPanel(dest.panelId);
+          ok = nav.showSettingsPanel(dest.panelId, dest.authMode ? { authMode: dest.authMode } : {});
           if (!ok) {
             if (App.toast) App.toast('Bu bölüm mevcut hesap veya yetki durumunuzda kapalı.', { kind: 'warn', duration: 3200 });
             return 'nav:settings:unavailable:' + dest.panelId;
+          }
+          if (dest.authMode && typeof nav.setAuthMode === 'function') {
+            nav.setAuthMode(dest.authMode);
           }
         } else {
           nav.showSettingsOverview();
@@ -1076,13 +1104,15 @@
         speakFeedback(dest.toast);
       } else {
         if (App.toast) App.toast(dest.toast, { kind: 'ok', duration: 2000 });
-        if (dest.panelId === 'accountCard') {
+        if (dest.authMode === 'signup') {
+          nav.goUrl('/settings/signup');
+        } else if (dest.panelId === 'accountCard') {
           nav.goUrl('/settings/login');
         } else {
           nav.goUrl(pageHref('settings', dest.panelId ? '#' + dest.panelId : ''));
         }
       }
-      return dest.panelId ? ('nav:settings:' + dest.panelId) : 'nav:settings';
+      return resultCode;
     }
 
     /* Bağımsız sayfa: events, earthquake, privacy, terms */
@@ -1358,11 +1388,12 @@
 
     /* 16) Tüm sekmeler, sayfalar, kartlar, ayar bölümleri ve 3D odalar */
     if (navMatch) {
-      const code = navMatch.dest.kind === 'room'
-        ? 'room:' + navMatch.dest.id
-        : (navMatch.dest.kind === 'settings' && navMatch.dest.panelId)
-          ? 'nav:settings:' + navMatch.dest.panelId
-          : 'nav:' + navMatch.dest.id;
+      const code = navMatch.dest.routeCode
+        || (navMatch.dest.kind === 'room'
+          ? 'room:' + navMatch.dest.id
+          : (navMatch.dest.kind === 'settings' && navMatch.dest.panelId)
+            ? 'nav:settings:' + navMatch.dest.panelId
+            : 'nav:' + navMatch.dest.id);
       return { type: 'nav', dest: navMatch.dest, code: code, score: navMatch.score };
     }
 

@@ -1403,6 +1403,10 @@
       });
     }
     setAuthMode(authModeFromPath(), { pushState: false });
+    App.Account = {
+      setAuthMode: setAuthMode,
+      authMode: authModeFromPath
+    };
     window.addEventListener('popstate', function () {
       setAuthMode(authModeFromPath(), { pushState: false });
     });

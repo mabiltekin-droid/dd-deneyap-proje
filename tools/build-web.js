@@ -189,6 +189,17 @@ walk(PUBLIC)
     if (after !== before) fs.writeFileSync(f, after, 'utf8');
   });
 
+/* 5. /settings/login ve /settings/signup yolları için doğrudan statik HTML üret
+   (Vercel cleanUrls: true ile kesin HTTP 200; rewrite/404 çakışması olmaz). */
+const builtSettingsPath = path.join(PUBLIC, 'settings.html');
+if (fs.existsSync(builtSettingsPath)) {
+  const settingsHtml = fs.readFileSync(builtSettingsPath, 'utf8');
+  const settingsSubDir = path.join(PUBLIC, 'settings');
+  fs.mkdirSync(settingsSubDir, { recursive: true });
+  fs.writeFileSync(path.join(settingsSubDir, 'login.html'), settingsHtml, 'utf8');
+  fs.writeFileSync(path.join(settingsSubDir, 'signup.html'), settingsHtml, 'utf8');
+}
+
 const outputWorker = path.join(PUBLIC, 'sw.js');
 const outputWorkerCode = fs.readFileSync(outputWorker, 'utf8');
 fs.writeFileSync(outputWorker,

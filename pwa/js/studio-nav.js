@@ -830,7 +830,7 @@
   window.App = window.App || {};
   window.App.StudioNav = {
     refresh: sync,
-    show: function (id) { return activate(id, {}); },
+    show: function (id, opts) { return activate(id, opts || {}); },
     showOverview: function () { showOverview({ clearHash: true, focus: true, scroll: true }); },
     open: openMenu,
     close: function () { closeMenu(true); }

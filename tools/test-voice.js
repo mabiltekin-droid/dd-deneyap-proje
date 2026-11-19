@@ -23,6 +23,7 @@ function createHarness(opts) {
     showSettingsOverview: 0,
     focusRoom: [],
     savePendingRoom: [],
+    setAuthMode: [],
     goUrl: [],
     mode: [],
     theme: [],
@@ -126,6 +127,7 @@ function createHarness(opts) {
     goUrl: function (url) { calls.goUrl.push(url); },
     navigatePanel: function (id) { calls.navigatePanel.push(id); return true; },
     showSettingsPanel: function (id) { calls.showSettingsPanel.push(id); return true; },
+    setAuthMode: function (mode) { calls.setAuthMode.push(mode); return true; },
     showSettingsOverview: function () { calls.showSettingsOverview += 1; return true; },
     focusRoom: function (preset) { calls.focusRoom.push(preset); return true; },
     savePendingRoom: function (preset) { calls.savePendingRoom.push(preset); }
@@ -383,6 +385,25 @@ console.log('\nG) Sayfalar arası geçiş ve ayarlar alt-panel yönlendirmesi');
     assert.strictEqual(r, 'room:kitchen');
     assert.deepStrictEqual(hSettings.calls.savePendingRoom, ['kitchen']);
     assert.deepStrictEqual(hSettings.calls.goUrl, ['./#hero']);
+  });
+  check('Ana sayfadan "Giriş yap" → /settings/login, "Kayıt ol" → /settings/signup', function () {
+    const hIdx = createHarness({ page: 'index' });
+    assert.strictEqual(hIdx.Speech.handle('Giriş ekranını aç'), 'nav:settings:accountCard');
+    assert.strictEqual(hIdx.Speech.handle('Kayıt ol'), 'nav:settings:signup');
+    assert.strictEqual(hIdx.Speech.handle('Kayıt sayfasına gir'), 'nav:settings:signup');
+    assert.strictEqual(hIdx.Speech.handle('Yeni hesap oluştur'), 'nav:settings:signup');
+    assert.deepStrictEqual(hIdx.calls.goUrl, [
+      '/settings/login',
+      '/settings/signup',
+      '/settings/signup',
+      '/settings/signup'
+    ]);
+  });
+  check('settings sayfasında "Kayıt ol" ve "Giriş yap" arası ayrım', function () {
+    const hSet = createHarness({ page: 'settings' });
+    assert.strictEqual(hSet.Speech.handle('Kayıt ekranını aç'), 'nav:settings:signup');
+    assert.strictEqual(hSet.Speech.handle('Giriş yap'), 'nav:settings:accountCard');
+    assert.deepStrictEqual(hSet.calls.setAuthMode, ['signup', 'login']);
   });
 }
 

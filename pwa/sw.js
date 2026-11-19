@@ -2,7 +2,7 @@
 const VERSION = '2.31.0';
 const ASSET_VERSION = '';
 const CACHE_PREFIX = 'deneyap-pwa-v';
-const CACHE = CACHE_PREFIX + VERSION + '-r22-' + (ASSET_VERSION || 'dev');
+const CACHE = CACHE_PREFIX + VERSION + '-r23-' + (ASSET_VERSION || 'dev');
 const SHELL = './index.html';
 const NAVIGATION_TIMEOUT_MS = 6000;
 
@@ -188,7 +188,7 @@ self.addEventListener('pushsubscriptionchange', function (event) {
 function pageKeys(url) {
   const name = url.pathname.replace(/^\//, '').replace(/\/$|\.html$/g, '') || 'index';
   if (name === 'settings/login' || name === 'settings/signup') {
-    return ['/settings', '/settings.html'].map(path => new URL(path, url.origin));
+    return ['/' + name, '/settings', '/settings.html'].map(path => new URL(path, url.origin));
   }
   if (!PAGES.has(name)) return [];
   const paths = name === 'index' ? ['/', '/index.html', '/index'] : ['/' + name, '/' + name + '.html'];
