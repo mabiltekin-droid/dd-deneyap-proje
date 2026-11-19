@@ -333,7 +333,25 @@
 
   /* ------------------------------------------------ kayıt / giriş --------- */
 
-  function requireLegalConsent(isHandoff) {
+  const LEGAL_CONSENT_KEY = 'deneyap.legalConsentAccepted';
+
+  function hasLegalConsentAccepted() {
+    try {
+      return localStorage.getItem(LEGAL_CONSENT_KEY) === '1';
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function markLegalConsentAccepted() {
+    try {
+      localStorage.setItem(LEGAL_CONSENT_KEY, '1');
+    } catch (e) { /* yoksay */ }
+  }
+
+  function requireLegalConsent(isHandoff, options) {
+    const force = !!(options && options.force);
+    if (!force && hasLegalConsentAccepted()) return true;
     const cb = $('authLegalConsent');
     if (!cb || cb.checked) return true;
     const wrap = $('authLegalConsentWrap');
@@ -342,17 +360,16 @@
       void wrap.offsetWidth;
       wrap.classList.add('is-missing');
     }
-    const msg = 'Giriş yapmak veya hesap oluşturmak için Kullanım Koşulları ve Gizlilik Politikası onay kutusunu işaretleyin.';
+    const msg = 'İlk kez hesap oluşturmak veya ilk kez giriş yapmak için Kullanım Koşulları ve Gizlilik Politikası onay kutusunu işaretleyin.';
     if (isHandoff) setHandoffStatus(msg, 'err');
     else setResult(msg, 'err');
-    if (App.toast) App.toast('Önce Kullanım Koşulları ve Gizlilik Politikası onayını işaretleyin.', { kind: 'warn' });
+    if (App.toast) App.toast('İlk kayıt için Kullanım Koşulları ve Gizlilik Politikası onayını işaretleyin.', { kind: 'warn' });
     try { cb.focus(); } catch (e) { /* yoksay */ }
     return false;
   }
 
   async function doSignIn() {
     if (busy) return;
-    if (!requireLegalConsent(false)) return;
     const email = $('authEmail').value.trim();
     const pass = $('authPass').value;
     if (!email || !pass) return setResult('E-posta ve şifre girin.', 'err');
@@ -362,6 +379,7 @@
     setResult('Giriş yapılıyor…');
     try {
       await App.Auth.signIn(email, pass);
+      markLegalConsentAccepted();
       setResult('Giriş başarılı.', 'ok');
       App.sound && App.sound.ok ? App.sound.ok() : (App.sound && App.sound.click());
       App.haptic && App.haptic(40);
@@ -412,7 +430,7 @@
 
   async function doSignUp() {
     if (busy) return;
-    if (!requireLegalConsent(false)) return;
+    if (!requireLegalConsent(false, { force: true })) return;
     const email = $('authEmail').value.trim();
     const pass = $('authPass').value;
     if (!email) return setResult('E-posta girin.', 'err');
@@ -423,6 +441,7 @@
     setResult('Hesap açılıyor…');
     try {
       const r = await App.Auth.signUp(email, pass, email.split('@')[0]);
+      markLegalConsentAccepted();
       if (r && r.pending) {
         setResult('Hesap oluşturuldu. E-postanıza gelen bağlantıya tıklayıp ' +
                   'onaylayın, sonra giriş yapın.', 'ok');
@@ -813,6 +832,7 @@
         return;
       }
       setChromeFallback(false);
+      markLegalConsentAccepted();
       setResult('Giriş başarılı.', 'ok');
       App.sound && App.sound.ok ? App.sound.ok() : (App.sound && App.sound.click());
       App.haptic && App.haptic(40);

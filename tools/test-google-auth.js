@@ -876,10 +876,10 @@ async function legalConsentBlocksUncheckedSignIn() {
   page.element('authEmail').value = 'ali@example.test';
   page.element('authPass').value = 'GucluSifre1!';
 
+  /* İlk kez giriş/kayıt: sosyal giriş ve hesap oluşturma engellenir */
   page.element('googleSignInBtn').click();
   page.element('githubSignInBtn').click();
   page.element('appleSignInBtn').click();
-  page.element('authSignInBtn').click();
   page.element('authSignUpBtn').click();
   await until(() => /Kullanım Koşulları|Gizlilik Politikası/.test(page.element('authResult').textContent),
     'Legal consent message should appear');
@@ -887,9 +887,17 @@ async function legalConsentBlocksUncheckedSignIn() {
   assert.equal(backend.calls.length, 0);
   assert.equal(page.app.Auth.snapshot().signedIn, false);
 
+  /* İlk kez kutucuk işaretlenip Google ile giriş yapılır */
   cb.checked = true;
   page.element('googleSignInBtn').click();
   await until(() => !page.element('googleSignInBtn').disabled, 'Google sign-in should proceed once consent is checked');
+  assert.equal(page.app.Auth.snapshot().signedIn, true);
+
+  /* Çıkış yapıp aynı cihazda tekrar girişte kutucuk zorunlu olmamalı */
+  await page.app.Auth.signOut();
+  cb.checked = false;
+  page.element('googleSignInBtn').click();
+  await until(() => !page.element('googleSignInBtn').disabled, 'Returning Google sign-in should not require re-checking consent');
   assert.equal(page.app.Auth.snapshot().signedIn, true);
 }
 

@@ -332,6 +332,11 @@ html.js-no-hash .settings-studio-main:not(.is-overview):not(.is-tabbed) {
   font-weight: 500;
 }
 
+.auth-legal-hint {
+  opacity: 0.78;
+  font-size: 0.8rem;
+}
+
 .auth-legal-consent.is-missing {
   border-color: var(--danger);
   background: var(--danger-soft, rgba(220, 38, 38, 0.08));
