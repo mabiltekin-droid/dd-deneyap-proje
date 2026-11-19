@@ -283,7 +283,9 @@ function mockPage(backend, {
     if (!elements.has(id)) {
       const listeners = new Map();
       elements.set(id, {
-        hidden: false, disabled: false, value: '', textContent: '', className: '', href: '', dataset: {},
+        hidden: false, disabled: false, checked: id === 'authLegalConsent', value: '', textContent: '', className: '', href: '', dataset: {},
+        classList: { add() {}, remove() {}, toggle() {}, contains() { return false; } },
+        focus() {},
         querySelector() { return { textContent: '' }; },
         addEventListener(event, fn) {
           const handlers = listeners.get(event) || [];
@@ -863,9 +865,38 @@ async function profileGoogleSignOutFailure() {
   assert.equal(page.app.Auth.snapshot().signedIn, true);
 }
 
+async function legalConsentBlocksUncheckedSignIn() {
+  const backend = mockBackend();
+  const page = mockPage(backend);
+  await ready(page);
+
+  const cb = page.element('authLegalConsent');
+  cb.checked = false;
+
+  page.element('authEmail').value = 'ali@example.test';
+  page.element('authPass').value = 'GucluSifre1!';
+
+  page.element('googleSignInBtn').click();
+  page.element('githubSignInBtn').click();
+  page.element('appleSignInBtn').click();
+  page.element('authSignInBtn').click();
+  page.element('authSignUpBtn').click();
+  await until(() => /Kullanım Koşulları|Gizlilik Politikası/.test(page.element('authResult').textContent),
+    'Legal consent message should appear');
+
+  assert.equal(backend.calls.length, 0);
+  assert.equal(page.app.Auth.snapshot().signedIn, false);
+
+  cb.checked = true;
+  page.element('googleSignInBtn').click();
+  await until(() => !page.element('googleSignInBtn').disabled, 'Google sign-in should proceed once consent is checked');
+  assert.equal(page.app.Auth.snapshot().signedIn, true);
+}
+
 (async () => {
   const checks = [
     mobileAuthEndpointSecurity,
+    legalConsentBlocksUncheckedSignIn,
     nativeBrowserSuccess,
     nativeBrowserCallbackEvent,
     nativeBrowserFailure,

@@ -333,8 +333,26 @@
 
   /* ------------------------------------------------ kayıt / giriş --------- */
 
+  function requireLegalConsent(isHandoff) {
+    const cb = $('authLegalConsent');
+    if (!cb || cb.checked) return true;
+    const wrap = $('authLegalConsentWrap');
+    if (wrap && wrap.classList) {
+      wrap.classList.remove('is-missing');
+      void wrap.offsetWidth;
+      wrap.classList.add('is-missing');
+    }
+    const msg = 'Giriş yapmak veya hesap oluşturmak için Kullanım Koşulları ve Gizlilik Politikası onay kutusunu işaretleyin.';
+    if (isHandoff) setHandoffStatus(msg, 'err');
+    else setResult(msg, 'err');
+    if (App.toast) App.toast('Önce Kullanım Koşulları ve Gizlilik Politikası onayını işaretleyin.', { kind: 'warn' });
+    try { cb.focus(); } catch (e) { /* yoksay */ }
+    return false;
+  }
+
   async function doSignIn() {
     if (busy) return;
+    if (!requireLegalConsent(false)) return;
     const email = $('authEmail').value.trim();
     const pass = $('authPass').value;
     if (!email || !pass) return setResult('E-posta ve şifre girin.', 'err');
@@ -394,6 +412,7 @@
 
   async function doSignUp() {
     if (busy) return;
+    if (!requireLegalConsent(false)) return;
     const email = $('authEmail').value.trim();
     const pass = $('authPass').value;
     if (!email) return setResult('E-posta girin.', 'err');
@@ -738,6 +757,7 @@
 
   async function startHandoffGoogleSignIn(state) {
     if (busy || !AUTH_STATE_RE.test(state || '')) return;
+    if (!requireLegalConsent(true)) return;
     busy = true;
     const btn = $('nativeAuthGoogleBtn');
     if (btn) btn.disabled = true;
@@ -769,6 +789,7 @@
 
   async function doSocialSignIn(provider) {
     if (busy) return;
+    if (!requireLegalConsent(false)) return;
     setChromeFallback(false);
     const android = window.AndroidApp;
     if (provider === 'google' && android) {
@@ -1299,10 +1320,17 @@
     });
     if ($('googleChromeFallbackBtn')) {
       $('googleChromeFallbackBtn').addEventListener('click', function () {
+        if (!requireLegalConsent(false)) return;
         const android = window.AndroidApp;
         if (android && typeof android.openInChrome === 'function') {
           android.openInChrome();
         }
+      });
+    }
+    if ($('authLegalConsent')) {
+      $('authLegalConsent').addEventListener('change', function () {
+        const wrap = $('authLegalConsentWrap');
+        if (wrap && this.checked) wrap.classList.remove('is-missing');
       });
     }
     if ($('nativeAuthGoogleBtn')) {
@@ -1313,6 +1341,7 @@
     }
     if ($('nativeAuthContinueExistingBtn')) {
       $('nativeAuthContinueExistingBtn').addEventListener('click', async function () {
+        if (!requireLegalConsent(true)) return;
         const state = activeHandoffState();
         if (!state || !App.FB || typeof App.FB.token !== 'function') return;
         const token = await App.FB.token();

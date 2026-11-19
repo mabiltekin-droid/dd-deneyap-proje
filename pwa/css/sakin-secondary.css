@@ -299,18 +299,55 @@ html.js-no-hash .settings-studio-main:not(.is-overview):not(.is-tabbed) {
   text-decoration: none;
 }
 
-.auth-legal-note {
+.auth-legal-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
   margin: 1rem 0 0;
+  padding: 0.72rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-alt, rgba(0, 0, 0, 0.025));
   color: var(--text-dim);
   font-size: 0.85rem;
   line-height: 1.5;
-  text-align: center;
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
 }
 
-.auth-legal-note a {
+.auth-legal-consent input[type="checkbox"] {
+  flex: 0 0 auto;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin-top: 0.16rem;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.auth-legal-consent a {
   color: var(--primary);
   text-decoration: underline;
   text-underline-offset: 0.16em;
+  font-weight: 500;
+}
+
+.auth-legal-consent.is-missing {
+  border-color: var(--danger);
+  background: var(--danger-soft, rgba(220, 38, 38, 0.08));
+  color: var(--text);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .auth-legal-consent.is-missing {
+    animation: authConsentShake 0.34s ease;
+  }
+}
+
+@keyframes authConsentShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
 }
 
 #authSignedOut #forgotPasswordBtn {
